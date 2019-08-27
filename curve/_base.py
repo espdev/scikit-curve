@@ -37,7 +37,7 @@ class Point(abc.Sequence):
     def __len__(self) -> int:
         """Returns the point dimension
         """
-        return self.ndim
+        return self._data.size
 
     def __getitem__(self, item: int):
         return self._data[item]
@@ -46,9 +46,12 @@ class Point(abc.Sequence):
         return Point(self._data)
 
     def __eq__(self, other: 'Point') -> bool:
+        if not isinstance(other, Point):
+            return NotImplemented
+
         if self.ndim != other.ndim:
             return False
-        return np.allclose(self.data, other.data)
+        return np.allclose(self._data, other.data)
 
     def __repr__(self):
         return 'Point({}, dtype={})'.format(self._data.tolist(), self._data.dtype)
@@ -81,41 +84,87 @@ class Curve(abc.Sequence):
     def __init__(self, curve_data: CurveDataType, dtype=None) -> None:
         """Constructs the curve
         """
-        if isinstance(curve_data, Point):
+
+        is_transpose = True
+
+        if isinstance(curve_data, Curve):
             curve_data = curve_data.data
             dtype = dtype or curve_data.dtype
+
+        if isinstance(curve_data, np.ndarray):
+            if curve_data.ndim != 2:
+                raise ValueError('If the curve data is ndarray it must be two-dimensional.')
+            dtype = dtype or curve_data.dtype
+            is_transpose = False
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
 
-        self._data = np.array(curve_data, ndmin=2, dtype=dtype).T  # type: np.ndarray
+        if not np.issubdtype(dtype, np.number):
+            ValueError('dtype must be a numeric type.')
+
+        data = np.array(curve_data, ndmin=2, dtype=dtype)
+
+        if is_transpose:
+            data = data.T
+
+        self._data = data  # type: np.ndarray
 
     def __len__(self) -> int:
         """Returns the number of data points in the curve
         """
-        return self.size
+        return self._data.shape[0]
 
     def __getitem__(self, item: t.Union[int, slice]) -> t.Union[Point, 'Curve']:
         data = self._data[item]
 
         if data.ndim > 1:
-            return self._from_data(data)
+            return Curve(data)
         else:
-            return Point(data, dtype=self._data.dtype)
+            return Point(data)
 
     def __reversed__(self) -> 'Curve':
-        return self._from_data(self._data[::-1])
+        return Curve(np.flipud(self._data))
 
-    def __contains__(self, point: Point):
-        return np.any(self._is_close(point.data, self._data))
+    def __contains__(self, other: t.Union[Point, 'Curve']):
+        if not isinstance(other, (Point, Curve)):
+            return NotImplemented
 
-    def __copy__(self) -> 'Curve':
-        return self._from_data(self._data)
-
-    def __eq__(self, other: 'Curve') -> bool:
         if self.ndim != other.ndim:
             return False
-        return np.allclose(self.data, other.data)
+
+        if isinstance(other, Point):
+            return np.any(self._is_close(other.data, self._data))
+        else:
+            self_sz = self.size
+            other_sz = other.size
+
+            if self_sz == other_sz:
+                return np.allclose(self._data, other.data)
+
+            if self_sz < other_sz:
+                return False
+
+            for i in range(self_sz - other_sz + 1):
+                self_data = self._data[i:(i + other_sz)]
+                if np.allclose(self_data, other.data):
+                    return True
+
+            return False
+
+    def __copy__(self) -> 'Curve':
+        return Curve(self._data)
+
+    def __eq__(self, other: 'Curve') -> bool:
+        if not isinstance(other, Curve):
+            return NotImplemented
+
+        if self.ndim != other.ndim:
+            return False
+        if self.size != other.size:
+            return False
+
+        return np.allclose(self._data, other.data)
 
     def __repr__(self):
         return 'Curve({})'.format(self._data)
@@ -164,9 +213,6 @@ class Curve(abc.Sequence):
         """Returns the curve dimension
         """
         return self._data.shape[1]
-
-    def _from_data(self, data: np.ndarray) -> 'Curve':
-        return Curve(tuple(data.T), dtype=self._data.dtype)
 
     @staticmethod
     def _is_close(point_data, data) -> np.ndarray:

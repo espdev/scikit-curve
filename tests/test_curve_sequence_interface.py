@@ -12,6 +12,7 @@ from curve import Curve, Point
     (([1], [1], [1], [1]), 1, 4, np.int32),
     (([1, 2]), 2, 1, np.float),
     ((), 0, 1, np.int32),
+    (Curve([[1, 2, 3], [4, 5, 6]]), 3, 2, np.int32),
 ])
 def test_construct(data, size, ndim, dtype):
     """Tests creating the instance of 'Curve' class
@@ -22,6 +23,22 @@ def test_construct(data, size, ndim, dtype):
     assert curve.size == size
     assert curve.ndim == ndim
     assert curve.dtype == dtype
+
+
+def test_eq():
+    curve1 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    curve2 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert curve1 == curve2
+
+
+@pytest.mark.parametrize('curve_data', [
+    [[1, 2, 3], [5, 6, 7]],
+    [[2, 3, 4, 5], [6, 7, 8, 9]],
+])
+def test_ne(curve_data):
+    curve1 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    curve2 = Curve(curve_data)
+    assert curve1 != curve2
 
 
 def test_reversed():
@@ -35,9 +52,23 @@ def test_reversed():
     [4, 8],
     [3, 7],
 ])
-def test_contains(point_data):
+def test_contains_point(point_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert Point(point_data) in curve
+
+
+@pytest.mark.parametrize('curve_data', [
+    [[1, 2], [5, 6]],
+    [[2], [6]],
+    [[2, 3], [6, 7]],
+    [[1, 2, 3], [5, 6, 7]],
+    [[2, 3, 4], [6, 7, 8]],
+    [[3, 4], [7, 8]],
+    [[1, 2, 3, 4], [5, 6, 7, 8]],
+])
+def test_contains_curve(curve_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert Curve(curve_data) in curve
 
 
 @pytest.mark.parametrize('point_data, start, stop, expected_index', [
