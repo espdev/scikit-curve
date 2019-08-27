@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import pathlib
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 ROOT_DIR = pathlib.Path(__file__).parent
-PKG_NAME = 'curve'
+ROOT_PKG = 'curve'
 
 
 def get_version():
     version_info = {}
-    version_file = ROOT_DIR / PKG_NAME / '_version.py'
+    version_file = ROOT_DIR / ROOT_PKG / '_version.py'
     with version_file.open() as f:
         exec(f.read(), version_info)
     return version_info['__version__']
@@ -29,7 +29,7 @@ setup(
         'numpy',
         'scipy',
     ],
-    packages=[PKG_NAME],
+    packages=find_packages(exclude=['tests', '*.tests', '*.tests.*', 'tests.*']),
     url='https://github.com/espdev/scikit-curve',
     license='BSD 3-Clause',
     author='Eugene Prilepin',
