@@ -1,0 +1,87 @@
+# -*- coding: utf-8 -*-
+
+import pytest
+import numpy as np
+
+from curve import Curve, Point
+
+
+@pytest.mark.parametrize('data, size, ndim, dtype', [
+    (([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]), 5, 2, np.float64),
+    (([1, 2], [1, 2], [1, 2]), 2, 3, np.float32),
+    (([1], [1], [1], [1]), 1, 4, np.int32),
+    (([1, 2]), 2, 1, np.float),
+    ((), 0, 1, np.int32),
+])
+def test_construct(data, size, ndim, dtype):
+    """Tests creating the instance of 'Curve' class
+    """
+    curve = Curve(data, dtype=dtype)
+
+    assert len(curve) == size
+    assert curve.size == size
+    assert curve.ndim == ndim
+    assert curve.dtype == dtype
+
+
+def test_reversed():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert reversed(curve) == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
+
+
+@pytest.mark.parametrize('point_data', [
+    [1, 5],
+    [2, 6],
+    [4, 8],
+    [3, 7],
+])
+def test_contains(point_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert Point(point_data) in curve
+
+
+@pytest.mark.parametrize('point_data, start, stop, expected_index', [
+    ([1, 5], None, None, 0),
+    ([3, 7], 1, None, 2),
+    ([2, 6], None, None, 1),
+    ([2, 6], 2, None, 4),
+    ([4, 8], None, 4, 3),
+])
+def test_index(point_data, start, stop, expected_index):
+    curve = Curve([(1, 2, 3, 4, 2), (5, 6, 7, 8, 6)])
+    assert curve.index(Point(point_data), start, stop) == expected_index
+
+
+@pytest.mark.parametrize('point_data, expected_count', [
+    ([0, 0], 0),
+    ([1, 5], 1),
+    ([3, 7], 2),
+    ([2, 6], 3),
+    ([4, 8], 1),
+])
+def test_count(point_data, expected_count):
+    curve = Curve([(1, 2, 3, 4, 2, 3, 2), (5, 6, 7, 8, 6, 7, 6)])
+    assert curve.count(Point(point_data)) == expected_count
+
+
+@pytest.mark.parametrize('item, expected_data', [
+    (0, [1, 5]),
+    (1, [2, 6]),
+    (-1, [4, 8]),
+    (-2, [3, 7]),
+])
+def test_get_item_point(item, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert curve[item] == Point(expected_data)
+
+
+@pytest.mark.parametrize('item, expected_data', [
+    (slice(None, 2), [(1, 2), (5, 6)]),
+    (slice(1, 3), [(2, 3), (6, 7)]),
+    (slice(-2, -1), [(3,), (7,)]),
+    (slice(-2, None), [(3, 4), (7, 8)]),
+    (slice(None), [(1, 2, 3, 4), (5, 6, 7, 8)]),
+])
+def test_get_item_curve(item, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert curve[item] == Curve(expected_data)

@@ -4,8 +4,15 @@ import typing as t
 import numpy as np
 
 
-CurveDataType = t.Union[
-    t.Tuple[t.Sequence[float], ...],
-    t.Tuple[np.ndarray, ...],
+PointDataType = t.Union[
+    t.Sequence[float],
     np.ndarray,
+    'Point',
+]
+
+CurveDataType = t.Union[
+    t.Sequence[t.Sequence[float]],
+    t.Sequence[np.ndarray],
+    np.ndarray,
+    'Curve',
 ]
