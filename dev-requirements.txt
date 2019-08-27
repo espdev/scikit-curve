@@ -5,3 +5,4 @@ matplotlib
 sphinx
 numpydoc
 pytest
+coverage
