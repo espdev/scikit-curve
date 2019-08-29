@@ -12,6 +12,8 @@ from ._types import PointDataType, CurveDataType, DataType
 IndexerType = t.Union[
     int,
     slice,
+    t.Sequence[int],
+    np.array,
 ]
 
 PointCurveUnionType = t.Union[
@@ -299,8 +301,8 @@ class Curve(abc.Sequence):
 
         Parameters
         ----------
-        indexer : int, slice
-            Index (int) or slice for getting the point or sub-slice
+        indexer : int, slice, list, np.array
+            Index (int) or list of indexes or slice for getting the point or sub-slice
 
         Returns
         -------
@@ -595,13 +597,13 @@ class Curve(abc.Sequence):
 
         return cls(np.array(list(points)), dtype=dtype)
 
-    def insert(self, index: int, other: PointCurveUnionType) -> 'Curve':
+    def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
         """Inserts point or sub-curve to the curve
 
         Parameters
         ----------
-        index : int
-            Index to insert data
+        index : int, slice, list, np.ndarray
+            Indexer object to insert data
         other : Point, Curve
             Point or curve object to insert
 
@@ -618,9 +620,8 @@ class Curve(abc.Sequence):
         Examples
         --------
 
-        .. code-block:: python
-
             >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
             >>> point = Point([10, 20])
             >>> curve.insert(1, point)
             Curve([[ 1.  5.]
@@ -629,9 +630,6 @@ class Curve(abc.Sequence):
                    [ 3.  7.]
                    [ 4.  8.]], size=5, ndim=2, dtype=float64)
 
-        .. code-block:: python
-
-            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
             >>> sub_curve = Curve([(10, 20), (30, 40)])
             >>> curve.insert(-3, sub_curve)
             Curve([[ 1.  5.]
@@ -641,9 +639,15 @@ class Curve(abc.Sequence):
                    [ 3.  7.]
                    [ 4.  8.]], size=6, ndim=2, dtype=float64)
 
+            >>> curve.insert([1, 2], sub_curve)
+            Curve([[ 1.  5.]
+                   [10. 30.]
+                   [ 2.  6.]
+                   [20. 40.]
+                   [ 3.  7.]
+                   [ 4.  8.]], size=6, ndim=2, dtype=float64)
+
         """
-        if not isinstance(index, int):
-            raise TypeError('Index must be an integer.')
 
         self._check_ndim(other)
 
@@ -702,8 +706,8 @@ class Curve(abc.Sequence):
 
         Parameters
         ----------
-        index : int, slice
-            An integer index or slice object for deleting point or sub-curve respectively
+        index : int, slice, list, np.array
+            An integer index, list of indexes or slice object for deleting points or sub-curve respectively
 
         Returns
         -------

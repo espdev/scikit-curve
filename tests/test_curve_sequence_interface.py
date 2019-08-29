@@ -199,6 +199,7 @@ def test_delete_point(index, expected_data):
 @pytest.mark.parametrize('index, expected_data', [
     (slice(None, 2), [(3, 4), (7, 8)]),
     (slice(-2, None), [(1, 2), (5, 6)]),
+    (slice(None, None, 2), [(2, 4), (6, 8)]),
 ])
 def test_delete_curve(index, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
