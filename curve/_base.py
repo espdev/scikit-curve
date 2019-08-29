@@ -391,6 +391,65 @@ class Curve(abc.Sequence):
     def __deepcopy__(self, memodict: t.Optional[dict] = None) -> 'Curve':
         return Curve(self._data)
 
+    def index(self, point: Point, start: t.Optional[int] = None, end: t.Optional[int] = None) -> int:
+        """Returns the first index for given point in the curve
+
+        Parameters
+        ----------
+        point : Point
+            The instance of point for check
+
+        start : int or None
+            Finding start index or None to begin from 0
+
+        end : int or None
+            Finding end index for find or None to end of curve
+
+        Returns
+        -------
+        index : int
+            Index if given point exists in the curve and in the given ``start:end`` interval
+
+        Raises
+        ------
+        ValueError : If given point does not exist in the curve and given ``start:end`` interval
+
+        """
+
+        if start is None and end is None:
+            data = self._data
+        else:
+            data = self._data[slice(start, end)]
+
+        is_close = self._is_close(point.data, data)
+
+        if not np.any(is_close):
+            raise ValueError('{} is not in curve and given interval'.format(point))
+
+        indices = np.flatnonzero(is_close)
+
+        if start:
+            indices += start
+
+        return indices[0]
+
+    def count(self, point: Point) -> int:
+        """Returns the number of inclusions given point in the curve
+
+        Parameters
+        ----------
+        point : Point
+            The point instance for check
+
+        Returns
+        -------
+        count : int
+            The number of inclusions given point in the curve
+
+        """
+
+        return int(np.sum(self._is_close(point.data, self._data)))
+
     @property
     def data(self) -> np.ndarray:
         """Returns the curve data as numpy array
