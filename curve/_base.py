@@ -326,12 +326,12 @@ class Curve(abc.Sequence):
         return self._data.shape[0]
 
     def __getitem__(self, indexer: IndexerType) -> PointCurveUnionType:
-        """Returns the point of curve or sub-curve
+        """Returns the point of curve or sub-curve or all coords fot given dimension
 
         Parameters
         ----------
-        indexer : int, slice, list, np.array
-            Index (int) or list of indexes or slice for getting the point or sub-slice
+        indexer : int, slice, list, np.array, tuple
+            Index (int) or list of indexes or slice or tuple for getting the point or sub-slice
 
         Returns
         -------
@@ -339,15 +339,21 @@ class Curve(abc.Sequence):
             Point for given index
         curve : Curve
             Sub-curve for given slice
+        coord_values : np.ndarray
+            All values for given axis
 
         """
 
+        is_return_values = isinstance(indexer, tuple) and isinstance(indexer[1], int)
         data = self._data[indexer]
 
         if data.ndim > 1:
             return Curve(data)
         else:
-            return Point(data)
+            if is_return_values:
+                return data
+            else:
+                return Point(data)
 
     def __contains__(self, other: PointCurveUnionType):
         """Returns True if the curve contains given point or sub-curve
