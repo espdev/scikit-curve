@@ -47,6 +47,10 @@ extensions = [
     'numpydoc',
 ]
 
+# Extensions settings
+autodoc_member_order = 'bysource'
+numpydoc_show_class_members = False
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -62,6 +66,13 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'alabaster'
+
+html_theme_options = {
+    'fixed_sidebar': True,
+    'github_user': 'espdev',
+    'github_repo': 'scikit-curve',
+    'travis_button': True,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

@@ -15,6 +15,13 @@ PointDataType = t.Union[
 CurveDataType = t.Union[
     t.Sequence[t.Sequence[NumberType]],
     t.Sequence[np.ndarray],
+    t.Sequence['Point'],
     np.ndarray,
     'Curve',
+]
+
+DataType = t.Union[
+    t.Type[int],
+    t.Type[float],
+    np.dtype,
 ]

@@ -25,6 +25,20 @@ def test_construct(data, size, ndim, dtype):
     assert curve.dtype == dtype
 
 
+def test_from_points():
+    """Tests creating the instance of 'Curve' class from points
+    """
+    points = [
+        Point([1, 5, 9]),
+        Point([2, 6, 10]),
+        Point([3, 7, 11]),
+        Point([4, 8, 12])
+    ]
+
+    curve = Curve.from_points(points)
+    assert curve.data == pytest.approx(np.array(points))
+
+
 def test_eq():
     curve1 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     curve2 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
