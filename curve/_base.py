@@ -129,6 +129,18 @@ class Point(abc.Sequence):
             return False
         return np.allclose(self._data, other.data)
 
+    def __reversed__(self) -> 'Point':
+        """Returns reversed the point with reversed coords
+
+        Returns
+        -------
+        curve : Curve
+            Reversed Point instance
+
+        """
+
+        return Point(np.flip(self._data))
+
     def __copy__(self) -> 'Point':
         return Point(self)
 
@@ -283,18 +295,6 @@ class Curve(abc.Sequence):
         else:
             return Point(data)
 
-    def __reversed__(self) -> 'Curve':
-        """Returns reversed copy of the curve
-
-        Returns
-        -------
-        curve : Curve
-            Reversed Curve instance
-
-        """
-
-        return Curve(np.flipud(self._data))
-
     def __contains__(self, other: t.Union[Point, 'Curve']):
         """Returns True if the curve contains given point or sub-curve
 
@@ -359,6 +359,18 @@ class Curve(abc.Sequence):
             return False
 
         return np.allclose(self._data, other.data)
+
+    def __reversed__(self) -> 'Curve':
+        """Returns reversed copy of the curve
+
+        Returns
+        -------
+        curve : Curve
+            Reversed Curve instance
+
+        """
+
+        return Curve(np.flipud(self._data))
 
     def __copy__(self) -> 'Curve':
         return Curve(self._data)
