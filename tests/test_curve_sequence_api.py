@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from curve import Curve, Point
+from curve import Curve, Point, Axis
 
 
 @pytest.mark.parametrize('data, size, ndim, dtype', [
@@ -213,3 +213,14 @@ def test_delete_point(index, expected_data):
 def test_delete_curve(index, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve.delete(index) == Curve(expected_data)
+
+
+@pytest.mark.parametrize('axis, expected_data', [
+    (Axis.X, np.array([1, 2, 3, 4])),
+    (Axis.Y, np.array([5, 6, 7, 8])),
+    (Axis.Z, np.array([9, 10, 11, 12])),
+    (-1, np.array([9, 10, 11, 12])),
+])
+def test_get_values(axis, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+    assert curve.values(axis) == pytest.approx(expected_data)

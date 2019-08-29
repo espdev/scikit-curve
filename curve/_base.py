@@ -3,6 +3,7 @@
 import collections.abc as abc
 import typing as t
 import textwrap
+import enum
 
 import numpy as np
 
@@ -49,6 +50,15 @@ def _cmp(obj1: PointCurveUnionType, obj2: PointCurveUnionType):
         return np.equal
     else:
         return np.isclose
+
+
+class Axis(enum.IntEnum):
+    """The enumeration represents three basic axes: X, Y and Z
+    """
+
+    X = 0
+    Y = 1
+    Z = 2
 
 
 class Point(abc.Sequence):
@@ -786,6 +796,49 @@ class Curve(abc.Sequence):
             raise IndexError(
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
+
+    def values(self, axis: t.Union[int, Axis]) -> np.ndarray:
+        """Returns the vector with all values for given axis
+
+        Notes
+        -----
+
+        This method is equivalent to use::
+
+            values = curve[:, axis]
+
+        Parameters
+        ----------
+        axis : int, Axis
+            The axis for getting values
+
+        Returns
+        -------
+        values : np.ndarray
+            The vector with all values for given axis
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+            >>> curve.values(Axis.X)
+            [1. 2. 3. 4.]
+
+            >>> curve.values(-1)
+            [ 9. 10. 11. 12.]
+
+        """
+
+        if not isinstance(axis, int):
+            raise ValueError('Axis must be an integer')
+
+        if axis >= self.ndim:
+            raise ValueError(
+                'The axis {} is out of the curve dimensions {}'.format(axis, self.ndim))
+
+        return self._data[:, axis]
 
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
