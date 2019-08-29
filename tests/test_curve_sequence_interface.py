@@ -130,3 +130,14 @@ def test_get_item_point(item, expected_data):
 def test_get_item_curve(item, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve[item] == Curve(expected_data)
+
+
+def test_concatenate():
+    left_curve = Curve([(1, 2), (5, 6)])
+    right_curve = Curve([(3, 4), (7, 8)])
+    expected_curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+    assert left_curve + right_curve == expected_curve
+
+    left_curve += right_curve
+    assert left_curve == Curve([(1, 2, 3, 4), (5, 6, 7, 8)])

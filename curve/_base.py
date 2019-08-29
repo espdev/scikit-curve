@@ -385,6 +385,26 @@ class Curve(abc.Sequence):
 
         return Curve(np.flipud(self._data))
 
+    def __add__(self, other: 'Curve') -> 'Curve':
+        """Returns concatenation of the curve and other curve
+
+        Parameters
+        ----------
+        other : Curve
+            Other curve object
+
+        Returns
+        -------
+        curve : Curve
+            Concatenation the curve and other curve
+
+        """
+
+        if not isinstance(other, Curve):
+            return NotImplemented
+
+        return Curve(np.vstack((self._data, other.data)))
+
     def __copy__(self) -> 'Curve':
         return Curve(self._data)
 
