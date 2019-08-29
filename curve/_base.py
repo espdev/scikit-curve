@@ -15,8 +15,11 @@ DEFAULT_DTYPE = np.float64
 class Point(abc.Sequence):
     """A n-dimensional geometric point representation
 
-    The class represents n-dimensional geometric point. Point object is immutable.
-    All methods which change point data return the copy.
+    The class represents n-dimensional geometric point.
+
+    Notes
+    -----
+    Point object is immutable. All methods which change point data return the copy.
 
     Parameters
     ----------
@@ -70,6 +73,10 @@ class Point(abc.Sequence):
 
         self._data = data
         self._data.flags.writeable = False
+
+    def __repr__(self):
+        return 'Point({}, ndim={}, dtype={})'.format(
+            self._data, self.ndim, self._data.dtype)
 
     def __len__(self) -> int:
         """Returns the point dimension
@@ -147,10 +154,6 @@ class Point(abc.Sequence):
     def __deepcopy__(self, memodict: t.Optional[dict] = None) -> 'Point':
         return Point(self)
 
-    def __repr__(self):
-        return 'Point({}, ndim={}, dtype={})'.format(
-            self._data, self.ndim, self._data.dtype)
-
     @property
     def data(self) -> np.array:
         """Returns the point data as numpy array
@@ -193,8 +196,11 @@ class Point(abc.Sequence):
 class Curve(abc.Sequence):
     """A n-dimensional geometric curve representation
 
-    The class represents n-dimensional geometric curve. Curve object is immutable.
-    All methods which change curve data return the copy.
+    The class represents n-dimensional geometric curve.
+
+    Notes
+    -----
+    Curve object is immutable. All methods which change curve data and size return the copy.
 
     Parameters
     ----------
@@ -258,6 +264,13 @@ class Curve(abc.Sequence):
 
         self._data = data  # type: np.ndarray
         self._data.flags.writeable = False
+
+    def __repr__(self) -> str:
+        arr_repr = '{}'.format(self._data)
+        arr_repr = textwrap.indent(arr_repr, ' ' * 6).strip()
+
+        return 'Curve({}, size={}, ndim={}, dtype={})'.format(
+            arr_repr, self.size, self.ndim, self.dtype)
 
     def __len__(self) -> int:
         """Returns the number of data points in the curve
@@ -377,13 +390,6 @@ class Curve(abc.Sequence):
 
     def __deepcopy__(self, memodict: t.Optional[dict] = None) -> 'Curve':
         return Curve(self._data)
-
-    def __repr__(self) -> str:
-        arr_repr = '{}'.format(self._data)
-        arr_repr = textwrap.indent(arr_repr, ' ' * 6).strip()
-
-        return 'Curve({}, size={}, ndim={}, dtype={})'.format(
-            arr_repr, self.size, self.ndim, self.dtype)
 
     @property
     def data(self) -> np.ndarray:
