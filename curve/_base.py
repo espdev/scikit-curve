@@ -24,6 +24,13 @@ PointCurveUnionType = t.Union[
 DEFAULT_DTYPE = np.float64
 
 
+def _cmp(obj1: PointCurveUnionType, obj2: PointCurveUnionType):
+    if np.issubdtype(obj1.dtype, np.integer) and np.issubdtype(obj2.dtype, np.integer):
+        return np.equal
+    else:
+        return np.isclose
+
+
 class Point(abc.Sequence):
     """A n-dimensional geometric point representation
 
@@ -146,7 +153,9 @@ class Point(abc.Sequence):
 
         if self.ndim != other.ndim:
             return False
-        return np.allclose(self._data, other.data)
+
+        cmp = _cmp(self, other)
+        return np.all(cmp(self._data, other.data))
 
     def __reversed__(self) -> 'Point':
         """Returns reversed the point with reversed coords
@@ -341,21 +350,23 @@ class Curve(abc.Sequence):
         if self.ndim != other.ndim:
             return False
 
+        cmp = _cmp(self, other)
+
         if isinstance(other, Point):
-            return np.any(self._is_close(other.data, self._data))
+            return np.any(self._is_equal(other.data, self._data, cmp))
         else:
             self_sz = self.size
             other_sz = other.size
 
             if self_sz == other_sz:
-                return np.allclose(self._data, other.data)
+                return np.all(cmp(self._data, other.data))
 
             if self_sz < other_sz:
                 return False
 
             for i in range(self_sz - other_sz + 1):
                 self_data = self._data[i:(i + other_sz)]
-                if np.allclose(self_data, other.data):
+                if np.all(cmp(self_data, other.data)):
                     return True
 
             return False
@@ -383,7 +394,8 @@ class Curve(abc.Sequence):
         if self.size != other.size:
             return False
 
-        return np.allclose(self._data, other.data)
+        cmp = _cmp(self, other)
+        return np.all(cmp(self._data, other.data))
 
     def __reversed__(self) -> 'Curve':
         """Returns reversed copy of the curve
@@ -461,7 +473,8 @@ class Curve(abc.Sequence):
         else:
             data = self._data[slice(start, end)]
 
-        is_close = self._is_close(point.data, data)
+        cmp = _cmp(self, point)
+        is_close = self._is_equal(point.data, data, cmp)
 
         if not np.any(is_close):
             raise ValueError('{} is not in curve and given interval'.format(point))
@@ -493,7 +506,8 @@ class Curve(abc.Sequence):
         """
 
         self._check_ndim(point)
-        return int(np.sum(self._is_close(point.data, self._data)))
+        cmp = _cmp(self, point)
+        return int(np.sum(self._is_equal(point.data, self._data, cmp)))
 
     @property
     def data(self) -> np.ndarray:
@@ -748,8 +762,8 @@ class Curve(abc.Sequence):
                     index, self.size)) from err
 
     @staticmethod
-    def _is_close(point_data, data) -> np.ndarray:
-        return np.all(np.isclose(point_data, data), axis=1)
+    def _is_equal(other_data, data, cmp) -> np.ndarray:
+        return np.all(cmp(other_data, data), axis=1)
 
     def _check_ndim(self, other: PointCurveUnionType):
         if self.ndim != other.ndim:
