@@ -9,6 +9,16 @@ import numpy as np
 from ._types import PointDataType, CurveDataType, DataType
 
 
+IndexerType = t.Union[
+    int,
+    slice,
+]
+
+PointCurveUnionType = t.Union[
+    'Point',
+    'Curve',
+]
+
 DEFAULT_DTYPE = np.float64
 
 
@@ -109,8 +119,8 @@ class Point(abc.Sequence):
 
         """
 
-        if isinstance(index, slice):
-            raise ValueError('Slicing is not supported')
+        if not isinstance(index, int):
+            raise ValueError('Index must be an integer')
 
         return self._data[index]
 
@@ -284,12 +294,12 @@ class Curve(abc.Sequence):
 
         return self._data.shape[0]
 
-    def __getitem__(self, item: t.Union[int, slice]) -> t.Union[Point, 'Curve']:
+    def __getitem__(self, indexer: IndexerType) -> PointCurveUnionType:
         """Returns the point of curve or sub-curve
 
         Parameters
         ----------
-        item : int, slice
+        indexer : int, slice
             Index (int) or slice for getting the point or sub-slice
 
         Returns
@@ -301,14 +311,14 @@ class Curve(abc.Sequence):
 
         """
 
-        data = self._data[item]
+        data = self._data[indexer]
 
         if data.ndim > 1:
             return Curve(data)
         else:
             return Point(data)
 
-    def __contains__(self, other: t.Union[Point, 'Curve']):
+    def __contains__(self, other: PointCurveUnionType):
         """Returns True if the curve contains given point or sub-curve
 
         Parameters
@@ -324,7 +334,7 @@ class Curve(abc.Sequence):
         """
 
         if not isinstance(other, (Point, Curve)):
-            return NotImplemented
+            return False
 
         if self.ndim != other.ndim:
             return False
@@ -571,6 +581,62 @@ class Curve(abc.Sequence):
             raise ValueError('The sequence must be contain only Points')
 
         return cls(np.array(list(points)), dtype=dtype)
+
+    def insert(self, index: int, other: PointCurveUnionType) -> 'Curve':
+        """Inserts point or sub-curve to the curve
+
+        Parameters
+        ----------
+        index : int
+            Index to insert data
+        other : Point, Curve
+            Point or curve object to insert
+
+        Returns
+        -------
+        curve : Curve
+            New curve object with inserted data.
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+            >>> point = Point([10, 20])
+            >>> curve.insert(1, point)
+            Curve([[ 1.  5.]
+                   [10. 20.]
+                   [ 2.  6.]
+                   [ 3.  7.]
+                   [ 4.  8.]], size=5, ndim=2, dtype=float64)
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+            >>> sub_curve = Curve([(10, 20), (30, 40)])
+            >>> curve.insert(-3, sub_curve)
+            Curve([[ 1.  5.]
+                   [10. 30.]
+                   [20. 40.]
+                   [ 2.  6.]
+                   [ 3.  7.]
+                   [ 4.  8.]], size=6, ndim=2, dtype=float64)
+
+        """
+        if not isinstance(index, int):
+            raise TypeError('Index must be an integer.')
+
+        if isinstance(other, Point):
+            other_data = np.array(other, ndmin=2)
+        elif isinstance(other, Curve):
+            other_data = other.data
+        else:
+            raise TypeError('Inserted object must be Point or Curve instance')
+
+        return Curve(
+            np.insert(self._data, index, other_data, axis=0)
+        )
 
     @staticmethod
     def _is_close(point_data, data) -> np.ndarray:

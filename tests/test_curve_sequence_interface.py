@@ -85,6 +85,16 @@ def test_contains_curve(curve_data):
     assert Curve(curve_data) in curve
 
 
+@pytest.mark.parametrize('data', [
+    10,
+    Point([10, 20]),
+    Curve([[10, 20], [30, 40]]),
+])
+def test_not_contains(data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert data not in curve
+
+
 @pytest.mark.parametrize('point_data, start, stop, expected_index', [
     ([1, 5], None, None, 0),
     ([3, 7], 1, None, 2),
@@ -141,3 +151,19 @@ def test_concatenate():
 
     left_curve += right_curve
     assert left_curve == Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+
+def test_insert_point():
+    point = Point([10, 20])
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+    curve1 = curve.insert(1, point)
+    assert curve1 == Curve([(1, 10, 2, 3, 4), (5, 20, 6, 7, 8)])
+
+
+def test_insert_curve():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    sub_curve = Curve([(10, 20), (30, 40)])
+
+    curve1 = curve.insert(-3, sub_curve)
+    assert curve1 == Curve([(1, 10, 20, 2, 3, 4), (5, 30, 40, 6, 7, 8)])
