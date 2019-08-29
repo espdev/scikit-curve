@@ -154,8 +154,8 @@ def test_concatenate():
 
 
 def test_insert_point():
-    point = Point([10, 20])
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    point = Point([10, 20])
 
     curve1 = curve.insert(1, point)
     assert curve1 == Curve([(1, 10, 2, 3, 4), (5, 20, 6, 7, 8)])
@@ -167,3 +167,19 @@ def test_insert_curve():
 
     curve1 = curve.insert(-3, sub_curve)
     assert curve1 == Curve([(1, 10, 20, 2, 3, 4), (5, 30, 40, 6, 7, 8)])
+
+
+def test_append_point():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    point = Point([10, 20])
+
+    curve1 = curve.append(point)
+    assert curve1 == Curve([(1, 2, 3, 4, 10), (5, 6, 7, 8, 20)])
+
+
+def test_append_curve():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    sub_curve = Curve([(10, 20), (30, 40)])
+
+    curve1 = curve.append(sub_curve)
+    assert curve1 == Curve([(1, 2, 3, 4, 10, 20), (5, 6, 7, 8, 30, 40)])

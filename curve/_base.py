@@ -408,11 +408,16 @@ class Curve(abc.Sequence):
         curve : Curve
             Concatenation the curve and other curve
 
+        Raises
+        ------
+        ValueError : If other dimension is not equal to the curve dimension
+
         """
 
         if not isinstance(other, Curve):
             return NotImplemented
 
+        self._check_ndim(other)
         return Curve(np.vstack((self._data, other.data)))
 
     def __copy__(self) -> 'Curve':
@@ -442,9 +447,12 @@ class Curve(abc.Sequence):
 
         Raises
         ------
+        ValueError : If other dimension is not equal to the curve dimension
         ValueError : If given point does not exist in the curve and given ``start:end`` interval
 
         """
+
+        self._check_ndim(point)
 
         if start is None and end is None:
             data = self._data
@@ -476,8 +484,13 @@ class Curve(abc.Sequence):
         count : int
             The number of inclusions given point in the curve
 
+        Raises
+        ------
+        ValueError : If other dimension is not equal to the curve dimension
+
         """
 
+        self._check_ndim(point)
         return int(np.sum(self._is_close(point.data, self._data)))
 
     @property
@@ -597,6 +610,11 @@ class Curve(abc.Sequence):
         curve : Curve
             New curve object with inserted data.
 
+        Raises
+        ------
+        ValueError : If other dimension is not equal to the curve dimension
+        IndexError : If index is out of bounds
+
         Examples
         --------
 
@@ -627,6 +645,8 @@ class Curve(abc.Sequence):
         if not isinstance(index, int):
             raise TypeError('Index must be an integer.')
 
+        self._check_ndim(other)
+
         if isinstance(other, Point):
             other_data = np.array(other, ndmin=2)
         elif isinstance(other, Curve):
@@ -634,10 +654,53 @@ class Curve(abc.Sequence):
         else:
             raise TypeError('Inserted object must be Point or Curve instance')
 
-        return Curve(
-            np.insert(self._data, index, other_data, axis=0)
-        )
+        try:
+            return Curve(
+                np.insert(self._data, index, other_data, axis=0)
+            )
+        except IndexError as err:
+            raise IndexError(
+                'Index {} is out of bounds for curve size {}'.format(
+                    index, self.size)) from err
+
+    def append(self, other: PointCurveUnionType):
+        """Appends point or curve data to the end of the curve
+
+        Parameters
+        ----------
+        other : Point, Curve
+            Point or curve object to insert
+
+        Returns
+        -------
+        curve : Curve
+            New curve object with appended data.
+
+        Raises
+        ------
+        ValueError : If other dimension is not equal to the curve dimension
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+            >>> point = Point([10, 20])
+            >>> curve.append(point)
+            Curve([[ 1.  5.]
+                   [ 2.  6.]
+                   [ 3.  7.]
+                   [ 4.  8.]
+                   [10. 20.]], size=5, ndim=2, dtype=float64)
+        """
+
+        return self.insert(self.size, other)
 
     @staticmethod
     def _is_close(point_data, data) -> np.ndarray:
         return np.all(np.isclose(point_data, data), axis=1)
+
+    def _check_ndim(self, other: PointCurveUnionType):
+        if self.ndim != other.ndim:
+            raise ValueError('The dimensions of the curve and other object do not match')
