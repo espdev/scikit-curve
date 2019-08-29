@@ -183,3 +183,23 @@ def test_append_curve():
 
     curve1 = curve.append(sub_curve)
     assert curve1 == Curve([(1, 2, 3, 4, 10, 20), (5, 6, 7, 8, 30, 40)])
+
+
+@pytest.mark.parametrize('index, expected_data', [
+    (0, [(2, 3, 4), (6, 7, 8)]),
+    (1, [(1, 3, 4), (5, 7, 8)]),
+    (-1, [(1, 2, 3), (5, 6, 7)]),
+    (-2, [(1, 2, 4), (5, 6, 8)]),
+])
+def test_delete_point(index, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert curve.delete(index) == Curve(expected_data)
+
+
+@pytest.mark.parametrize('index, expected_data', [
+    (slice(None, 2), [(3, 4), (7, 8)]),
+    (slice(-2, None), [(1, 2), (5, 6)]),
+])
+def test_delete_curve(index, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert curve.delete(index) == Curve(expected_data)

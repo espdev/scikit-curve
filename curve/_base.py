@@ -613,7 +613,7 @@ class Curve(abc.Sequence):
         Raises
         ------
         ValueError : If other dimension is not equal to the curve dimension
-        IndexError : If index is out of bounds
+        IndexError : If the index is out of bounds
 
         Examples
         --------
@@ -696,6 +696,52 @@ class Curve(abc.Sequence):
         """
 
         return self.insert(self.size, other)
+
+    def delete(self, index: IndexerType) -> 'Curve':
+        """Returns a new curve object with deleted point or sub-curve
+
+        Parameters
+        ----------
+        index : int, slice
+            An integer index or slice object for deleting point or sub-curve respectively
+
+        Returns
+        -------
+        curve : Curve
+            A new curve object with deleted point or sub-curve
+
+        Raises
+        ------
+        IndexError : If the index is out of bounds
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+            >>> curve.delete(1)
+            Curve([[ 1.  5.]
+                   [ 3.  7.]
+                   [ 4.  8.]], size=5, ndim=2, dtype=float64)
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+            >>> curve.delete(slice(None, 2))
+            Curve([[ 3.  7.]
+                   [ 4.  8.]], size=5, ndim=2, dtype=float64)
+
+        """
+
+        try:
+            return Curve(
+                np.delete(self._data, index, axis=0)
+            )
+        except IndexError as err:
+            raise IndexError(
+                'Index {} is out of bounds for curve size {}'.format(
+                    index, self.size)) from err
 
     @staticmethod
     def _is_close(point_data, data) -> np.ndarray:
