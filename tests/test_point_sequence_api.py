@@ -59,3 +59,11 @@ def test_reversed():
 def test_get_item(index, expected_data):
     point = Point([1, 2, 3, 4])
     assert point[index] == expected_data
+
+
+def test_dot_product():
+    p1 = Point([3, 7])
+    p2 = Point([-1, 4])
+
+    assert p1 @ p2 == pytest.approx(25)
+    assert p2 @ p1 == pytest.approx(25)

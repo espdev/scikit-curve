@@ -8,7 +8,7 @@ import enum
 import numpy as np
 
 
-NumberType = t.Union[int, float]
+NumberType = t.Union[int, float, np.number]
 
 PointDataType = t.Union[
     t.Sequence[NumberType],
@@ -203,6 +203,25 @@ class Point(abc.Sequence):
         """
 
         return Point(np.flip(self._data))
+
+    def __matmul__(self, other: 'Point') -> NumberType:
+        """Dot product of two points
+
+        Parameters
+        ----------
+        other : Point
+            Other point
+
+        Returns
+        -------
+        dot : int, float, np.number
+            Dot product of two points
+
+        """
+        if not isinstance(other, Point):
+            return NotImplemented
+
+        return np.dot(self._data, other.data)
 
     def __copy__(self) -> 'Point':
         return Point(self)
