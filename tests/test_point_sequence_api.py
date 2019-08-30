@@ -53,6 +53,8 @@ def test_reversed():
     (1, 2),
     (-1, 4),
     (-2, 3),
+    (slice(0, 2), Point([1, 2])),
+    ([1, 3], Point([2, 4])),
 ])
 def test_get_item(index, expected_data):
     point = Point([1, 2, 3, 4])

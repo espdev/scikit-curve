@@ -139,29 +139,34 @@ class Point(abc.Sequence):
 
         return self._data.size
 
-    def __getitem__(self, index: int) -> np.number:
+    def __getitem__(self, index: int) -> t.Union['Point', np.number]:
         """Returns coord of the point for given index
 
         Parameters
         ----------
-        index : int
-            The index of the coord. Must be an integer.
+        index : int, slice, list, np.array
+            The index of the coord or slice or list of indices
 
         Returns
         -------
-        coord : dtype
+        coord : np.number
             The coord value for given index
+        point : Point
+            The point with smaller dimension for given slice
 
         Raises
         ------
-        ValueError : if given index is slice
+        TypeError : Invalid index type
+        IndexError : The index is out of dimensions
 
         """
 
-        if not isinstance(index, int):
-            raise ValueError('Index must be an integer')
+        data = self._data[index]
 
-        return self._data[index]
+        if data.size > 1:
+            return Point(data)
+        else:
+            return data
 
     def __eq__(self, other: 'Point') -> bool:
         """Returns True if other point is equal to the point
