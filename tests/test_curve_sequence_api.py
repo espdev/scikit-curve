@@ -74,6 +74,12 @@ def test_reversed():
     assert reversed(curve) == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
 
 
+def test_reverse():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    curve.reverse()
+    assert curve == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
+
+
 @pytest.mark.parametrize('point_data', [
     [1, 5],
     [2, 6],

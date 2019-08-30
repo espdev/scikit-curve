@@ -698,6 +698,21 @@ class Curve(abc.Sequence):
 
         return cls(np.array(list(points)), dtype=dtype)
 
+    def reverse(self) -> None:
+        """Reverses the curve in-place
+
+        Notes
+        -----
+        This method changes this curve data in-place.
+
+        For getting reversed copy ``reversed`` function can be used::
+
+            curve_rev = reversed(curve)
+
+        """
+
+        self._data[:] = np.flipud(self._data)
+
     def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve
 
