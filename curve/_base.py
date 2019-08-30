@@ -1077,6 +1077,24 @@ class Curve(abc.Sequence):
             raise IndexError(
                 'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
 
+    def unique(self) -> 'Curve':
+        """Returns curve with unique points
+
+        The method deletes duplicate points from the curve and return new curve
+        with unique points.
+
+        Returns
+        -------
+        curve : Curve
+            Curve object with unique points
+
+        """
+
+        # FIXME: unique is slow (O(Nlog(N)) and moreover, we are forced to use
+        #  additional sorting indices array to preserve order. This is not good...
+        data, index = np.unique(self._data, axis=0, return_index=True)
+        return Curve(data[np.argsort(index)])
+
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
         return np.all(cmp(other_data, data), axis=1)

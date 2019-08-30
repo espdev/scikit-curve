@@ -285,3 +285,12 @@ def test_delete_dim(index, expected_data):
     curve1 = curve.delete_dim(index)
 
     assert curve1 == Curve(expected_data)
+
+
+@pytest.mark.parametrize('curve_data, expected_data', [
+    ([(4, 2, 3, 1), (8, 6, 7, 5)], [(4, 2, 3, 1), (8, 6, 7, 5)]),
+    ([(3, 2, 1, 4, 2), (7, 6, 5, 8, 6)], [(3, 2, 1, 4), (7, 6, 5, 8)]),
+    ([(3, 1, 2, 1, 4, 2), (7, 5, 6, 5, 8, 6)], [(3, 1, 2, 4), (7, 5, 6, 8)]),
+])
+def test_unique(curve_data, expected_data):
+    assert Curve(curve_data).unique() == Curve(expected_data)
