@@ -29,6 +29,12 @@ _METRICS = {
 }
 
 
+MetricType = t.Union[
+    str,
+    abc.Callable,
+]
+
+
 def known_metrics() -> t.List[str]:
     """Returns the list of well known metric names
 

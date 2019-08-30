@@ -7,7 +7,7 @@ import enum
 
 import numpy as np
 
-from .distance import get_metric
+from .distance import MetricType, get_metric
 
 
 NumberType = t.Union[int, float, np.number]
@@ -78,7 +78,7 @@ class Point(abc.Sequence):
         The data of n-dimensional point. The data might be represented in the different types:
 
         * The sequence of numbers ``Sequence[NumberType]``
-        * np.ndarray row 1xM where M is point dimension
+        * np.ndarray row 1xN where N is point dimension
         * Another Point object. It creates the copy of another point
 
     dtype : numeric type or numeric numpy.dtype
@@ -238,7 +238,7 @@ class Point(abc.Sequence):
         Returns
         -------
         data : np.ndarray
-            Returns the point data as numpy array 1xM where M is point dimension.
+            Returns the point data as numpy array 1xN where N is point dimension.
 
         """
 
@@ -269,7 +269,7 @@ class Point(abc.Sequence):
         """
         return self._data.size
 
-    def distance(self, other: 'Point', metric: t.Union[str, abc.Callable] = 'euclidean', **kwargs) -> NumberType:
+    def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> NumberType:
         """Compute distance from this point to other point by given metric
 
         Parameters
@@ -320,7 +320,7 @@ class Curve(abc.Sequence):
 
         * The sequence of the vectors with coordinates for each dimension.
           ``Sequence[Sequence[NumberType]]`` or ``Sequence[numpy.ndarray]``
-        * The data is represented as np.ndarray NxM where N is number of points and M is curve dimension
+        * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension
         * Another Curve object. It creates the copy of another curve
 
     dtype : numeric type or numeric numpy.dtype
@@ -656,7 +656,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         data : np.ndarray
-            Returns the curve data as numpy array NxM where N is number of data points and M is dimension.
+            Returns the curve data as numpy array MxN where M is number of data points and N is dimension.
 
         Examples
         --------
