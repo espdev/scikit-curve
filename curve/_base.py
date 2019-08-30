@@ -7,6 +7,8 @@ import enum
 
 import numpy as np
 
+from .distance import get_metric
+
 
 NumberType = t.Union[int, float, np.number]
 
@@ -266,6 +268,38 @@ class Point(abc.Sequence):
 
         """
         return self._data.size
+
+    def distance(self, other: 'Point', metric: t.Union[str, abc.Callable] = 'euclidean', **kwargs) -> NumberType:
+        """Compute distance from this point to other point by given metric
+
+        Parameters
+        ----------
+        other : point
+            Other point
+        metric : str, callable
+            Distance metric. By default ``euclidean`` from ``scipy.spatial.distance`` will be use
+        **kwargs : any
+            Additional arguments for given metric
+
+        Returns
+        -------
+        distance : np.number
+            Distance between two points
+
+        Raises
+        ------
+        NameError : Unknown metric name
+        TypeError : Metric is not callable
+
+        """
+
+        if isinstance(metric, str):
+            metric = get_metric(metric, **kwargs)
+
+        if not callable(metric):
+            raise TypeError('Metric must be str or callable')
+
+        return metric(self._data, other.data)
 
 
 class Curve(abc.Sequence):

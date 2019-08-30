@@ -67,3 +67,11 @@ def test_dot_product():
 
     assert p1 @ p2 == pytest.approx(25)
     assert p2 @ p1 == pytest.approx(25)
+
+
+def test_distance():
+    p1 = Point([3, 7])
+    p2 = Point([-1, 4])
+
+    assert p1.distance(p2) == pytest.approx(5.0)
+    assert p1.distance(p2, metric='sqeuclidean', w=1.5) == pytest.approx(37.5)
