@@ -151,6 +151,19 @@ def test_get_item_values(item, expected_data):
     assert curve[item] == pytest.approx(expected_data)
 
 
+@pytest.mark.parametrize('index, value, expected_data', [
+    (1, Point([10, 20]), [(1, 10, 3, 4), (5, 20, 7, 8)]),
+    ([1, 2], Point([10, 20]), [(1, 10, 10, 4), (5, 20, 20, 8)]),
+    (slice(0, 2), Curve([[10, 20], [30, 40]]), [(10, 20, 3, 4), (30, 40, 7, 8)]),
+    ((slice(None, None), 0), np.array([10, 20, 30, 40]), [(10, 20, 30, 40), (5, 6, 7, 8)]),
+])
+def test_set_item(index, value, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    curve[index] = value
+
+    assert curve == Curve(expected_data)
+
+
 def test_concatenate():
     left_curve = Curve([(1, 2), (5, 6)])
     right_curve = Curve([(3, 4), (7, 8)])
