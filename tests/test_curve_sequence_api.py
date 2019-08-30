@@ -39,15 +39,29 @@ def test_from_points():
     assert curve.data == pytest.approx(np.array(points))
 
 
-def test_eq():
-    curve1 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    curve2 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    assert curve1 == curve2
+@pytest.mark.parametrize('curve_data', [
+    [],
+    [[], [], []],
+])
+def test_bool(curve_data):
+    curve = Curve(curve_data)
+    assert not curve
+
+
+@pytest.mark.parametrize('curve_data1, curve_data2', [
+    ([(1, 2, 3, 4), (5, 6, 7, 8)], [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    ([], []),
+    ([[], []], [[], []]),
+])
+def test_eq(curve_data1, curve_data2):
+    assert Curve(curve_data1) == Curve(curve_data2)
 
 
 @pytest.mark.parametrize('curve_data', [
     [[1, 2, 3], [5, 6, 7]],
     [[2, 3, 4, 5], [6, 7, 8, 9]],
+    [],
+    [[], []],
 ])
 def test_ne(curve_data):
     curve1 = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])

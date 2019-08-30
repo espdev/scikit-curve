@@ -341,6 +341,18 @@ class Curve(abc.Sequence):
 
         return self._data.shape[0]
 
+    def __bool__(self) -> bool:
+        """Returns True if the curve has size >= 1 and dimension >= 1
+
+        Returns
+        -------
+        flag : bool
+            True if the curve has size >= 1 and dimension >= 1
+
+        """
+
+        return self.size != 0 and self.ndim != 0
+
     def __getitem__(self, indexer: IndexerType) -> PointCurveUnionType:
         """Returns the point of curve or sub-curve or all coords fot given dimension
 
