@@ -51,7 +51,7 @@ def is_spatial(curve: Curve) -> bool:
 
 
 def seg_length(curve: Curve) -> np.ndarray:
-    """Computes length for each segment of curve
+    """Computes length for each segment of a curve
 
     Notes
     -----
