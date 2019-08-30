@@ -74,10 +74,7 @@ def seg_length(curve: Curve) -> np.ndarray:
     if curve.size == 0:
         return np.ndarray([], dtype=float)
 
-    p1 = curve.data[:-1]
-    p2 = curve.data[1:]
-
-    seg_len = np.sqrt(np.sum((p1 - p2)**2, axis=1))
+    seg_len = np.sqrt(np.sum((np.diff(curve.data, axis=0))**2, axis=1))
 
     # TODO: Implement numerical integration
 
