@@ -275,6 +275,10 @@ class Curve(abc.Sequence):
 
         If dtype is not set, by default dtype has value `np.float64`.
 
+    copy : bool
+        If this flag is True the copy will be created. If it is False the copy will not be created if possible.
+        If it is possible not create a copy, dtype argument will be ignored.
+
     Examples
     --------
 
@@ -293,11 +297,12 @@ class Curve(abc.Sequence):
 
     __slots__ = ('_data', )
 
-    def __init__(self, curve_data: CurveDataType, dtype: t.Optional[DataType] = None) -> None:
+    def __init__(self, curve_data: CurveDataType, dtype: t.Optional[DataType] = None, copy: bool = True) -> None:
         """Constructs Curve instance
         """
 
         is_transpose = True
+        is_copy = True
 
         if isinstance(curve_data, Curve):
             curve_data = curve_data.data
@@ -308,6 +313,7 @@ class Curve(abc.Sequence):
                 raise ValueError('If the curve data is ndarray it must be two-dimensional.')
             dtype = dtype or curve_data.dtype
             is_transpose = False
+            is_copy = copy
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
@@ -315,7 +321,10 @@ class Curve(abc.Sequence):
         if not np.issubdtype(dtype, np.number):
             ValueError('dtype must be a numeric type.')
 
-        data = np.array(curve_data, ndmin=2, dtype=np.dtype(dtype))
+        if is_copy:
+            data = np.array(curve_data, ndmin=2, dtype=np.dtype(dtype))
+        else:
+            data = curve_data
 
         if is_transpose:
             data = data.T
@@ -376,7 +385,7 @@ class Curve(abc.Sequence):
         data = self._data[indexer]
 
         if data.ndim > 1:
-            return Curve(data)
+            return Curve(data, copy=False)
         else:
             if is_return_values:
                 return data
