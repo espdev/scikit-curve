@@ -224,3 +224,31 @@ def test_delete_curve(index, expected_data):
 def test_get_values(axis, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
     assert curve.values(axis) == pytest.approx(expected_data)
+
+
+def test_insert_dim():
+    curve = Curve([(1, 2, 3, 4), (9, 10, 11, 12)])
+    curve1 = curve.insert_dim(1, [5, 6, 7, 8])
+
+    assert curve1 == Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+
+
+def test_append_dim():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    curve1 = curve.append_dim([9, 10, 11, 12])
+
+    assert curve1 == Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+
+
+@pytest.mark.parametrize('index, expected_data', [
+    (Axis.X, [(5, 6, 7, 8), (9, 10, 11, 12)]),
+    (Axis.Y, [(1, 2, 3, 4), (9, 10, 11, 12)]),
+    (Axis.Z, [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    (-1, [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    ([Axis.X, Axis.Z], [(5, 6, 7, 8)]),
+])
+def test_delete_dim(index, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+    curve1 = curve.delete_dim(index)
+
+    assert curve1 == Curve(expected_data)

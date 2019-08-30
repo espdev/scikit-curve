@@ -840,6 +840,126 @@ class Curve(abc.Sequence):
 
         return self._data[:, axis]
 
+    def insert_dim(self, index: int, values: t.Union[np.ndarray, t.Sequence[NumberType], None] = None) -> 'Curve':
+        """Insert new dimension to the curve and returns new curve
+
+        Parameters
+        ----------
+        index : int
+            Index to insert new dimension
+        values : np.ndarray, sequence, None
+            If it is not None it will be used as values for inserted dimension.
+            If it is not set, will be inserted zeros vector
+
+        Returns
+        -------
+        curve : Curve
+            Curve object with inserted dimension
+
+        Raises
+        ------
+        IndexError : if index is out of the curve dimensions
+        ValueError : if could not broadcast input array to the curve size
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (9, 10, 11, 12)])
+            >>> curve.insert_dim(1, [5, 6, 7, 8])
+            Curve([[ 1.  5.  9.]
+                   [ 2.  6. 10.]
+                   [ 3.  7. 11.]
+                   [ 4.  8. 12.]], size=4, ndim=3, dtype=float64)
+
+        """
+
+        if values is None:
+            values = np.zeros(self.size, dtype=self.dtype)
+
+        try:
+            return Curve(
+                np.insert(self._data, index, values, axis=1)
+            )
+        except IndexError as err:
+            raise IndexError(
+                'Index {} is out of bounds for curve dimensions {}'.format(
+                    index, self.ndim)) from err
+
+    def append_dim(self, values: t.Union[np.ndarray, t.Sequence[NumberType], None] = None) -> 'Curve':
+        """Appends new dimension to the end of curve and returns new curve
+
+        Parameters
+        ----------
+        values : np.ndarray, sequence, None
+            If it is not None it will be used as values for inserted dimension.
+            If it is not set, will be inserted zeros vector
+
+        Returns
+        -------
+        curve : Curve
+            Curve object with appended dimension
+
+        Raises
+        ------
+        ValueError : if could not broadcast input array to the curve size
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+            >>> curve.append_dim([9, 10, 11, 12])
+            Curve([[ 1.  5.  9.]
+                   [ 2.  6. 10.]
+                   [ 3.  7. 11.]
+                   [ 4.  8. 12.]], size=4, ndim=3, dtype=float64)
+
+        """
+
+        return self.insert_dim(self.ndim, values)
+
+    def delete_dim(self, index: IndexerType) -> 'Curve':
+        """Returns a new curve object with deleted dimension(s)
+
+        Parameters
+        ----------
+        index : int, slice, list, np.arrau
+            Index (int) or list of indexes or slice for deleting dimension(s)
+
+        Returns
+        -------
+        curve : Curve
+            Curve object with appended dimension
+
+        Raises
+        ------
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+            >>> curve.delete_dim(-1)
+            Curve([[ 1.  5.]
+                   [ 2.  6.]
+                   [ 3.  7.]
+                   [ 4.  8.]], size=4, ndim=2, dtype=float64)
+
+        """
+
+        try:
+            return Curve(
+                np.delete(self._data, index, axis=1)
+            )
+        except IndexError as err:
+            raise IndexError(
+                'Index {} is out of bounds for curve dimensions {}'.format(
+                    index, self.ndim)) from err
+
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
         return np.all(cmp(other_data, data), axis=1)
