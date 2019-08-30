@@ -256,7 +256,9 @@ class Curve(abc.Sequence):
 
     Notes
     -----
-    Curve object is immutable. All methods which change curve data and size return the copy.
+    Curve objects are mutable with the limitations.
+    Some methods that can change curve size or dimension return the copy of curve.
+    Also deleting data via ``__delitem__`` is not allowed.
 
     Parameters
     ----------
@@ -319,7 +321,6 @@ class Curve(abc.Sequence):
             data = data.T
 
         self._data = data  # type: np.ndarray
-        self._data.flags.writeable = False
 
     def __repr__(self) -> str:
         arr_repr = '{}'.format(self._data)
@@ -369,6 +370,30 @@ class Curve(abc.Sequence):
                 return data
             else:
                 return Point(data)
+
+    def __setitem__(self, indexer: IndexerType, value: t.Union[PointCurveUnionType, np.ndarray]) -> None:
+        """Sets point or sub-curve or values for given axis
+
+        Parameters
+        ----------
+        indexer : int, slice, list, np.array, tuple
+            Index (int) or list of indexes or slice or tuple for setting the point or sub-slice
+        value : Point, Curve, np.ndarray
+
+        Raises
+        ------
+        TypeError : Invalid index type
+        IndexError : The index out of bounds curve size or dimensions
+
+        """
+
+        if isinstance(value, (Point, Curve)):
+            value = value.data
+
+        self._data[indexer] = value
+
+    def __delitem__(self, key):
+        raise ValueError('Deleting curve data is not allowed')
 
     def __contains__(self, other: PointCurveUnionType):
         """Returns True if the curve contains given point or sub-curve
@@ -653,7 +678,7 @@ class Curve(abc.Sequence):
         return cls(np.array(list(points)), dtype=dtype)
 
     def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
-        """Inserts point or sub-curve to the curve
+        """Inserts point or sub-curve to the curve and returns new curve
 
         Parameters
         ----------
@@ -723,7 +748,7 @@ class Curve(abc.Sequence):
                     index, self.size)) from err
 
     def append(self, other: PointCurveUnionType):
-        """Appends point or curve data to the end of the curve
+        """Appends point or curve data to the end of the curve and returns new curve
 
         Parameters
         ----------
@@ -845,13 +870,13 @@ class Curve(abc.Sequence):
 
         return self._data[:, axis]
 
-    def insert_dim(self, index: int, values: t.Union[np.ndarray, t.Sequence[NumberType], None] = None) -> 'Curve':
+    def insert_dim(self, axis: int, values: t.Union[np.ndarray, t.Sequence[NumberType], None] = None) -> 'Curve':
         """Insert new dimension to the curve and returns new curve
 
         Parameters
         ----------
-        index : int
-            Index to insert new dimension
+        axis : int
+            The axis to insert new dimension
         values : np.ndarray, sequence, None
             If it is not None it will be used as values for inserted dimension.
             If it is not set, will be inserted zeros vector
@@ -885,12 +910,11 @@ class Curve(abc.Sequence):
 
         try:
             return Curve(
-                np.insert(self._data, index, values, axis=1)
+                np.insert(self._data, axis, values, axis=1)
             )
         except IndexError as err:
             raise IndexError(
-                'Index {} is out of bounds for curve dimensions {}'.format(
-                    index, self.ndim)) from err
+                'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
 
     def append_dim(self, values: t.Union[np.ndarray, t.Sequence[NumberType], None] = None) -> 'Curve':
         """Appends new dimension to the end of curve and returns new curve
@@ -926,13 +950,13 @@ class Curve(abc.Sequence):
 
         return self.insert_dim(self.ndim, values)
 
-    def delete_dim(self, index: IndexerType) -> 'Curve':
+    def delete_dim(self, axis: IndexerType) -> 'Curve':
         """Returns a new curve object with deleted dimension(s)
 
         Parameters
         ----------
-        index : int, slice, list, np.arrau
-            Index (int) or list of indexes or slice for deleting dimension(s)
+        axis : int, slice, list, np.arrau
+            Axis (int) or list of axis or slice for deleting dimension(s)
 
         Returns
         -------
@@ -958,12 +982,11 @@ class Curve(abc.Sequence):
 
         try:
             return Curve(
-                np.delete(self._data, index, axis=1)
+                np.delete(self._data, axis, axis=1)
             )
         except IndexError as err:
             raise IndexError(
-                'Index {} is out of bounds for curve dimensions {}'.format(
-                    index, self.ndim)) from err
+                'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
 
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
