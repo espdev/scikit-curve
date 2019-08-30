@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 
 from curve import Curve
-from curve.diffgeom import seg_length, arc_length, natural_parametrization
+from curve.diffgeom import seglength, arclength, natural_parametrization
 
 
 def test_seg_length():
@@ -15,7 +15,7 @@ def test_seg_length():
 
     expected = [1.7320508075688772] * (n - 1)
 
-    assert seg_length(curve) == pytest.approx(expected)
+    assert seglength(curve) == pytest.approx(expected)
 
 
 def test_arc_length():
@@ -25,7 +25,15 @@ def test_arc_length():
 
     expected = 1.4142135623730951 * (n - 1)
 
-    assert arc_length(curve) == pytest.approx(expected)
+    assert arclength(curve) == pytest.approx(expected)
+
+
+def test_arc_length_2():
+    n = 10
+    theta = np.linspace(0, 2 * np.pi, n)
+    curve = Curve([np.cos(theta), np.sin(theta)])
+
+    assert arclength(curve) == pytest.approx(6.156362579862037)
 
 
 def test_natural_parametrization():

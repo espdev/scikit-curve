@@ -50,7 +50,7 @@ def is_spatial(curve: Curve) -> bool:
     return curve.ndim == 3
 
 
-def seg_length(curve: Curve) -> np.ndarray:
+def seglength(curve: Curve) -> np.ndarray:
     """Computes length for each segment of a curve
 
     Notes
@@ -81,7 +81,7 @@ def seg_length(curve: Curve) -> np.ndarray:
     return seg_len
 
 
-def arc_length(curve: Curve) -> float:
+def arclength(curve: Curve) -> float:
     """Computes the length of a curve arc
 
     Notes
@@ -100,7 +100,7 @@ def arc_length(curve: Curve) -> float:
 
     """
 
-    return np.sum(seg_length(curve))
+    return np.sum(seglength(curve))
 
 
 def natural_parametrization(curve: Curve) -> np.ndarray:
@@ -122,4 +122,4 @@ def natural_parametrization(curve: Curve) -> np.ndarray:
 
     # TODO: It is required numerical integration in a good way
 
-    return np.hstack((0.0, np.cumsum(seg_length(curve))))
+    return np.hstack((0.0, np.cumsum(seglength(curve))))
