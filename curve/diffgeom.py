@@ -81,6 +81,38 @@ def seglength(curve: Curve) -> np.ndarray:
     return seg_len
 
 
+def remove_singularity(curve: Curve):
+    """Removes singularities in a curve
+
+    The method removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
+    These points/segments of an exceptional set where a curve fails to be well-behaved in some
+    particular way, such as differentiability for example.
+
+    Parameters
+    ----------
+    curve: Curve
+        Curve object
+
+    Returns
+    -------
+    curve : Curve
+        Curve without singularities. This is new curve object if original curve has singularities or
+        original curve object if they are not.
+
+    """
+
+    is_close = np.isclose(np.hstack([1.0, seglength(curve)]), 0.0)
+    is_nan = np.any(np.isnan(curve.data), axis=1)
+    is_inf = np.any(np.isinf(curve.data), axis=1)
+
+    singular = np.flatnonzero(is_close | is_nan | is_inf)
+
+    if singular.size == 0:
+        return curve
+    else:
+        return curve.delete(singular)
+
+
 def arclength(curve: Curve) -> float:
     """Computes the length of a curve arc
 
