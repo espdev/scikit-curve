@@ -301,6 +301,8 @@ def test_unique(curve_data, expected_data):
      lambda x: np.isnan(x) | np.isinf(x), [(1, 2, 3, 4), (5, 6, 7, 8)]),
     ([(1, 2, 3, 4), (5, 6, 7, 8)],
      lambda x: x == [2, 6], [(1, 3, 4), (5, 7, 8)]),
+    ([(1, 2, 3, 4), (5, 6, 7, 8)],
+     lambda x: [1, 2], [(1, 4), (5, 8)]),
 ])
 def test_drop(curve_data, isa, expected_data):
     assert Curve(curve_data).drop(isa) == Curve(expected_data)

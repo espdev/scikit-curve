@@ -1104,7 +1104,7 @@ class Curve(abc.Sequence):
             Checker callable with support of vectorization. ``numpy.isnan`` for example.
 
             The checker callable can return a boolean vector with size equal to the curve size
-            or boolean MxN array where M is the curve size and N is the curve dimension.
+            or indices vector or boolean MxN array where M is the curve size and N is the curve dimension.
 
         Returns
         -------
@@ -1123,17 +1123,28 @@ class Curve(abc.Sequence):
                    [ 3.  7.]
                    [ 4.  8.]], size=4, ndim=2, dtype=float64)
 
+        Raises
+        ------
+        TypeError : Invalid ``isa`` checker argument
+        ValueError : Invalid ``isa``  checker return type
+        IndexError : Cannot indexing curve data with indices from ``isa`` checker
+
         """
 
         if not callable(isa):
             raise TypeError('isa argument must be a callable object')
 
-        res = isa(self._data)
-        if res.ndim > 1:
-            res = np.any(res, axis=1)
+        indices = np.asarray(isa(self._data))
 
-        indices = np.flatnonzero(res)
-        return Curve(self.delete(indices))
+        if indices.ndim > 1:
+            if indices.dtype != np.bool:
+                raise ValueError('drop indices MxN array must be boolean type.')
+            indices = np.any(indices, axis=1)
+
+        if indices.dtype != np.bool:
+            return Curve(self.delete(indices))
+        else:
+            return Curve(self._data[~indices])
 
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
