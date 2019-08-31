@@ -55,7 +55,7 @@ def isspatial(curve: 'Curve') -> bool:
 def nonsingular(curve: 'Curve', seglen: t.Optional[np.ndarray] = None):
     """Removes singularities in a curve
 
-    The method removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
+    The function removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
     These points/segments of an exceptional set where a curve fails to be well-behaved in some
     particular way, such as differentiability for example.
 

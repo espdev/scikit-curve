@@ -8,7 +8,7 @@ import enum
 import numpy as np
 
 from .distance import MetricType, get_metric
-
+from . import diffgeom
 
 NumberType = t.Union[int, float, np.number]
 
@@ -1145,6 +1145,80 @@ class Curve(abc.Sequence):
             return Curve(self.delete(indices))
         else:
             return Curve(self._data[~indices])
+
+    def isplane(self) -> bool:
+        """Returns True if the curve is plane
+
+        The plane curve is 2-dimensional curve (curve on plane).
+
+        Returns
+        -------
+        flag : bool
+            True if the curve is plane
+
+        """
+
+        return diffgeom.isplane(self)
+
+    def isspatial(self) -> bool:
+        """Returns True if the curve is spatial
+
+        The spatial curve is 3-dimensional curve (curve in 3-d space).
+
+        Returns
+        -------
+        flag : bool
+            True if the curve is spatial
+
+        """
+
+        return diffgeom.isspatial(self)
+
+    def seglength(self) -> np.ndarray:
+        """Computes length for each segment of the curve
+
+        Returns
+        -------
+        seglen : np.ndarray
+            Numpy vector with lengths for each the curve segment
+
+        """
+
+        return diffgeom.seglength(self)
+
+    def arclength(self) -> float:
+        """Computes the length of the curve arc
+
+        Returns
+        -------
+        length : float
+            The curve arc length
+
+        """
+
+        return diffgeom.arclength(self)
+
+    def nonsingular(self, seglen: t.Optional[np.ndarray] = None):
+        """Removes singularities in the curve
+
+        The method removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
+        These points/segments of an exceptional set where a curve fails to be well-behaved in some
+        particular way, such as differentiability for example.
+
+        Parameters
+        ----------
+        seglen : np.ndarray
+            Numpy vector with lengths for each curve segment.
+            If it is not set it will be computed.
+
+        Returns
+        -------
+        curve : Curve
+            The curve without singularities.
+
+        """
+
+        return diffgeom.nonsingular(self, seglen)
 
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
