@@ -1081,7 +1081,7 @@ class Curve(abc.Sequence):
         """Returns curve with unique points
 
         The method deletes duplicate points from the curve and return new curve
-        with unique points.
+        with only unique points.
 
         Returns
         -------
@@ -1090,8 +1090,8 @@ class Curve(abc.Sequence):
 
         """
 
-        # FIXME: unique is slow (O(Nlog(N)) and moreover, we are forced to use
-        #  additional sorting indices array to preserve order. This is not good...
+        # FIXME: unique is slow (O(Nlog(N)). Moreover, we are forced to use
+        #  additional sorting indices array to preserve order. This is not good way...
         data, index = np.unique(self._data, axis=0, return_index=True)
         return Curve(data[np.argsort(index)])
 
