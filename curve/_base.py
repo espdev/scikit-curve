@@ -896,14 +896,14 @@ class Curve(abc.Sequence):
             >>> curve.delete(1)
             Curve([[ 1.  5.]
                    [ 3.  7.]
-                   [ 4.  8.]], size=5, ndim=2, dtype=float64)
+                   [ 4.  8.]], size=3, ndim=2, dtype=float64)
 
         .. code-block:: python
 
             >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
             >>> curve.delete(slice(None, 2))
             Curve([[ 3.  7.]
-                   [ 4.  8.]], size=5, ndim=2, dtype=float64)
+                   [ 4.  8.]], size=2, ndim=2, dtype=float64)
 
         """
 
@@ -1094,6 +1094,46 @@ class Curve(abc.Sequence):
         #  additional sorting indices array to preserve order. This is not good way...
         data, index = np.unique(self._data, axis=0, return_index=True)
         return Curve(data[np.argsort(index)])
+
+    def drop(self, isa: t.Callable) -> 'Curve':
+        """Drops points from the curve by given values checker
+
+        Parameters
+        ----------
+        isa : callable
+            Checker callable with support of vectorization. ``numpy.isnan`` for example.
+
+            The checker callable can return a boolean vector with size equal to the curve size
+            or boolean MxN array where M is the curve size and N is the curve dimension.
+
+        Returns
+        -------
+        curve : Curve
+            New curve object without dropped points
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([(1, 2, np.nan, 3, 2, 4), (5, 6, 1, 7, np.inf, 8)])
+            >>> curve.drop(lambda x: np.isnan(x) | np.isinf(x))
+            Curve([[ 1.  5.]
+                   [ 2.  6.]
+                   [ 3.  7.]
+                   [ 4.  8.]], size=4, ndim=2, dtype=float64)
+
+        """
+
+        if not callable(isa):
+            raise TypeError('isa argument must be a callable object')
+
+        res = isa(self._data)
+        if res.ndim > 1:
+            res = np.any(res, axis=1)
+
+        indices = np.flatnonzero(res)
+        return Curve(self.delete(indices))
 
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
