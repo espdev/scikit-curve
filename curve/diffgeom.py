@@ -107,11 +107,11 @@ def seglength(curve: Curve) -> np.ndarray:
     if curve.size == 0:
         return np.ndarray([], dtype=float)
 
-    seg_len = np.sqrt(np.sum((np.diff(curve.data, axis=0))**2, axis=1))
+    seglen = np.sqrt(np.sum((np.diff(curve.data, axis=0))**2, axis=1))
 
     # TODO: Implement numerical integration
 
-    return seg_len
+    return seglen
 
 
 def arclength(curve: Curve) -> float:
