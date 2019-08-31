@@ -11,7 +11,7 @@ import numpy as np
 from ._base import Curve
 
 
-def is_plane(curve: Curve) -> bool:
+def isplane(curve: Curve) -> bool:
     """Returns True if a curve is plane
 
     The plane curve is 2-dimensional curve (curve on plane).
@@ -31,7 +31,7 @@ def is_plane(curve: Curve) -> bool:
     return curve.ndim == 2
 
 
-def is_spatial(curve: Curve) -> bool:
+def isspatial(curve: Curve) -> bool:
     """Returns True if a curve is spatial
 
     The spatial curve is 3-dimensional curve (curve in 3-d space).
