@@ -8,10 +8,11 @@ Differential geometry of curves
 import typing as t
 import numpy as np
 
-from ._base import Curve
+if t.TYPE_CHECKING:
+    from ._base import Curve
 
 
-def isplane(curve: Curve) -> bool:
+def isplane(curve: 'Curve') -> bool:
     """Returns True if a curve is plane
 
     The plane curve is 2-dimensional curve (curve on plane).
@@ -31,7 +32,7 @@ def isplane(curve: Curve) -> bool:
     return curve.ndim == 2
 
 
-def isspatial(curve: Curve) -> bool:
+def isspatial(curve: 'Curve') -> bool:
     """Returns True if a curve is spatial
 
     The spatial curve is 3-dimensional curve (curve in 3-d space).
@@ -51,7 +52,7 @@ def isspatial(curve: Curve) -> bool:
     return curve.ndim == 3
 
 
-def nonsingular(curve: Curve, seglen: t.Optional[np.ndarray] = None):
+def nonsingular(curve: 'Curve', seglen: t.Optional[np.ndarray] = None):
     """Removes singularities in a curve
 
     The method removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
@@ -83,7 +84,7 @@ def nonsingular(curve: Curve, seglen: t.Optional[np.ndarray] = None):
     return curve.drop(is_singular)
 
 
-def seglength(curve: Curve) -> np.ndarray:
+def seglength(curve: 'Curve') -> np.ndarray:
     """Computes length for each segment of a curve
 
     Notes
@@ -114,7 +115,7 @@ def seglength(curve: Curve) -> np.ndarray:
     return seglen
 
 
-def arclength(curve: Curve) -> float:
+def arclength(curve: 'Curve') -> float:
     """Computes the length of a curve arc
 
     Notes
@@ -136,7 +137,7 @@ def arclength(curve: Curve) -> float:
     return float(np.sum(seglength(curve)))
 
 
-def natural_parametrization(curve: Curve) -> np.ndarray:
+def natural_parametrization(curve: 'Curve') -> np.ndarray:
     """Computes natural parameter vector for given curve
 
     Parametrization of a curve by the length of its arc.
