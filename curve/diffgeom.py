@@ -5,6 +5,7 @@ Differential geometry of curves
 
 """
 
+import typing as t
 import numpy as np
 
 from ._base import Curve
@@ -50,6 +51,38 @@ def is_spatial(curve: Curve) -> bool:
     return curve.ndim == 3
 
 
+def nonsingular(curve: Curve, seglen: t.Optional[np.ndarray] = None):
+    """Removes singularities in a curve
+
+    The method removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
+    These points/segments of an exceptional set where a curve fails to be well-behaved in some
+    particular way, such as differentiability for example.
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+    seglen : np.ndarray
+        Numpy vector with lengths for each curve segment.
+        If it is not set it will be computed.
+
+    Returns
+    -------
+    curve : Curve
+        Curve without singularities.
+
+    """
+
+    if seglen is None:
+        seglen = seglength(curve)
+
+    def is_singular(curve_data):
+        return (np.any(np.isnan(curve_data) | np.isinf(curve_data), axis=1) |
+                np.isclose(np.hstack([1.0, seglen]), 0.0))
+
+    return curve.drop(is_singular)
+
+
 def seglength(curve: Curve) -> np.ndarray:
     """Computes length for each segment of a curve
 
@@ -66,7 +99,7 @@ def seglength(curve: Curve) -> np.ndarray:
 
     Returns
     -------
-    seg_lenght : np.ndarray
+    seglen : np.ndarray
         Numpy vector with lengths for each curve segment
 
     """
@@ -79,38 +112,6 @@ def seglength(curve: Curve) -> np.ndarray:
     # TODO: Implement numerical integration
 
     return seg_len
-
-
-def remove_singularity(curve: Curve):
-    """Removes singularities in a curve
-
-    The method removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
-    These points/segments of an exceptional set where a curve fails to be well-behaved in some
-    particular way, such as differentiability for example.
-
-    Parameters
-    ----------
-    curve: Curve
-        Curve object
-
-    Returns
-    -------
-    curve : Curve
-        Curve without singularities. This is new curve object if original curve has singularities or
-        original curve object if they are not.
-
-    """
-
-    is_close = np.isclose(np.hstack([1.0, seglength(curve)]), 0.0)
-    is_nan = np.any(np.isnan(curve.data), axis=1)
-    is_inf = np.any(np.isinf(curve.data), axis=1)
-
-    singular = np.flatnonzero(is_close | is_nan | is_inf)
-
-    if singular.size == 0:
-        return curve
-    else:
-        return curve.delete(singular)
 
 
 def arclength(curve: Curve) -> float:
@@ -132,7 +133,7 @@ def arclength(curve: Curve) -> float:
 
     """
 
-    return np.sum(seglength(curve))
+    return float(np.sum(seglength(curve)))
 
 
 def natural_parametrization(curve: Curve) -> np.ndarray:
