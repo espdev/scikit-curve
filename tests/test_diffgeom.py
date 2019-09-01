@@ -10,6 +10,7 @@ from curve.diffgeom import (
     arclength,
     nonsingular,
     natural_parametrization,
+    curvature,
 )
 
 
@@ -55,3 +56,17 @@ def test_nonsingular():
     curve = Curve([(np.inf, np.inf, 1, 2, 2.0000000001, 3, np.nan, np.nan, 4, 4.00000000001, 20),
                    (np.inf, 0, 5, 6, 6.0000000001, 7, 10, np.nan, 8, 8.000000000001, np.nan)])
     assert nonsingular(curve) == Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+
+def test_curvature_2d():
+    """The curvature of a circle with radius R is equal to 1/R
+    """
+    t = np.linspace(0.0, 2*np.pi, 100)
+    r = 10.0
+    x = np.cos(t) * r
+    y = np.sin(t) * r
+
+    curve = Curve([x, y])
+    expected = np.ones_like(t) * (1 / r)
+
+    assert curvature(curve) == pytest.approx(expected, abs=0.0005)

@@ -44,6 +44,7 @@ release = get_version()
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.mathjax',
     'numpydoc',
 ]
 
