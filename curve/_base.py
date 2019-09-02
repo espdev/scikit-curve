@@ -372,10 +372,10 @@ class CurvePoint(Point):
         return '{}({}, index={}, valid={})'.format(
             type(self).__name__, self._data, self.idx, self.isvalid)
 
-    def __copy__(self) -> 'Point':
+    def __copy__(self) -> 'CurvePoint':
         return self.__deepcopy__()
 
-    def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'Point':
+    def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'CurvePoint':
         if not self.isvalid:
             raise RuntimeError('Cannot create the copy of the invalid point')
         return CurvePoint(self, self.curve, self.idx)
