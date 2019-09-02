@@ -719,6 +719,21 @@ class Curve(abc.Sequence):
         return self._data.shape[1]
 
     @property
+    def is1d(self) -> bool:
+        """Returns True if the curve is 1-d
+
+        The curve is 1-dimensional curve: :math:`y = f(x)`.
+
+        Returns
+        -------
+        flag : bool
+            True if the curve is plane
+
+        """
+
+        return self.ndim == 1
+
+    @property
     def is2d(self) -> bool:
         """Returns True if the curve is plane
 
@@ -806,16 +821,34 @@ class Curve(abc.Sequence):
 
     @cached_property
     def curvature(self) -> np.ndarray:
-        r"""Computes curvature for each point of the curve
+        r"""Computes curvature for each point of the n-dimensional curve
 
         The curvature of a plane curve or a space curve in three dimensions (and higher) is the magnitude of the
         acceleration of a particle moving with unit speed along a curve.
 
-        Curvature formula for n-dimensional parametrized curve :math:`\gamma(_t) = (x(_t), y(_t), z(_t), ..., n(_t)`:
+        Curvature formula for 1-dimensional curve :math:`y = f(x)`:
 
         .. math::
 
-            k = \frac{\left\|\gamma' \times \gamma''\right\|}{\left\|\gamma\right\|^3}
+            k = \frac{y''}{(1 + y'^2)^\frac{3}{2}}
+
+        and for 2-dimensional (a plane) curve :math:`\gamma(t) = (x(t), y(t))`:
+
+        .. math::
+
+            k = \frac{y''x' - x''y'}{(x'^2 + y'^2)^\frac{3}{2}}
+
+        and for 3-dimensional curve :math:`\gamma(t) = (x(t), y(t), z(t))`:
+
+        .. math::
+
+            k = \frac{||\gamma' \times \gamma''||}{||\gamma'||^3}
+
+        and for n-dimensional curve:
+
+        .. math::
+
+            k = \frac{\sqrt{||\gamma'||^2||\gamma''||^2 - (\gamma' \cdot \gamma'')^2}}{||\gamma'||^3}
 
         Notes
         -----

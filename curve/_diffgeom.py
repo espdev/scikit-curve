@@ -122,19 +122,6 @@ def natural_parametrization(curve: 'Curve', chord_lengths: t.Optional[np.ndarray
 def curvature(curve: 'Curve') -> np.ndarray:
     r"""Computes curvature for each point of a curve
 
-    The curvature of a plane curve or a space curve in three dimensions (and higher) is the magnitude of the
-    acceleration of a particle moving with unit speed along a curve.
-
-    Curvature formula for n-dimensional parametrized curve :math:`\gamma(t) = (x(t), y(t), z(t), ..., n(t)`:
-
-    .. math::
-
-        k = \frac{\left\|\gamma' \times \gamma''\right\|}{\left\|\gamma\right\|^3}
-
-    Notes
-    -----
-    Curvature values at the ends of the curve can be calculated less accurately.
-
     Parameters
     ----------
     curve : Curve
@@ -150,4 +137,16 @@ def curvature(curve: 'Curve') -> np.ndarray:
     dr = np.gradient(curve.data, axis=0, edge_order=2)
     ddr = np.gradient(dr, axis=0, edge_order=2)
 
-    return np.cross(dr, ddr) / np.sum(dr ** 2, axis=1) ** (3/2)
+    p = 3 / 2
+
+    if curve.is1d:
+        k = ddr / (1 + dr ** 2) ** p
+    else:
+        # Compute curvature for 2 or higher dimensional curve
+        ssq_dr = np.sum(dr ** 2, axis=1)
+        ssq_ddr = np.sum(ddr ** 2, axis=1)
+        dot_dr_ddr = np.sum(dr * ddr, axis=1)
+
+        k = np.sqrt(ssq_dr * ssq_ddr - dot_dr_ddr ** 2) / ssq_dr ** p
+
+    return k
