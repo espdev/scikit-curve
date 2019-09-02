@@ -75,7 +75,7 @@ class Point(abc.Sequence):
 
     Notes
     -----
-    Point object is immutable. All methods which change point data return the copy.
+    The data in point object can be mutable but the dimension cannot be changed.
 
     Parameters
     ----------
@@ -84,12 +84,16 @@ class Point(abc.Sequence):
 
         * The sequence of numbers ``Sequence[NumberType]``
         * np.ndarray row 1xN where N is point dimension
-        * Another Point object. It creates the copy of another point
+        * Another Point object. It can create the view or the copy of the data of another point
 
     dtype : numeric type or numeric numpy.dtype
         The type of point data. The type must be numeric type. For example, `float`, `int`, `np.float32`, ...
 
         If dtype is not set, by default dtype has value `np.float64`.
+
+    copy : bool
+        If this flag is True the copy will be created. If it is False the copy will not be created if possible.
+        If it is possible not create a copy, dtype argument will be ignored.
 
     Examples
     --------
@@ -108,17 +112,28 @@ class Point(abc.Sequence):
 
     __slots__ = ('_data', )
 
-    def __init__(self, point_data: PointDataType, dtype: _t.Optional[DataType] = None) -> None:
+    def __init__(self, point_data: PointDataType, dtype: _t.Optional[DataType] = None, copy: bool = True) -> None:
         """Constructs the point
         """
 
-        if dtype is None and not isinstance(point_data, np.ndarray):
+        is_copy = True
+
+        if isinstance(point_data, Point):
+            point_data = point_data.data
+
+        if isinstance(point_data, np.ndarray):
+            is_copy = copy
+
+        if dtype is None:
             dtype = DEFAULT_DTYPE
 
         if not np.issubdtype(dtype, np.number):
             ValueError('dtype must be a numeric type.')
 
-        data = np.asarray(point_data, dtype=dtype)
+        if is_copy:
+            data = np.array(point_data, dtype=np.dtype(dtype))
+        else:
+            data = point_data
 
         if data.ndim > 1:
             raise ValueError('Invalid point data: {}\nThe point data must be a vector'.format(point_data))
@@ -169,6 +184,28 @@ class Point(abc.Sequence):
             return Point(data)
         else:
             return data
+
+    def __setitem__(self, indexer: IndexerType, value: _t.Union['Point', np.ndarray]) -> None:
+        """Sets point or value for given axis
+
+        Parameters
+        ----------
+        indexer : int, slice, list, np.array, tuple
+            Index (int) or list of indexes or slice or tuple for setting the point or sub-slice
+        value : Point, scalar, np.ndarray
+            Value for setting
+
+        Raises
+        ------
+        TypeError : Invalid index type
+        IndexError : The index out of bounds point dimensions
+
+        """
+
+        if isinstance(value, Point):
+            value = value.data
+
+        self._data[indexer] = value
 
     def __eq__(self, other: 'Point') -> bool:
         """Returns True if other point is equal to the point
@@ -226,7 +263,7 @@ class Point(abc.Sequence):
         return np.dot(self._data, other.data)
 
     def __copy__(self) -> 'Point':
-        return Point(self)
+        return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'Point':
         return Point(self)
@@ -303,30 +340,101 @@ class Point(abc.Sequence):
 
 
 class CurvePoint(Point):
-    """The class represents a point that belongs to a n-dimensional curve
+    """The class represents nd-point that is a nd-curve point
+
+    This class is the view wrapper for a curve point data. This class should not used directly.
+    It is used in Curve class.
+
+    The class provides additional data and parameters of curve point. For example ``curvature`` value in the point.
+
+    Parameters
+    ----------
+    point_data : np.ndarray
+        Numpy array view for a curve point data
+
+    curve : Curve
+        Curve object
+
+    index : int
+        The point index in a curve
+
     """
 
     __slots__ = Point.__slots__ + ('_curve', '_idx')
 
-    def __init__(self, data: np.ndarray, curve: 'Curve'):
-        super().__init__(data)
+    def __init__(self, point_data: np.ndarray, curve: 'Curve', index):
+        super().__init__(point_data, copy=False)
 
         self._curve = weakref.ref(curve)
+        self._idx = index
 
     def __repr__(self):
-        return '{}({}, index={}, ndim={}, dtype={})'.format(
-            type(self).__name__, self._data, self.idx, self.ndim, self._data.dtype)
+        return '{}({}, index={}, valid={})'.format(
+            type(self).__name__, self._data, self.idx, self.isvalid)
+
+    def __copy__(self) -> 'Point':
+        return self.__deepcopy__()
+
+    def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'Point':
+        if not self.isvalid:
+            raise RuntimeError('Cannot create the copy of the invalid point')
+        return CurvePoint(self, self.curve, self.idx)
+
+    @property
+    def isvalid(self) -> bool:
+        """Returns True if the curve instance has not been deleted
+
+        Returns
+        -------
+        flag : bool
+            True if the point is valid and the curve instance has not been deleted
+
+        """
+
+        return self.curve is not None
 
     @property
     def curve(self) -> _t.Optional['Curve']:
+        """Returns ref to the curve object or None if the curve instance has been deleted
+
+        Returns
+        -------
+        curve : Curve
+            Curve object for this point
+
+        """
+
         return self._curve()
 
     @property
     def idx(self) -> int:
-        curve = self.curve
-        if curve is None:
-            return -1
-        return self.curve.index(self)
+        """Returns the point index in the curve
+
+        Returns
+        -------
+        index : int
+            The point index in the curve or -1 if the curve instance has been deleted
+
+        """
+
+        if self.isvalid:
+            return self._idx
+        return -1
+
+    @property
+    def curvature(self) -> float:
+        """Returns the curve curvature value for this point
+
+        Returns
+        -------
+        k : float
+            The curve curvature in this point or NaN if the point not valid.
+
+        """
+
+        if self.isvalid:
+            return self.curve.curvature[self.idx]
+        return np.nan
 
 
 class Curve(abc.Sequence):
@@ -470,7 +578,7 @@ class Curve(abc.Sequence):
             if is_return_values:
                 return data
             else:
-                return CurvePoint(data, self)
+                return CurvePoint(data, self, index=indexer)
 
     def __setitem__(self, indexer: IndexerType, value: _t.Union[PointCurveUnionType, np.ndarray]) -> None:
         """Sets point or sub-curve or values for given axis
@@ -603,7 +711,7 @@ class Curve(abc.Sequence):
         return Curve(np.vstack((self._data, other.data)))
 
     def __copy__(self) -> 'Curve':
-        return Curve(self._data)
+        return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'Curve':
         return Curve(self._data)
