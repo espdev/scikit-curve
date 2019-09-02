@@ -60,8 +60,11 @@ class Axis(enum.IntEnum):
     """
 
     X = 0
+    """Abscissa (X) axis"""
     Y = 1
+    """Ordinate (Y) axis"""
     Z = 2
+    """Applicate (Z) axis"""
 
 
 class Point(abc.Sequence):
