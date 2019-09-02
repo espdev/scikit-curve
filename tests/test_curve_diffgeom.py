@@ -128,3 +128,10 @@ def test_tangent_nd(curve_data, expected_value):
 
     expected = np.ones_like(curve.data) * expected_value
     assert curve.tangent == pytest.approx(expected)
+
+
+def test_tangent_error():
+    curve = Curve([(1, 2, 3, 3, 3, 4), (1, 2, 3, 3, 3, 4)])
+
+    with pytest.raises(ValueError):
+        curve.tangent  # noqa
