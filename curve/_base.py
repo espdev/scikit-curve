@@ -420,7 +420,7 @@ class CurvePoint(Point):
         Returns
         -------
         fder : np.ndarray
-             First-order derivative in this curve point
+             The 1xN array of first-order derivative in this curve point
 
         """
 
@@ -434,12 +434,30 @@ class CurvePoint(Point):
         Returns
         -------
         sder : np.ndarray
-             Second-order derivative in this curve point
+             The 1xN array of second-order derivative in this curve point
 
         """
 
         if self:
             return self.curve.secondderiv[self.idx]
+
+    @property
+    def tangent(self) -> _t.Optional[np.ndarray]:
+        """Returns tangent unit vector for the curve point
+
+        Returns
+        -------
+        tangent : np.ndarray
+            The 1xN array of tangent unit vector for the curve point
+
+        Raises
+        ------
+        ValueError : Cannot compute vector norm (division by zero)
+
+        """
+
+        if self:
+            return self.curve.tangent[self.idx]
 
     @property
     def curvature(self) -> _t.Optional[float]:
@@ -1021,6 +1039,23 @@ class Curve(abc.Sequence):
         """
 
         return _diffgeom.gradient(self.firstderiv)
+
+    @cached_property
+    def tangent(self) -> np.ndarray:
+        """Returns tangent unit vectors for each the curve point
+
+        Returns
+        -------
+        tangent : np.ndarray
+            The array of tangent unit vectors for each curve points
+
+        Raises
+        ------
+        ValueError : Cannot compute vector norm (division by zero)
+
+        """
+
+        return _diffgeom.tangent(self)
 
     @cached_property
     def curvature(self) -> np.ndarray:

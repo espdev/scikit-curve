@@ -149,6 +149,37 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
     return np.gradient(data, axis=0, edge_order=edge_order)
 
 
+def tangent(curve: 'Curve') -> np.ndarray:
+    """Computes tangent unit vector (normalized vector) for each point of a n-dimensional curve
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+
+    Returns
+    -------
+    tangent : np.ndarray
+        The array of tangent unit vectors for each curve points
+
+    Raises
+    ------
+    ValueError : Cannot compute vector norm (division by zero)
+
+    """
+
+    if not curve:
+        return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+    norm = np.sqrt(np.sum(curve.firstderiv ** 2, axis=1))
+
+    if np.any(np.isclose(norm, 0.0)):
+        raise ValueError('The curve has singularity and zero-length segments. '
+                         'Use "Curve.nonsingular" method to remove singularity.')
+
+    return curve.firstderiv / norm
+
+
 def curvature(curve: 'Curve') -> np.ndarray:
     r"""Computes curvature for each point of a curve
 
@@ -165,7 +196,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
     """
 
     if not curve:
-        return np.array([], dtype=np.float64)
+        return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
     p = 3 / 2
 
