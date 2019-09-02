@@ -11,6 +11,8 @@ import numpy as np
 if t.TYPE_CHECKING:
     from ._base import Curve
 
+DEFAULT_GRAD_EDGE_ORDER = 2
+
 
 def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
     """Removes singularities in a curve
@@ -119,6 +121,34 @@ def natural_parametrization(curve: 'Curve', chord_lengths: t.Optional[np.ndarray
     return np.hstack((0.0, np.cumsum(chord_lengths)))
 
 
+def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.ndarray:
+    """Computes gradient for MxN data array where N is the dimension
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Curve data or curve data direvatives
+    edge_order : {1, 2} int
+        Specify how boundaries are treated.
+        Gradient is calculated using N-th order accurate differences at the boundaries.
+        2 is more precision but it is required more data.
+
+    Returns
+    -------
+    dr_dt : np.ndarray
+        Direvatives data
+
+    """
+
+    if data.shape[0] == 0:
+        return np.array([], dtype=np.float64)
+
+    if data.shape[0] < (edge_order + 1):
+        return np.zeros((data.shape[0], 1), dtype=np.float64)
+
+    return np.gradient(data, axis=0, edge_order=edge_order)
+
+
 def curvature(curve: 'Curve') -> np.ndarray:
     r"""Computes curvature for each point of a curve
 
@@ -137,18 +167,15 @@ def curvature(curve: 'Curve') -> np.ndarray:
     if not curve:
         return np.array([], dtype=np.float64)
 
-    dr = np.gradient(curve.data, axis=0, edge_order=2)
-    ddr = np.gradient(dr, axis=0, edge_order=2)
-
     p = 3 / 2
 
     if curve.is1d:
-        k = ddr / (1 + dr ** 2) ** p
+        k = curve.secondderiv / (1 + curve.firstderiv ** 2) ** p
     else:
         # Compute curvature for 2 or higher dimensional curve
-        ssq_dr = np.sum(dr ** 2, axis=1)
-        ssq_ddr = np.sum(ddr ** 2, axis=1)
-        dot_sq_dr_ddr = np.sum(dr * ddr, axis=1) ** 2
+        ssq_dr = np.sum(curve.firstderiv ** 2, axis=1)
+        ssq_ddr = np.sum(curve.secondderiv ** 2, axis=1)
+        dot_sq_dr_ddr = np.sum(curve.firstderiv * curve.secondderiv, axis=1) ** 2
 
         k = np.sqrt(ssq_dr * ssq_ddr - dot_sq_dr_ddr) / ssq_dr ** p
 

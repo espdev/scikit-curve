@@ -945,7 +945,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def chordlen(self) -> np.ndarray:
-        """Computes length for each chord (segment) of the curve
+        """Returns length for each chord (segment) of the curve
 
         Returns
         -------
@@ -958,7 +958,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def arclen(self) -> float:
-        """Computes the length of the curve arc
+        """Returns the length of the curve arc
 
         Returns
         -------
@@ -970,8 +970,34 @@ class Curve(abc.Sequence):
         return _diffgeom.arclen(self)
 
     @cached_property
+    def firstderiv(self) -> np.ndarray:
+        """Returns the first-order direvative in each curve point (velocities)
+
+        Returns
+        -------
+        fder : np.ndarray
+            First-order direvative array in each point of curve
+
+        """
+
+        return _diffgeom.gradient(self._data)
+
+    @cached_property
+    def secondderiv(self) -> np.ndarray:
+        """Returns the second-order direvative in each curve point
+
+        Returns
+        -------
+        sder : np.ndarray
+            Second-order direvative array in each point of curve
+
+        """
+
+        return _diffgeom.gradient(self.firstderiv)
+
+    @cached_property
     def curvature(self) -> np.ndarray:
-        r"""Computes curvature for each point of the n-dimensional curve
+        r"""Returns curvature for each point of the n-dimensional curve
 
         The curvature of a plane curve or a space curve in three dimensions (and higher) is the magnitude of the
         acceleration of a particle moving with unit speed along a curve.
