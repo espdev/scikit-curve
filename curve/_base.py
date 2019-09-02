@@ -613,6 +613,8 @@ class Curve(abc.Sequence):
             if is_return_values:
                 return data
             else:
+                if indexer < 0:
+                    indexer = self.size + indexer
                 return CurvePoint(data, self, index=indexer)
 
     def __setitem__(self, indexer: IndexerType, value: _t.Union[PointCurveUnionType, np.ndarray]) -> None:
