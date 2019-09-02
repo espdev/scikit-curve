@@ -130,8 +130,8 @@ class Point(abc.Sequence):
         self._data.flags.writeable = False
 
     def __repr__(self):
-        return 'Point({}, ndim={}, dtype={})'.format(
-            self._data, self.ndim, self._data.dtype)
+        return '{}({}, ndim={}, dtype={})'.format(
+            type(self).__name__, self._data, self.ndim, self._data.dtype)
 
     def __len__(self) -> int:
         """Returns the point dimension
@@ -387,11 +387,13 @@ class Curve(abc.Sequence):
         self._data = data  # type: np.ndarray
 
     def __repr__(self) -> str:
-        arr_repr = '{}'.format(self._data)
-        arr_repr = textwrap.indent(arr_repr, ' ' * 6).strip()
+        name = type(self).__name__
 
-        return 'Curve({}, size={}, ndim={}, dtype={})'.format(
-            arr_repr, self.size, self.ndim, self.dtype)
+        arr_repr = '{}'.format(self._data)
+        arr_repr = textwrap.indent(arr_repr, ' ' * (len(name) + 1)).strip()
+
+        return '{}({}, size={}, ndim={}, dtype={})'.format(
+            name, arr_repr, self.size, self.ndim, self.dtype)
 
     def __len__(self) -> int:
         """Returns the number of data points in the curve
