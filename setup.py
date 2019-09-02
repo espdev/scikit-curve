@@ -28,6 +28,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
+        'cached_property',
     ],
     packages=find_packages(exclude=['tests', '*.tests', '*.tests.*', 'tests.*']),
     url='https://github.com/espdev/scikit-curve',

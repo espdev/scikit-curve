@@ -5,41 +5,40 @@ import pytest
 import numpy as np
 
 from curve import Curve
-from curve.diffgeom import (
-    seglength,
-    arclength,
-    nonsingular,
-    natural_parametrization,
-    curvature,
-)
 
 
-def test_seg_length():
+def test_nonsingular():
+    curve = Curve([(np.inf, np.inf, 1, 2, 2.0000000001, 3, np.nan, np.nan, 4, 4.00000000001, 20),
+                   (np.inf, 0, 5, 6, 6.0000000001, 7, 10, np.nan, 8, 8.000000000001, np.nan)])
+    assert curve.nonsingular() == Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+
+def test_chordlen():
     n = 1000
     data = np.arange(n)
     curve = Curve([data] * 3, copy=False)
 
     expected = [1.7320508075688772] * (n - 1)
 
-    assert seglength(curve) == pytest.approx(expected)
+    assert curve.chordlen == pytest.approx(expected)
 
 
-def test_arc_length():
+def test_arclen():
     n = 1000
     data = np.arange(n)
     curve = Curve([data] * 2, copy=False)
 
     expected = 1.4142135623730951 * (n - 1)
 
-    assert arclength(curve) == pytest.approx(expected)
+    assert curve.arclen == pytest.approx(expected)
 
 
-def test_arc_length_2():
+def test_arclen_2():
     n = 10
     theta = np.linspace(0, 2 * np.pi, n)
     curve = Curve([np.cos(theta), np.sin(theta)])
 
-    assert arclength(curve) == pytest.approx(6.156362579862037)
+    assert curve.arclen == pytest.approx(6.156362579862037)
 
 
 def test_natural_parametrization():
@@ -49,13 +48,7 @@ def test_natural_parametrization():
 
     expected = np.cumsum([0.0] + [1.4142135623730951] * (n - 1))
 
-    assert natural_parametrization(curve) == pytest.approx(expected)
-
-
-def test_nonsingular():
-    curve = Curve([(np.inf, np.inf, 1, 2, 2.0000000001, 3, np.nan, np.nan, 4, 4.00000000001, 20),
-                   (np.inf, 0, 5, 6, 6.0000000001, 7, 10, np.nan, 8, 8.000000000001, np.nan)])
-    assert nonsingular(curve) == Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    assert curve.t == pytest.approx(expected)
 
 
 def test_curvature_2d():
@@ -69,4 +62,4 @@ def test_curvature_2d():
     curve = Curve([x, y])
     expected = np.ones_like(t) * (1 / r)
 
-    assert curvature(curve) == pytest.approx(expected, abs=0.0005)
+    assert curve.curvature == pytest.approx(expected, abs=0.0005)

@@ -52,7 +52,7 @@ def isspatial(curve: 'Curve') -> bool:
     return curve.ndim == 3
 
 
-def nonsingular(curve: 'Curve', seglen: t.Optional[np.ndarray] = None):
+def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
     """Removes singularities in a curve
 
     The function removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
@@ -63,8 +63,8 @@ def nonsingular(curve: 'Curve', seglen: t.Optional[np.ndarray] = None):
     ----------
     curve : Curve
         Curve object
-    seglen : np.ndarray
-        Numpy vector with lengths for each curve segment.
+    chord_lengths : np.ndarray
+        An array with lengths for each curve chord (segment).
         If it is not set it will be computed.
 
     Returns
@@ -74,24 +74,22 @@ def nonsingular(curve: 'Curve', seglen: t.Optional[np.ndarray] = None):
 
     """
 
-    if seglen is None:
-        seglen = seglength(curve)
+    if chord_lengths is None:
+        chord_lengths = chordlen(curve)
 
     def is_singular(curve_data):
         return (np.any(np.isnan(curve_data) | np.isinf(curve_data), axis=1) |
-                np.isclose(np.hstack([1.0, seglen]), 0.0))
+                np.isclose(np.hstack([1.0, chord_lengths]), 0.0))
 
     return curve.drop(is_singular)
 
 
-def seglength(curve: 'Curve') -> np.ndarray:
-    """Computes length for each segment of a curve
+def chordlen(curve: 'Curve') -> np.ndarray:
+    """Computes length for each chord (segment) of a curve
 
     Notes
     -----
-
     * ``euclidean`` metric is used to compute segment lengths
-    * Currently, linear approximation is used to compute arc length
 
     Parameters
     ----------
@@ -100,22 +98,18 @@ def seglength(curve: 'Curve') -> np.ndarray:
 
     Returns
     -------
-    seglen : np.ndarray
+    lengths : np.ndarray
         Numpy vector with lengths for each curve segment
 
     """
 
     if curve.size == 0:
-        return np.ndarray([], dtype=float)
+        return np.ndarray([], dtype=np.float64)
 
-    seglen = np.sqrt(np.sum((np.diff(curve.data, axis=0))**2, axis=1))
-
-    # TODO: Implement numerical integration
-
-    return seglen
+    return np.sqrt(np.sum((np.diff(curve.data, axis=0))**2, axis=1))
 
 
-def arclength(curve: 'Curve') -> float:
+def arclen(curve: 'Curve') -> float:
     """Computes the length of a curve arc
 
     Notes
@@ -130,14 +124,16 @@ def arclength(curve: 'Curve') -> float:
     Returns
     -------
     length : float
-        Arc length
+        Curve arc length
 
     """
 
-    return float(np.sum(seglength(curve)))
+    # TODO: Implement numerical integration to increase accuracy
+
+    return float(np.sum(chordlen(curve)))
 
 
-def natural_parametrization(curve: 'Curve') -> np.ndarray:
+def natural_parametrization(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None) -> np.ndarray:
     """Computes natural parameter vector for given curve
 
     Parametrization of a curve by the length of its arc.
@@ -146,6 +142,9 @@ def natural_parametrization(curve: 'Curve') -> np.ndarray:
     ----------
     curve : Curve
         Curve object
+    chord_lengths : np.ndarray
+        An array with lengths for each curve chord (segment).
+        If it is not set it will be computed.
 
     Returns
     -------
@@ -154,9 +153,10 @@ def natural_parametrization(curve: 'Curve') -> np.ndarray:
 
     """
 
-    # TODO: It is required numerical integration in a good way
+    if chord_lengths is None:
+        chord_lengths = chordlen(curve)
 
-    return np.hstack((0.0, np.cumsum(seglength(curve))))
+    return np.hstack((0.0, np.cumsum(chord_lengths)))
 
 
 def curvature(curve: 'Curve') -> np.ndarray:

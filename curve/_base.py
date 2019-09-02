@@ -1,45 +1,46 @@
 # -*- coding: utf-8 -*-
 
 import collections.abc as abc
-import typing as t
+import typing as _t
 import textwrap
 import enum
 
 import numpy as np
+from cached_property import cached_property
 
 from .distance import MetricType, get_metric
-from . import diffgeom
+from . import _diffgeom
 
-NumberType = t.Union[int, float, np.number]
+NumberType = _t.Union[int, float, np.number]
 
-PointDataType = t.Union[
-    t.Sequence[NumberType],
+PointDataType = _t.Union[
+    _t.Sequence[NumberType],
     np.ndarray,
     'Point',
 ]
 
-CurveDataType = t.Union[
-    t.Sequence[t.Sequence[NumberType]],
-    t.Sequence[np.ndarray],
-    t.Sequence['Point'],
+CurveDataType = _t.Union[
+    _t.Sequence[_t.Sequence[NumberType]],
+    _t.Sequence[np.ndarray],
+    _t.Sequence['Point'],
     np.ndarray,
     'Curve',
 ]
 
-DataType = t.Union[
-    t.Type[int],
-    t.Type[float],
+DataType = _t.Union[
+    _t.Type[int],
+    _t.Type[float],
     np.dtype,
 ]
 
-IndexerType = t.Union[
+IndexerType = _t.Union[
     int,
     slice,
-    t.Sequence[int],
+    _t.Sequence[int],
     np.array,
 ]
 
-PointCurveUnionType = t.Union[
+PointCurveUnionType = _t.Union[
     'Point',
     'Curve',
 ]
@@ -103,7 +104,7 @@ class Point(abc.Sequence):
 
     __slots__ = ('_data', )
 
-    def __init__(self, point_data: PointDataType, dtype: t.Optional[DataType] = None) -> None:
+    def __init__(self, point_data: PointDataType, dtype: _t.Optional[DataType] = None) -> None:
         """Constructs the point
         """
 
@@ -141,7 +142,7 @@ class Point(abc.Sequence):
 
         return self._data.size
 
-    def __getitem__(self, index: int) -> t.Union['Point', np.number]:
+    def __getitem__(self, index: int) -> _t.Union['Point', np.number]:
         """Returns coord of the point for given index
 
         Parameters
@@ -228,7 +229,7 @@ class Point(abc.Sequence):
     def __copy__(self) -> 'Point':
         return Point(self)
 
-    def __deepcopy__(self, memodict: t.Optional[dict] = None) -> 'Point':
+    def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'Point':
         return Point(self)
 
     @property
@@ -348,9 +349,7 @@ class Curve(abc.Sequence):
 
     """
 
-    __slots__ = ('_data', )
-
-    def __init__(self, curve_data: CurveDataType, dtype: t.Optional[DataType] = None, copy: bool = True) -> None:
+    def __init__(self, curve_data: CurveDataType, dtype: _t.Optional[DataType] = None, copy: bool = True) -> None:
         """Constructs Curve instance
         """
 
@@ -445,7 +444,7 @@ class Curve(abc.Sequence):
             else:
                 return Point(data)
 
-    def __setitem__(self, indexer: IndexerType, value: t.Union[PointCurveUnionType, np.ndarray]) -> None:
+    def __setitem__(self, indexer: IndexerType, value: _t.Union[PointCurveUnionType, np.ndarray]) -> None:
         """Sets point or sub-curve or values for given axis
 
         Parameters
@@ -465,6 +464,7 @@ class Curve(abc.Sequence):
             value = value.data
 
         self._data[indexer] = value
+        self._invalidate_cache()
 
     def __delitem__(self, key):
         raise ValueError('Deleting curve data is not allowed')
@@ -577,10 +577,10 @@ class Curve(abc.Sequence):
     def __copy__(self) -> 'Curve':
         return Curve(self._data)
 
-    def __deepcopy__(self, memodict: t.Optional[dict] = None) -> 'Curve':
+    def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'Curve':
         return Curve(self._data)
 
-    def index(self, point: Point, start: t.Optional[int] = None, end: t.Optional[int] = None) -> int:
+    def index(self, point: Point, start: _t.Optional[int] = None, end: _t.Optional[int] = None) -> int:
         """Returns the first index for given point in the curve
 
         Parameters
@@ -713,13 +713,110 @@ class Curve(abc.Sequence):
         """
         return self._data.shape[1]
 
+    @property
+    def isplane(self) -> bool:
+        """Returns True if the curve is plane
+
+        The plane curve is 2-dimensional curve (curve on plane).
+
+        Returns
+        -------
+        flag : bool
+            True if the curve is plane
+
+        """
+
+        return _diffgeom.isplane(self)
+
+    @property
+    def isspatial(self) -> bool:
+        """Returns True if the curve is spatial
+
+        The spatial curve is 3-dimensional curve (curve in 3-d space).
+
+        Returns
+        -------
+        flag : bool
+            True if the curve is spatial
+
+        """
+
+        return _diffgeom.isspatial(self)
+
+    @cached_property
+    def t(self) -> np.ndarray:
+        """Returns the natural parameter vector for the curve
+
+        Parametrization of a curve by the length of its arc.
+
+        Returns
+        -------
+        t : np.ndarray
+            Natural parameter vector
+
+        """
+
+        return _diffgeom.natural_parametrization(self, chord_lengths=self.chordlen)
+
+    @cached_property
+    def chordlen(self) -> np.ndarray:
+        """Computes length for each chord (segment) of the curve
+
+        Returns
+        -------
+        lengths : np.ndarray
+            The array with lengths for each the curve chord
+
+        """
+
+        return _diffgeom.chordlen(self)
+
+    @cached_property
+    def arclen(self) -> float:
+        """Computes the length of the curve arc
+
+        Returns
+        -------
+        length : float
+            The curve arc length
+
+        """
+
+        return _diffgeom.arclen(self)
+
+    @cached_property
+    def curvature(self) -> np.ndarray:
+        r"""Computes curvature for each point of the curve
+
+        The curvature of a plane curve or a space curve in three dimensions (and higher) is the magnitude of the
+        acceleration of a particle moving with unit speed along a curve.
+
+        Curvature formula for n-dimensional parametrized curve :math:`\gamma(_t) = (x(_t), y(_t), z(_t), ..., n(_t)`:
+
+        .. math::
+
+            k = \frac{\left\|\gamma' \times \gamma''\right\|}{\left\|\gamma\right\|^3}
+
+        Notes
+        -----
+        Curvature values at the ends of the curve can be calculated less accurately.
+
+        Returns
+        -------
+        k : np.ndarray
+            Array of the curvature values for each curve point
+
+        """
+
+        return _diffgeom.curvature(self)
+
     @classmethod
-    def from_points(cls, points: t.Sequence[Point], dtype: DataType = None) -> 'Curve':
+    def from_points(cls, points: _t.Sequence[Point], dtype: DataType = None) -> 'Curve':
         """Creates Curve object from sequence of Point objects
 
         Parameters
         ----------
-        points : t.Sequence[Point]
+        points : Sequence[Point]
             The sequence (can be iterator) of Point objects
         dtype : numpy.dtype
             The curve data type
@@ -758,13 +855,14 @@ class Curve(abc.Sequence):
         -----
         This method changes this curve data in-place.
 
-        For getting reversed copy ``reversed`` function can be used::
+        For getting reversed copy can be used ``reversed`` function::
 
             curve_rev = reversed(curve)
 
         """
 
         self._data[:] = np.flipud(self._data)
+        self._invalidate_cache()
 
     def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve
@@ -916,7 +1014,7 @@ class Curve(abc.Sequence):
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
 
-    def values(self, axis: t.Union[int, Axis]) -> np.ndarray:
+    def values(self, axis: _t.Union[int, Axis]) -> np.ndarray:
         """Returns the vector with all values for given axis
 
         Notes
@@ -959,7 +1057,7 @@ class Curve(abc.Sequence):
 
         return self._data[:, axis]
 
-    def insert_dim(self, axis: int, values: t.Union[np.ndarray, t.Sequence[NumberType], None] = None) -> 'Curve':
+    def insert_dim(self, axis: int, values: _t.Union[np.ndarray, _t.Sequence[NumberType], None] = None) -> 'Curve':
         """Insert new dimension to the curve and returns new curve
 
         Parameters
@@ -1005,7 +1103,7 @@ class Curve(abc.Sequence):
             raise IndexError(
                 'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
 
-    def append_dim(self, values: t.Union[np.ndarray, t.Sequence[NumberType], None] = None) -> 'Curve':
+    def append_dim(self, values: _t.Union[np.ndarray, _t.Sequence[NumberType], None] = None) -> 'Curve':
         """Appends new dimension to the end of curve and returns new curve
 
         Parameters
@@ -1095,7 +1193,7 @@ class Curve(abc.Sequence):
         data, index = np.unique(self._data, axis=0, return_index=True)
         return Curve(data[np.argsort(index)])
 
-    def drop(self, isa: t.Callable) -> 'Curve':
+    def drop(self, isa: _t.Callable) -> 'Curve':
         """Drops points from the curve by given values checker
 
         Parameters
@@ -1146,70 +1244,12 @@ class Curve(abc.Sequence):
         else:
             return Curve(self._data[~indices])
 
-    def isplane(self) -> bool:
-        """Returns True if the curve is plane
-
-        The plane curve is 2-dimensional curve (curve on plane).
-
-        Returns
-        -------
-        flag : bool
-            True if the curve is plane
-
-        """
-
-        return diffgeom.isplane(self)
-
-    def isspatial(self) -> bool:
-        """Returns True if the curve is spatial
-
-        The spatial curve is 3-dimensional curve (curve in 3-d space).
-
-        Returns
-        -------
-        flag : bool
-            True if the curve is spatial
-
-        """
-
-        return diffgeom.isspatial(self)
-
-    def seglength(self) -> np.ndarray:
-        """Computes length for each segment of the curve
-
-        Returns
-        -------
-        seglen : np.ndarray
-            Numpy vector with lengths for each the curve segment
-
-        """
-
-        return diffgeom.seglength(self)
-
-    def arclength(self) -> float:
-        """Computes the length of the curve arc
-
-        Returns
-        -------
-        length : float
-            The curve arc length
-
-        """
-
-        return diffgeom.arclength(self)
-
-    def nonsingular(self, seglen: t.Optional[np.ndarray] = None):
+    def nonsingular(self):
         """Removes singularities in the curve
 
         The method removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
         These points/segments of an exceptional set where a curve fails to be well-behaved in some
         particular way, such as differentiability for example.
-
-        Parameters
-        ----------
-        seglen : np.ndarray
-            Numpy vector with lengths for each curve segment.
-            If it is not set it will be computed.
 
         Returns
         -------
@@ -1218,7 +1258,7 @@ class Curve(abc.Sequence):
 
         """
 
-        return diffgeom.nonsingular(self, seglen)
+        return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
 
     @staticmethod
     def _is_equal(other_data, data, cmp) -> np.ndarray:
@@ -1227,3 +1267,11 @@ class Curve(abc.Sequence):
     def _check_ndim(self, other: PointCurveUnionType):
         if self.ndim != other.ndim:
             raise ValueError('The dimensions of the curve and other object do not match')
+
+    def _invalidate_cache(self):
+        cls = type(self)
+        cached_props = [attr for attr in self.__dict__
+                        if isinstance(getattr(cls, attr, None), cached_property)]
+
+        for prop in cached_props:
+            self.__dict__.pop(prop, None)
