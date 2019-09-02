@@ -208,6 +208,10 @@ class Point(abc.Sequence):
 
         self._data[indexer] = value
 
+    def __delitem__(self, key):
+        raise TypeError(
+            "'{}' object doesn't support item deletion".format(type(self).__name__))
+
     def __eq__(self, other: 'Point') -> bool:
         """Returns True if other point is equal to the point
 
@@ -623,6 +627,7 @@ class Curve(abc.Sequence):
         indexer : int, slice, list, np.array, tuple
             Index (int) or list of indexes or slice or tuple for setting the point or sub-slice
         value : Point, Curve, np.ndarray
+            Value for setting
 
         Raises
         ------
@@ -638,7 +643,8 @@ class Curve(abc.Sequence):
         self._invalidate_cache()
 
     def __delitem__(self, key):
-        raise ValueError('Deleting curve data is not allowed')
+        raise TypeError(
+            "'{}' object doesn't support item deletion".format(type(self).__name__))
 
     def __contains__(self, other: PointCurveUnionType):
         """Returns True if the curve contains given point or sub-curve
