@@ -43,6 +43,7 @@ IndexerType = _t.Union[
 
 PointCurveUnionType = _t.Union[
     'Point',
+    'CurvePoint',
     'Curve',
 ]
 
@@ -370,18 +371,17 @@ class CurvePoint(Point):
 
     def __repr__(self):
         return '{}({}, index={}, valid={})'.format(
-            type(self).__name__, self._data, self.idx, self.isvalid)
+            type(self).__name__, self._data, self.idx, bool(self))
 
     def __copy__(self) -> 'CurvePoint':
         return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'CurvePoint':
-        if not self.isvalid:
+        if not self:
             raise RuntimeError('Cannot create the copy of the invalid point')
         return CurvePoint(self.data, self.curve, self.idx)
 
-    @property
-    def isvalid(self) -> bool:
+    def __bool__(self) -> bool:
         """Returns True if the curve instance has not been deleted
 
         Returns
@@ -390,7 +390,6 @@ class CurvePoint(Point):
             True if the point is valid and the curve instance has not been deleted
 
         """
-
         return self.curve is not None
 
     @property
@@ -417,7 +416,7 @@ class CurvePoint(Point):
 
         """
 
-        if self.isvalid:
+        if self:
             return self._idx
 
     @property
@@ -431,7 +430,7 @@ class CurvePoint(Point):
 
         """
 
-        if self.isvalid:
+        if self:
             return self.curve.curvature[self.idx]
         return np.nan
 
@@ -461,7 +460,7 @@ class CurvePoint(Point):
         if not isinstance(other_point, CurvePoint):
             raise TypeError('Other point must be an instance of "CurvePoint" class')
 
-        if not self.isvalid:
+        if not self:
             raise RuntimeError('The curve instance has been deleted')
 
         if self.curve is not other_point.curve:
@@ -584,7 +583,7 @@ class Curve(abc.Sequence):
 
         return self.size != 0 and self.ndim != 0
 
-    def __getitem__(self, indexer: IndexerType) -> PointCurveUnionType:
+    def __getitem__(self, indexer: IndexerType) -> _t.Union[PointCurveUnionType, np.ndarray]:
         """Returns the point of curve or sub-curve or all coords fot given dimension
 
         Parameters
