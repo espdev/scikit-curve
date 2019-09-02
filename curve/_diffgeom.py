@@ -63,7 +63,7 @@ def chordlen(curve: 'Curve') -> np.ndarray:
 
     """
 
-    if curve.size == 0:
+    if not curve:
         return np.ndarray([], dtype=np.float64)
 
     return np.sqrt(np.sum((np.diff(curve.data, axis=0))**2, axis=1))
@@ -133,6 +133,9 @@ def curvature(curve: 'Curve') -> np.ndarray:
         Array of the curvature values for each curve point
 
     """
+
+    if not curve:
+        return np.array([], dtype=np.float64)
 
     dr = np.gradient(curve.data, axis=0, edge_order=2)
     ddr = np.gradient(dr, axis=0, edge_order=2)
