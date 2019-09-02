@@ -414,7 +414,35 @@ class CurvePoint(Point):
             return self._idx
 
     @property
-    def curvature(self) -> float:
+    def firstderiv(self) -> _t.Optional[np.ndarray]:
+        """Returns first-order derivative in this curve point
+
+        Returns
+        -------
+        fder : np.ndarray
+             First-order derivative in this curve point
+
+        """
+
+        if self:
+            return self.curve.firstderiv[self.idx]
+
+    @property
+    def secondderiv(self) -> _t.Optional[np.ndarray]:
+        """Returns second-order derivative in this curve point
+
+        Returns
+        -------
+        sder : np.ndarray
+             Second-order derivative in this curve point
+
+        """
+
+        if self:
+            return self.curve.secondderiv[self.idx]
+
+    @property
+    def curvature(self) -> _t.Optional[float]:
         """Returns the curve curvature value for this point
 
         Returns
@@ -426,7 +454,6 @@ class CurvePoint(Point):
 
         if self:
             return self.curve.curvature[self.idx]
-        return np.nan
 
     def subcurve(self, other_point: 'CurvePoint', inclusive: bool = True) -> np.ndarray:
         """Returns a sub-curve from the point to other curve point for the same curve
@@ -971,7 +998,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def firstderiv(self) -> np.ndarray:
-        """Returns the first-order direvative in each curve point (velocities)
+        """Returns the first-order direvative in each curve point
 
         Returns
         -------
