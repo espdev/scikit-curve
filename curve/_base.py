@@ -378,7 +378,7 @@ class CurvePoint(Point):
     def __deepcopy__(self, memodict: _t.Optional[dict] = None) -> 'CurvePoint':
         if not self.isvalid:
             raise RuntimeError('Cannot create the copy of the invalid point')
-        return CurvePoint(self, self.curve, self.idx)
+        return CurvePoint(self.data, self.curve, self.idx)
 
     @property
     def isvalid(self) -> bool:
