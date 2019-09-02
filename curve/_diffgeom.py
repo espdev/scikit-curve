@@ -153,3 +153,46 @@ def curvature(curve: 'Curve') -> np.ndarray:
         k = np.sqrt(ssq_dr * ssq_ddr - dot_sq_dr_ddr) / ssq_dr ** p
 
     return k
+
+
+def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
+    """Returns True if a curve co-oriented to a plane
+
+    Notes
+    -----
+    This method is applicable to 2 or higher dimensional curves.
+    By default the method orients a curve to XY plane orientation.
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+    axis1: int
+        First plane axis
+    axis2: int
+        Second plane axis
+
+    Returns
+    -------
+    flag : bool
+        True if a curve co-oriented to a plane
+
+    Raises
+    ------
+    ValueError : Curve has the dimension less than 2
+    IndexError : Axis out of dimensions
+    """
+
+    if curve.is1d:
+        raise ValueError('The curve must be 2 or higher dimensional.')
+
+    if not curve or curve.size == 1:
+        return True
+
+    pb = curve[0]
+    pe = curve[-1]
+
+    return np.linalg.det([
+        [pb[axis1], pe[axis1]],
+        [pb[axis2], pe[axis2]],
+    ]) > 0

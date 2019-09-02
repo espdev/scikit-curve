@@ -4,7 +4,7 @@ import pytest
 
 import numpy as np
 
-from curve import Curve
+from curve import Curve, Axis
 
 
 def test_nonsingular():
@@ -96,3 +96,22 @@ def test_curvature_circle_3d():
 
     expected = np.ones_like(t) * (1 / r)
     assert curve.curvature == pytest.approx(expected, abs=0.0005)
+
+
+def test_coorientplane_2d():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    curve_r = curve.reverse()
+
+    assert curve.coorientplane() == curve_r.coorientplane()
+
+
+@pytest.mark.parametrize('axis1, axis2', [
+    (Axis.X, Axis.Y),
+    (Axis.X, Axis.Z),
+    (Axis.Y, Axis.Z),
+])
+def test_coorientplane_3d(axis1, axis2):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+    curve_r = curve.reverse()
+
+    assert curve.coorientplane(axis1, axis2) == curve_r.coorientplane(axis1, axis2)

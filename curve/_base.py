@@ -47,6 +47,8 @@ PointCurveUnionType = _t.Union[
     'Curve',
 ]
 
+InplaceRetType = _t.Optional['Curve']
+
 DEFAULT_DTYPE = np.float64
 
 
@@ -1049,7 +1051,7 @@ class Curve(abc.Sequence):
 
         return cls(np.array(list(points)), dtype=dtype)
 
-    def reverse(self, inplace: bool = False) -> _t.Optional['Curve']:
+    def reverse(self, inplace: bool = False) -> InplaceRetType:
         """Reverses the curve
 
         Parameters
@@ -1069,6 +1071,43 @@ class Curve(abc.Sequence):
             self._invalidate_cache()
         else:
             return Curve(np.flipud(self._data))
+
+    def coorientplane(self, axis1: int = 0, axis2: int = 1, inplace: bool = False) -> InplaceRetType:
+        """Co-orients the curve to a plane automatically
+
+        Notes
+        -----
+        This method is applicable to 2 or higher dimensional curves.
+        By default the method orients a curve to XY plane orientation.
+
+        Parameters
+        ----------
+        axis1: int
+            First plane axis
+        axis2: int
+            Second plane axis
+        inplace : bool
+            If it is True, the method changes this object.
+
+        Returns
+        -------
+        curve : Curve
+            The reversed curve copy or this curve object or None if ``inplace`` is True
+
+        Raises
+        ------
+        ValueError : Curve has the dimension less than 2
+        IndexError : Axis out of dimensions
+
+        """
+
+        is_coorient = _diffgeom.coorientplane(self, axis1=axis1, axis2=axis2)
+
+        if not is_coorient:
+            return self.reverse(inplace=inplace)
+        else:
+            if not inplace:
+                return self
 
     def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve
