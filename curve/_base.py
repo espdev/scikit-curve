@@ -436,6 +436,41 @@ class CurvePoint(Point):
             return self.curve.curvature[self.idx]
         return np.nan
 
+    def subcurve(self, other_point: 'CurvePoint', inclusive: bool = True) -> np.ndarray:
+        """Returns a sub-curve from the point to other curve point for the same curve
+
+        Parameters
+        ----------
+        other_point : CurvePoint
+            Other point in the same curve
+        inclusive : bool
+            If this flag is True, other point will be include to a sub-curve.
+
+        Returns
+        -------
+        curve : Curve
+            A sub-curve from the point to other curve point. This sub-curve is a view.
+
+        Raises
+        ------
+        TypeError : Other point is not an instance of "CurvePoint" class
+        RuntimeError : The points are not valid. The curve instance has been deleted
+        ValueError : Other point belongs to another curve
+
+        """
+
+        if not isinstance(other_point, CurvePoint):
+            raise TypeError('Other point must be an instance of "CurvePoint" class')
+
+        if not self.isvalid:
+            raise RuntimeError('The curve instance has been deleted')
+
+        if self.curve is not other_point.curve:
+            raise ValueError('Other point belongs to another curve')
+
+        end = 1 if inclusive else 0
+        return self.curve[self.idx:other_point.idx+end]
+
 
 class Curve(abc.Sequence):
     """A n-dimensional geometric curve representation
