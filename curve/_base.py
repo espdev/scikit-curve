@@ -647,7 +647,7 @@ class Curve(abc.Sequence):
             "'{}' object doesn't support item deletion".format(type(self).__name__))
 
     def __contains__(self, other: PointCurveUnionType):
-        """Returns True if the curve contains given point or sub-curve
+        """Returns True if the curve contains given point data or sub-curve
 
         Parameters
         ----------
