@@ -719,7 +719,7 @@ class Curve(abc.Sequence):
         return self._data.shape[1]
 
     @property
-    def isplane(self) -> bool:
+    def is2d(self) -> bool:
         """Returns True if the curve is plane
 
         The plane curve is 2-dimensional curve (curve on plane).
@@ -731,13 +731,28 @@ class Curve(abc.Sequence):
 
         """
 
-        return _diffgeom.isplane(self)
+        return self.ndim == 2
+
+    @property
+    def is3d(self) -> bool:
+        """Returns True if a curve is 3-dimensional
+
+        The spatial curve is 3-dimensional (curve in tri-dimensional space).
+
+        Returns
+        -------
+        flag : bool
+            True if a curve is 3-space
+
+        """
+
+        return self.ndim == 3
 
     @property
     def isspatial(self) -> bool:
         """Returns True if the curve is spatial
 
-        The spatial curve is 3-dimensional curve (curve in 3-d space).
+        The spatial curve is 3 or higher dimensional curve.
 
         Returns
         -------
@@ -746,7 +761,7 @@ class Curve(abc.Sequence):
 
         """
 
-        return _diffgeom.isspatial(self)
+        return self.ndim >= 3
 
     @cached_property
     def t(self) -> np.ndarray:

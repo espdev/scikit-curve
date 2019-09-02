@@ -12,46 +12,6 @@ if t.TYPE_CHECKING:
     from ._base import Curve
 
 
-def isplane(curve: 'Curve') -> bool:
-    """Returns True if a curve is plane
-
-    The plane curve is 2-dimensional curve (curve on plane).
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    flag : bool
-        True if a curve is plane
-
-    """
-
-    return curve.ndim == 2
-
-
-def isspatial(curve: 'Curve') -> bool:
-    """Returns True if a curve is spatial
-
-    The spatial curve is 3-dimensional curve (curve in 3-d space).
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    flag : bool
-        True if a curve is spatial
-
-    """
-
-    return curve.ndim == 3
-
-
 def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
     """Removes singularities in a curve
 
