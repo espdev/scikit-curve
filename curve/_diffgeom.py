@@ -177,7 +177,7 @@ def tangent(curve: 'Curve') -> np.ndarray:
         raise ValueError('The curve has singularity and zero-length segments. '
                          'Use "Curve.nonsingular" method to remove singularity.')
 
-    return curve.firstderiv / norm
+    return curve.firstderiv / np.array(norm, ndmin=2).T
 
 
 def curvature(curve: 'Curve') -> np.ndarray:
