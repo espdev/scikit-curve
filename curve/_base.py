@@ -4,6 +4,7 @@ import collections.abc as abc
 import typing as _t
 import textwrap
 import enum
+import weakref
 
 import numpy as np
 from cached_property import cached_property
@@ -111,23 +112,18 @@ class Point(abc.Sequence):
         """Constructs the point
         """
 
-        if isinstance(point_data, Point):
-            point_data = point_data.data
-            dtype = dtype or point_data.dtype
-
-        if dtype is None:
+        if dtype is None and not isinstance(point_data, np.ndarray):
             dtype = DEFAULT_DTYPE
 
         if not np.issubdtype(dtype, np.number):
             ValueError('dtype must be a numeric type.')
 
-        data = np.array(point_data, dtype=np.dtype(dtype))
+        data = np.asarray(point_data, dtype=dtype)
 
         if data.ndim > 1:
             raise ValueError('Invalid point data: {}\nThe point data must be a vector'.format(point_data))
 
         self._data = data
-        self._data.flags.writeable = False
 
     def __repr__(self):
         return '{}({}, ndim={}, dtype={})'.format(
@@ -210,7 +206,7 @@ class Point(abc.Sequence):
 
         return Point(np.flip(self._data))
 
-    def __matmul__(self, other: 'Point') -> NumberType:
+    def __matmul__(self, other: 'Point'):
         """Dot product of two points
 
         Parameters
@@ -304,6 +300,33 @@ class Point(abc.Sequence):
             raise TypeError('Metric must be str or callable')
 
         return metric(self._data, other.data)
+
+
+class CurvePoint(Point):
+    """The class represents a point that belongs to a n-dimensional curve
+    """
+
+    __slots__ = Point.__slots__ + ('_curve', '_idx')
+
+    def __init__(self, data: np.ndarray, curve: 'Curve'):
+        super().__init__(data)
+
+        self._curve = weakref.ref(curve)
+
+    def __repr__(self):
+        return '{}({}, index={}, ndim={}, dtype={})'.format(
+            type(self).__name__, self._data, self.idx, self.ndim, self._data.dtype)
+
+    @property
+    def curve(self) -> _t.Optional['Curve']:
+        return self._curve()
+
+    @property
+    def idx(self) -> int:
+        curve = self.curve
+        if curve is None:
+            return -1
+        return self.curve.index(self)
 
 
 class Curve(abc.Sequence):
@@ -447,7 +470,7 @@ class Curve(abc.Sequence):
             if is_return_values:
                 return data
             else:
-                return Point(data)
+                return CurvePoint(data, self)
 
     def __setitem__(self, indexer: IndexerType, value: _t.Union[PointCurveUnionType, np.ndarray]) -> None:
         """Sets point or sub-curve or values for given axis
