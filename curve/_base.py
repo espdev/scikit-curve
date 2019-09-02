@@ -236,18 +236,6 @@ class Point(abc.Sequence):
         cmp = _cmp(self, other)
         return np.all(cmp(self._data, other.data))
 
-    def __reversed__(self) -> 'Point':
-        """Returns reversed the point with reversed coords
-
-        Returns
-        -------
-        curve : Curve
-            Reversed Point instance
-
-        """
-
-        return Point(np.flip(self._data))
-
     def __matmul__(self, other: 'Point'):
         """Dot product of two points
 
@@ -714,18 +702,6 @@ class Curve(abc.Sequence):
         cmp = _cmp(self, other)
         return np.all(cmp(self._data, other.data))
 
-    def __reversed__(self) -> 'Curve':
-        """Returns reversed copy of the curve
-
-        Returns
-        -------
-        curve : Curve
-            Reversed Curve instance
-
-        """
-
-        return Curve(np.flipud(self._data))
-
     def __add__(self, other: 'Curve') -> 'Curve':
         """Returns concatenation of the curve and other curve
 
@@ -1073,21 +1049,26 @@ class Curve(abc.Sequence):
 
         return cls(np.array(list(points)), dtype=dtype)
 
-    def reverse(self) -> None:
-        """Reverses the curve in-place
+    def reverse(self, inplace: bool = False) -> _t.Optional['Curve']:
+        """Reverses the curve
 
-        Notes
-        -----
-        This method changes this curve data in-place.
+        Parameters
+        ----------
+        inplace : bool
+            If it is True, the method reverses the curve in-place and changed this object.
 
-        For getting reversed copy can be used ``reversed`` function::
-
-            curve_rev = reversed(curve)
+        Returns
+        -------
+        curve : Curve
+            The reversed copy of the curve or None if ``inplace`` is True
 
         """
 
-        self._data[:] = np.flipud(self._data)
-        self._invalidate_cache()
+        if inplace:
+            self._data[:] = np.flipud(self._data)
+            self._invalidate_cache()
+        else:
+            return Curve(np.flipud(self._data))
 
     def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve

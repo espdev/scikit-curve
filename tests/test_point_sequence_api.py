@@ -43,11 +43,6 @@ def test_ne(point_data):
     assert p1 != p2
 
 
-def test_reversed():
-    point = Point([1, 2, 3])
-    assert reversed(point) == Point([3, 2, 1])
-
-
 @pytest.mark.parametrize('index, expected_data', [
     (0, 1),
     (1, 2),

@@ -69,14 +69,15 @@ def test_ne(curve_data):
     assert curve1 != curve2
 
 
-def test_reversed():
-    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    assert reversed(curve) == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
-
-
 def test_reverse():
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    curve.reverse()
+    assert curve.reverse() == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
+
+
+def test_reverse_inplace():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+    curve.reverse(inplace=True)
+
     assert curve == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
 
 
