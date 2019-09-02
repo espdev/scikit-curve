@@ -145,8 +145,8 @@ def curvature(curve: 'Curve') -> np.ndarray:
         # Compute curvature for 2 or higher dimensional curve
         ssq_dr = np.sum(dr ** 2, axis=1)
         ssq_ddr = np.sum(ddr ** 2, axis=1)
-        dot_dr_ddr = np.sum(dr * ddr, axis=1)
+        dot_sq_dr_ddr = np.sum(dr * ddr, axis=1) ** 2
 
-        k = np.sqrt(ssq_dr * ssq_ddr - dot_dr_ddr ** 2) / ssq_dr ** p
+        k = np.sqrt(ssq_dr * ssq_ddr - dot_sq_dr_ddr) / ssq_dr ** p
 
     return k
