@@ -407,19 +407,18 @@ class CurvePoint(Point):
         return self._curve()
 
     @property
-    def idx(self) -> int:
+    def idx(self) -> _t.Optional[int]:
         """Returns the point index in the curve
 
         Returns
         -------
         index : int
-            The point index in the curve or -1 if the curve instance has been deleted
+            The point index in the curve or None if the curve instance has been deleted.
 
         """
 
         if self.isvalid:
             return self._idx
-        return -1
 
     @property
     def curvature(self) -> float:
