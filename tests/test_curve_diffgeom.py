@@ -51,7 +51,7 @@ def test_natural_parametrization():
     assert curve.t == pytest.approx(expected)
 
 
-def test_curvature_2d():
+def test_curvature_circle_2d():
     """The curvature of a circle with radius R is equal to 1/R
     """
     t = np.linspace(0.0, 2*np.pi, 100)
@@ -62,4 +62,37 @@ def test_curvature_2d():
     curve = Curve([x, y])
     expected = np.ones_like(t) * (1 / r)
 
+    assert curve.curvature == pytest.approx(expected, abs=0.0005)
+
+
+def test_curvature_circle_3d():
+    t = np.linspace(0.0, 2*np.pi, 200)
+    r = 10.0
+    x = np.cos(t) * r
+    y = np.sin(t) * r
+    z = np.ones_like(t)
+
+    theta = 0.73
+
+    rx = np.array([
+        [1, 0, 0],
+        [0, np.cos(theta), -np.sin(theta)],
+        [0, np.sin(theta), np.cos(theta)],
+    ])
+
+    ry = np.array([
+        [np.cos(theta), 0, np.sin(theta)],
+        [0, 1, 0],
+        [-np.sin(theta), 0, np.cos(theta)],
+    ])
+
+    curve = Curve([x, y, z])
+
+    for i, p in enumerate(curve):
+        data = rx @ p.data
+        data = ry @ data
+
+        curve[i] = data
+
+    expected = np.ones_like(t) * (1 / r)
     assert curve.curvature == pytest.approx(expected, abs=0.0005)
