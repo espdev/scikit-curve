@@ -263,7 +263,7 @@ def frenet1(curve: 'Curve') -> np.ndarray:
 
 def frenet2(curve: 'Curve') -> np.ndarray:
     """Computes the second Frenet vectors (normal unit vectors) for each point of a curve
-    
+
     Parameters
     ----------
         Curve object
