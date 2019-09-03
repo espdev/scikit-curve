@@ -10,10 +10,19 @@ import warnings
 import typing as t
 import numpy as np
 
+from curve._numeric import rowdot
+
 if t.TYPE_CHECKING:
-    from ._base import Curve
+    from curve._base import Curve
+
 
 DEFAULT_GRAD_EDGE_ORDER = 2
+
+
+class DifferentialGeometryWarning(UserWarning):
+    """Raises when gradient computation problems occurred
+    """
+    pass
 
 
 def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
@@ -123,12 +132,6 @@ def natural_parametrization(curve: 'Curve', chord_lengths: t.Optional[np.ndarray
     return np.hstack((0.0, np.cumsum(chord_lengths)))
 
 
-class GradientWarning(UserWarning):
-    """Raises when gradient computation problems occurred
-    """
-    pass
-
-
 def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.ndarray:
     """Computes gradient for MxN data array where N is the dimension
 
@@ -158,14 +161,42 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
             warnings.warn((
                 'The number of data points {} too small to calculate a numerical gradient, '
                 'at least {} (edge_order + 1) elements are required.'
-            ).format(m_rows, edge_order + 1), GradientWarning)
+            ).format(m_rows, edge_order + 1), DifferentialGeometryWarning)
         else:
             break
     else:
-        warnings.warn('Cannot calculate a numerical gradient.', GradientWarning)
+        warnings.warn('Cannot calculate a numerical gradient.', DifferentialGeometryWarning)
         return np.zeros((m_rows, 1), dtype=np.float64)
 
     return np.gradient(data, axis=0, edge_order=edge_order)
+
+
+def normal(curve: 'Curve') -> np.array:
+    """Computes the normal vectors for each point of curve
+
+    Notes
+    -----
+    The normal vector, sometimes called the curvature vector, indicates the deviance of the curve from
+    being a straight line.
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+
+    Returns
+    -------
+    normal : np.ndarray
+        The array MxN with normal vectors for each point of curve
+
+    """
+
+    if not curve:
+        return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+    dot_rdd_e1 = rowdot(curve.secondderiv, curve.frenet1, ndmin=2).T
+
+    return curve.secondderiv - dot_rdd_e1 * curve.frenet1
 
 
 def speed(curve: 'Curve') -> np.ndarray:
@@ -188,7 +219,7 @@ def speed(curve: 'Curve') -> np.ndarray:
 
     """
 
-    return np.sqrt(np.sum(curve.firstderiv ** 2, axis=1))
+    return np.linalg.norm(curve.firstderiv, axis=1)
 
 
 def frenet1(curve: 'Curve') -> np.ndarray:
@@ -202,7 +233,7 @@ def frenet1(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     e1 : np.ndarray
-        The array of tangent unit vectors for each curve points
+        The MxN array of tangent unit vectors for each curve points
 
     Raises
     ------
@@ -213,12 +244,54 @@ def frenet1(curve: 'Curve') -> np.ndarray:
     if not curve:
         return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
-    if np.any(np.isclose(curve.speed, 0.0)):
-        raise ValueError('Cannot calculate the first Frenet vectors. '
-                         'The curve has singularity and zero-length segments. '
-                         'Use "Curve.nonsingular" method to remove singularity.')
+    norm = np.array(curve.speed)
 
-    return curve.firstderiv / np.array(curve.speed, ndmin=2).T
+    not_well_defined = np.isclose(norm, 0.0)
+    is_not_well_defined = np.any(not_well_defined)
+
+    if is_not_well_defined:
+        warnings.warn((
+            'Cannot calculate the first Frenet vectors (unit tangent vectors). '
+            'The curve has singularity and zero-length segments. '
+            'Use "Curve.nonsingular" method to remove singularity from the curve data.'
+        ), DifferentialGeometryWarning)
+
+        norm[not_well_defined] = 1.0
+
+    return curve.firstderiv / np.array(norm, ndmin=2).T
+
+
+def frenet2(curve: 'Curve') -> np.ndarray:
+    """Computes the second Frenet vectors (normal unit vectors) for each point of a curve
+    
+    Parameters
+    ----------
+        Curve object
+
+    Returns
+    -------
+    e2 : np.ndarray
+        The MxN array of normal unit vectors for each curve points
+
+    """
+
+    norm = np.linalg.norm(curve.normal, axis=1)
+    not_well_defined = np.isclose(norm, 0.0)
+    is_not_well_defined = np.any(not_well_defined)
+
+    if is_not_well_defined:
+        warnings.warn((
+            'Cannot calculate the second Frenet vectors (unit normal vectors). '
+            'The curve is straight line and normal vectors are not well defined. '
+        ), DifferentialGeometryWarning)
+
+        norm[not_well_defined] = 1.0
+
+    e2 = curve.normal / np.array(norm, ndmin=2).T
+
+    # FIXME: what to do with not well defined the normal vectors?
+
+    return e2
 
 
 def curvature(curve: 'Curve') -> np.ndarray:
@@ -247,7 +320,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
         # Compute curvature for 2 or higher dimensional curve
         ssq_dr = np.sum(curve.firstderiv ** 2, axis=1)
         ssq_ddr = np.sum(curve.secondderiv ** 2, axis=1)
-        dot_sq_dr_ddr = np.einsum('ij,ij->i', curve.firstderiv, curve.secondderiv) ** 2
+        dot_sq_dr_ddr = rowdot(curve.firstderiv, curve.secondderiv) ** 2
 
         k = np.sqrt(ssq_dr * ssq_ddr - dot_sq_dr_ddr) / ssq_dr ** p
 

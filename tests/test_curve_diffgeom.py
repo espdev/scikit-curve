@@ -4,7 +4,52 @@ import pytest
 
 import numpy as np
 
-from curve import Curve, Axis
+from curve import Curve, Axis, DifferentialGeometryWarning
+from curve import rowdot
+
+
+@pytest.fixture
+def circle_curve_2d():
+    def _circle_curve_2d(n=100, r=10):
+        t = np.linspace(0.0, 2*np.pi, n)
+        x = np.cos(t) * r
+        y = np.sin(t) * r
+
+        return Curve([x, y])
+    return _circle_curve_2d
+
+
+@pytest.fixture
+def circle_curve_3d():
+    def _circle_curve_3d(n=200, r=10, theta=0.73):
+        t = np.linspace(0, 2 * np.pi, n)
+        x = np.cos(t) * r
+        y = np.sin(t) * r
+        z = np.ones_like(t)
+
+        rx = np.array([
+            [1, 0, 0],
+            [0, np.cos(theta), -np.sin(theta)],
+            [0, np.sin(theta), np.cos(theta)],
+        ])
+
+        ry = np.array([
+            [np.cos(theta), 0, np.sin(theta)],
+            [0, 1, 0],
+            [-np.sin(theta), 0, np.cos(theta)],
+        ])
+
+        curve = Curve([x, y, z])
+
+        for i, p in enumerate(curve):
+            data = rx @ p.data
+            data = ry @ data
+
+            curve[i] = data
+
+        return curve
+
+    return _circle_curve_3d
 
 
 def test_nonsingular():
@@ -51,51 +96,95 @@ def test_natural_parametrization():
     assert curve.t == pytest.approx(expected)
 
 
-def test_curvature_circle_2d():
+def test_curvature_circle_2d(circle_curve_2d):
     """The curvature of a circle with radius R is equal to 1/R
     """
-    t = np.linspace(0.0, 2*np.pi, 100)
-    r = 10.0
-    x = np.cos(t) * r
-    y = np.sin(t) * r
-
-    curve = Curve([x, y])
-    expected = np.ones_like(t) * (1 / r)
+    r = 10
+    curve = circle_curve_2d(n=100, r=r)
+    expected = np.ones(curve.size) * (1 / r)
 
     assert curve.curvature == pytest.approx(expected, abs=0.0005)
 
 
-def test_curvature_circle_3d():
-    t = np.linspace(0.0, 2*np.pi, 200)
-    r = 10.0
-    x = np.cos(t) * r
-    y = np.sin(t) * r
-    z = np.ones_like(t)
+def test_curvature_circle_3d(circle_curve_3d):
+    r = 10
+    curve = circle_curve_3d(r=10)
 
-    theta = 0.73
-
-    rx = np.array([
-        [1, 0, 0],
-        [0, np.cos(theta), -np.sin(theta)],
-        [0, np.sin(theta), np.cos(theta)],
-    ])
-
-    ry = np.array([
-        [np.cos(theta), 0, np.sin(theta)],
-        [0, 1, 0],
-        [-np.sin(theta), 0, np.cos(theta)],
-    ])
-
-    curve = Curve([x, y, z])
-
-    for i, p in enumerate(curve):
-        data = rx @ p.data
-        data = ry @ data
-
-        curve[i] = data
-
-    expected = np.ones_like(t) * (1 / r)
+    expected = np.ones(curve.size) * (1 / r)
     assert curve.curvature == pytest.approx(expected, abs=0.0005)
+
+
+def test_tangent_2d():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+    expected = np.ones_like(curve.data)
+    assert curve.tangent == pytest.approx(expected)
+
+
+def test_tangent_3d():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+
+    expected = np.ones_like(curve.data)
+    assert curve.tangent == pytest.approx(expected)
+
+
+def test_normal_2d():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+    expected = np.zeros_like(curve.data)
+    assert curve.normal == pytest.approx(expected)
+
+
+def test_normal_3d():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+
+    expected = np.zeros_like(curve.data)
+    assert curve.normal == pytest.approx(expected)
+
+
+@pytest.mark.parametrize('curve_data, expected_value', [
+    ([(1, 2, 3, 4)], 1.0),
+    ([(1, 2, 3, 4), (1, 2, 3, 4)], 0.70710678),
+    ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)], 0.57735027),
+    ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)], 0.5),
+    ([(1, 2), (1, 2)], 0.70710678),
+])
+def test_frenet1_nd(curve_data, expected_value):
+    curve = Curve(curve_data)
+
+    expected = np.ones_like(curve.data) * expected_value
+    assert curve.frenet1 == pytest.approx(expected)
+
+
+def test_frenet1_warn():
+    curve = Curve([(1, 2, 3, 3, 3, 4), (1, 2, 3, 3, 3, 4)])
+
+    with pytest.warns(DifferentialGeometryWarning):
+        print(curve.frenet1)
+
+
+@pytest.mark.parametrize('curve_data', [
+    [(1, 2, 3, 4)],
+    [(1, 2, 3, 4), (1, 2, 3, 4)],
+    [(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
+    [(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
+    [(1, 2), (1, 2)],
+])
+def test_frenet2_warn(curve_data):
+    curve = Curve(curve_data)
+
+    with pytest.warns(DifferentialGeometryWarning):
+        print(curve.frenet2)
+
+
+def test_circle_2d_frenet12_dot_product_zero(circle_curve_2d):
+    curve = circle_curve_2d()
+    assert np.allclose(rowdot(curve.frenet1, curve.frenet2), 0.0)
+
+
+def test_circle_3d_frenet12_dot_product_zero(circle_curve_3d):
+    curve = circle_curve_3d()
+    assert np.allclose(rowdot(curve.frenet1, curve.frenet2), 0.0)
 
 
 def test_coorientplane_2d():
@@ -115,24 +204,3 @@ def test_coorientplane_3d(axis1, axis2):
     curve_r = curve.reverse()
 
     assert curve.coorientplane(axis1, axis2) == curve_r.coorientplane(axis1, axis2)
-
-
-@pytest.mark.parametrize('curve_data, expected_value', [
-    ([(1, 2, 3, 4)], 1.0),
-    ([(1, 2, 3, 4), (1, 2, 3, 4)], 0.70710678),
-    ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)], 0.57735027),
-    ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)], 0.5),
-    ([(1, 2), (1, 2)], 0.70710678),
-])
-def test_frenet1_nd(curve_data, expected_value):
-    curve = Curve(curve_data)
-
-    expected = np.ones_like(curve.data) * expected_value
-    assert curve.frenet1 == pytest.approx(expected)
-
-
-def test_frenet1_error():
-    curve = Curve([(1, 2, 3, 3, 3, 4), (1, 2, 3, 3, 3, 4)])
-
-    with pytest.raises(ValueError):
-        curve.frenet1  # noqa

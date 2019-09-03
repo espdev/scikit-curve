@@ -62,3 +62,29 @@ def allequal(obj1: np.ndarray, obj2: np.ndarray, axis: t.Optional[int] = None, *
     """
 
     return np.all(isequal(obj1, obj2, **kwargs), axis=axis)
+
+
+def rowdot(data1: np.ndarray, data2: np.ndarray, ndmin: int = 1) -> np.ndarray:
+    """Computes row-wise dot product of two MxN arrays
+
+    Parameters
+    ----------
+    data1 : np.ndarray
+        The first MxN array
+    data2 : np.ndarray
+        The second MxN array
+    ndmin : int
+        The minimum dimension for the result array. By default 1
+
+    Returns
+    -------
+    res : np.ndarray
+        Result array
+
+    """
+    dot = np.einsum('ij,ij->i', data1, data2)
+
+    if ndmin > 1:
+        dot = np.array(dot, ndmin=ndmin)
+
+    return dot

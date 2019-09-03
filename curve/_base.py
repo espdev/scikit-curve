@@ -464,11 +464,32 @@ class CurvePoint(Point):
         --------
         firstderiv
         Curve.tangent
+        frenet1
 
         """
 
         if self:
             return self.curve.tangent[self.idx]
+
+    @property
+    def normal(self) -> _t.Optional[np.ndarray]:
+        """Returns normal vector at the curve point
+
+        Returns
+        -------
+        normal : np.ndarray
+            The 1xN array of normal vector at the curve point
+
+        See Also
+        --------
+        tangent
+        Curve.normal
+        frenet2
+
+        """
+
+        if self:
+            return self.curve.normal[self.idx]
 
     @property
     def speed(self) -> _t.Optional[float]:
@@ -490,7 +511,7 @@ class CurvePoint(Point):
 
     @property
     def frenet1(self) -> _t.Optional[np.ndarray]:
-        """Returns the first Frenet vector (unit tangent) in the point
+        """Returns the first Frenet vector (unit tangent vector) at the point
 
         Returns
         -------
@@ -505,6 +526,24 @@ class CurvePoint(Point):
 
         if self:
             return self.curve.frenet1[self.idx]
+
+    @property
+    def frenet2(self) -> _t.Optional[np.ndarray]:
+        """Returns the second Frenet vector (unit normal vector) at the point
+
+        Returns
+        -------
+        e2 : np.ndarray
+            The second Frenet vector (unit normal vector)
+
+        See Also
+        --------
+        Curve.frenet2
+
+        """
+
+        if self:
+            return self.curve.frenet2[self.idx]
 
     @property
     def curvature(self) -> _t.Optional[float]:
@@ -1126,6 +1165,33 @@ class Curve(abc.Sequence):
         return self.firstderiv
 
     @cached_property
+    def normal(self) -> np.ndarray:
+        r"""Returns the normal (curvature) vectors for each point of curve
+
+        .. math::
+            \overline{e_2}(t) = \gamma''(t) - \langle \gamma''(t), e_1(t) \rangle \, e_1(t)
+
+        Notes
+        -----
+        The normal vector, sometimes called the curvature vector, indicates the deviance of the curve from
+        being a straight line.
+
+        Returns
+        -------
+        normal : np.ndarray
+            The array MxN with normal vectors for each point of curve
+
+        See Also
+        --------
+        tangent
+        frenet2
+        curvature
+
+        """
+
+        return _diffgeom.normal(self)
+
+    @cached_property
     def speed(self) -> np.ndarray:
         """Returns 1xM array of the speed at the time (in each curve point) as tangent vector's magnitude
 
@@ -1173,10 +1239,37 @@ class Curve(abc.Sequence):
         --------
         tangent
         speed
+        frenet2
 
         """
 
         return _diffgeom.frenet1(self)
+
+    @cached_property
+    def frenet2(self) -> np.ndarray:
+        r"""Returns the second Frenet vectors (normal unit vectors) for each point of a curve
+
+        .. math::
+
+            e_2(t) = \frac{e1'(t)}{||e1'(t)||}
+
+        Returns
+        -------
+        e2 : np.ndarray
+            The MxN array of normal unit vectors for each curve points
+
+        Raises
+        ------
+        ValueError : Cannot compute unit vector if speed is equal to zero (division by zero)
+
+        See Also
+        --------
+        normal
+        frenet1
+
+        """
+
+        return _diffgeom.frenet2(self)
 
     @cached_property
     def curvature(self) -> np.ndarray:
@@ -1220,8 +1313,7 @@ class Curve(abc.Sequence):
 
         See Also
         --------
-        firstderiv
-        secondderiv
+        normal
 
         """
 
