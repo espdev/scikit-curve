@@ -5,8 +5,11 @@ import typing as _t
 import textwrap
 import enum
 import weakref
+import warnings
 
 import numpy as np
+
+from decorator import decorator
 from cached_property import cached_property
 
 from curve._distance import MetricType, get_metric
@@ -230,7 +233,7 @@ class Point(abc.Sequence):
         if self.ndim != other.ndim:
             return False
 
-        return allequal(self.data, other.data)
+        return bool(allequal(self.data, other.data))
 
     def __matmul__(self, other: 'Point'):
         """Dot product of two points
@@ -328,6 +331,21 @@ class Point(abc.Sequence):
         return metric(self._data, other.data)
 
 
+@decorator
+def _potentially_invalid(func, raise_exc=False, *args, **kwargs):
+    obj, *args = args
+    if not obj:
+        message = 'The curve point is not valid because the curve object has been deleted.'
+
+        if raise_exc:
+            raise RuntimeError(message)
+        else:
+            warnings.warn(message, RuntimeWarning, stacklevel=3)
+        return
+
+    return func(obj, *args, **kwargs)
+
+
 class CurvePoint(Point):
     """The class represents nd-point that is a nd-curve point
 
@@ -375,7 +393,7 @@ class CurvePoint(Point):
         Returns
         -------
         flag : bool
-            True if the point is valid and the curve instance has not been deleted
+            True if the point is valid (the curve instance has not been deleted)
 
         """
         return self.curve is not None
@@ -398,6 +416,7 @@ class CurvePoint(Point):
         return self._curve()
 
     @property
+    @_potentially_invalid
     def idx(self) -> _t.Optional[int]:
         """Returns the point index in the curve
 
@@ -408,17 +427,17 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self._idx
+        return self._idx
 
     @property
+    @_potentially_invalid
     def firstderiv(self) -> _t.Optional[np.ndarray]:
-        """Returns first-order derivative in this curve point
+        """Returns first-order derivative at this curve point
 
         Returns
         -------
         fder : np.ndarray
-             The 1xN array of first-order derivative in this curve point
+             The 1xN array of first-order derivative at this curve point
 
         See Also
         --------
@@ -426,17 +445,17 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.firstderiv[self.idx]
+        return self.curve.firstderiv[self.idx]
 
     @property
+    @_potentially_invalid
     def secondderiv(self) -> _t.Optional[np.ndarray]:
-        """Returns second-order derivative in this curve point
+        """Returns second-order derivative at this curve point
 
         Returns
         -------
         sder : np.ndarray
-             The 1xN array of second-order derivative in this curve point
+             The 1xN array of second-order derivative at this curve point
 
         See Also
         --------
@@ -444,10 +463,28 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.secondderiv[self.idx]
+        return self.curve.secondderiv[self.idx]
 
     @property
+    @_potentially_invalid
+    def thirdderiv(self) -> _t.Optional[np.ndarray]:
+        """Returns third-order derivative at this curve point
+
+        Returns
+        -------
+        tder : np.ndarray
+             The 1xN array of third-order derivative at this curve point
+
+        See Also
+        --------
+        Curve.thirdderiv
+
+        """
+
+        return self.curve.thirdderiv[self.idx]
+
+    @property
+    @_potentially_invalid
     def tangent(self) -> _t.Optional[np.ndarray]:
         """Returns tangent vector for the curve point
 
@@ -468,10 +505,10 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.tangent[self.idx]
+        return self.curve.tangent[self.idx]
 
     @property
+    @_potentially_invalid
     def normal(self) -> _t.Optional[np.ndarray]:
         """Returns normal vector at the curve point
 
@@ -488,10 +525,10 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.normal[self.idx]
+        return self.curve.normal[self.idx]
 
     @property
+    @_potentially_invalid
     def speed(self) -> _t.Optional[float]:
         """Returns the speed in the point
 
@@ -506,10 +543,10 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.speed[self.idx]
+        return self.curve.speed[self.idx]
 
     @property
+    @_potentially_invalid
     def frenet1(self) -> _t.Optional[np.ndarray]:
         """Returns the first Frenet vector (unit tangent vector) at the point
 
@@ -524,10 +561,10 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.frenet1[self.idx]
+        return self.curve.frenet1[self.idx]
 
     @property
+    @_potentially_invalid
     def frenet2(self) -> _t.Optional[np.ndarray]:
         """Returns the second Frenet vector (unit normal vector) at the point
 
@@ -542,10 +579,10 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.frenet2[self.idx]
+        return self.curve.frenet2[self.idx]
 
     @property
+    @_potentially_invalid
     def curvature(self) -> _t.Optional[float]:
         """Returns the curve curvature value for this point
 
@@ -560,9 +597,9 @@ class CurvePoint(Point):
 
         """
 
-        if self:
-            return self.curve.curvature[self.idx]
+        return self.curve.curvature[self.idx]
 
+    @_potentially_invalid(raise_exc=True)
     def subcurve(self, other_point: 'CurvePoint', inclusive: bool = True) -> np.ndarray:
         """Returns a sub-curve from the point to other curve point for the same curve
 
@@ -580,17 +617,14 @@ class CurvePoint(Point):
 
         Raises
         ------
-        TypeError : Other point is not an instance of "CurvePoint" class
         RuntimeError : The points are not valid. The curve instance has been deleted
+        TypeError : Other point is not an instance of "CurvePoint" class
         ValueError : Other point belongs to another curve
 
         """
 
         if not isinstance(other_point, CurvePoint):
             raise TypeError('Other point must be an instance of "CurvePoint" class')
-
-        if not self:
-            raise RuntimeError('The curve instance has been deleted')
 
         if self.curve is not other_point.curve:
             raise ValueError('Other point belongs to another curve')
@@ -1114,12 +1148,13 @@ class Curve(abc.Sequence):
         Returns
         -------
         fder : np.ndarray
-            First-order derivative array at every point of curve
+            The array MxN with first-order derivative at every point of curve
 
         See Also
         --------
         tangent
         secondderiv
+        thirdderiv
 
         """
 
@@ -1132,15 +1167,34 @@ class Curve(abc.Sequence):
         Returns
         -------
         sder : np.ndarray
-            Second-order derivative array at every point of curve
+            The array MxN with second-order derivative at every point of curve
 
         See Also
         --------
         firstderiv
+        thirdderiv
 
         """
 
         return _diffgeom.gradient(self.firstderiv)
+
+    @cached_property
+    def thirdderiv(self) -> np.ndarray:
+        """Returns the third-order derivative at every curve point
+
+        Returns
+        -------
+        tder : np.ndarray
+            The array MxN with third-order derivative at every point of curve
+
+        See Also
+        --------
+        firstderiv
+        secondderiv
+
+        """
+
+        return _diffgeom.gradient(self.secondderiv)
 
     @cached_property
     def tangent(self) -> np.ndarray:
