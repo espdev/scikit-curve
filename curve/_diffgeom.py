@@ -322,7 +322,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
 
         k = (sd_y * fd_x - sd_x * fd_y) / (fd_x * fd_x + fd_y * fd_y) ** 1.5
     else:
-        # Compute curvature for 2 or higher dimensional curve
+        # Compute curvature for 3 or higher dimensional curve
         e1_grad = gradient(curve.frenet1)
         k = np.linalg.norm(e1_grad, axis=1) / np.linalg.norm(curve.firstderiv, axis=1)
 
