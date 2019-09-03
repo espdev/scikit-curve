@@ -314,6 +314,13 @@ def curvature(curve: 'Curve') -> np.ndarray:
 
     if curve.is1d:
         k = curve.secondderiv / (1 + curve.firstderiv ** 2) ** 1.5
+    elif curve.is2d:
+        fd_x = curve.firstderiv[:, 0]
+        fd_y = curve.firstderiv[:, 1]
+        sd_x = curve.secondderiv[:, 0]
+        sd_y = curve.secondderiv[:, 1]
+
+        k = (sd_y * fd_x - sd_x * fd_y) / (fd_x * fd_x + fd_y * fd_y) ** 1.5
     else:
         # Compute curvature for 2 or higher dimensional curve
         e1_grad = gradient(curve.frenet1)
