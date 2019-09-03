@@ -1,5 +1,7 @@
 numpy
 scipy
+cached_property
+decorator
 jupyter
 matplotlib
 sphinx
