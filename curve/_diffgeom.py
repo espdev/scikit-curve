@@ -315,6 +315,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
     if curve.is1d:
         k = (curve.secondderiv / (1 + curve.firstderiv ** 2) ** 1.5).flatten()
     elif curve.is2d:
+        # Compute signed curvature value for a plane curve
         fd_x = curve.firstderiv[:, 0]
         fd_y = curve.firstderiv[:, 1]
         sd_x = curve.secondderiv[:, 0]
