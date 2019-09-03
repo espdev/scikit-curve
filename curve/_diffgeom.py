@@ -318,11 +318,8 @@ def curvature(curve: 'Curve') -> np.ndarray:
         k = curve.secondderiv / (1 + curve.firstderiv ** 2) ** p
     else:
         # Compute curvature for 2 or higher dimensional curve
-        ssq_dr = np.sum(curve.firstderiv ** 2, axis=1)
-        ssq_ddr = np.sum(curve.secondderiv ** 2, axis=1)
-        dot_sq_dr_ddr = rowdot(curve.firstderiv, curve.secondderiv) ** 2
-
-        k = np.sqrt(ssq_dr * ssq_ddr - dot_sq_dr_ddr) / ssq_dr ** p
+        e1_grad = gradient(curve.frenet1)
+        k = np.linalg.norm(e1_grad, axis=1) / np.linalg.norm(curve.firstderiv, axis=1)
 
     return k
 
