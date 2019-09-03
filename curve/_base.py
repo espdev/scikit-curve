@@ -615,7 +615,7 @@ class Curve(abc.Sequence):
     curve_data : CurveDataType
         The data of n-dimensional curve. The data might be represented in the different types:
 
-        * The sequence of the vectors with coordinates for each dimension.
+        * The sequence of the vectors with coordinates for every dimension.
           ``Sequence[Sequence[NumberType]]`` or ``Sequence[numpy.ndarray]``
         * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension
         * Another Curve object. It creates the copy of another curve
@@ -1007,7 +1007,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         flag : bool
-            True if the curve is plane
+            True if the curve is 1-d
 
         """
 
@@ -1079,12 +1079,12 @@ class Curve(abc.Sequence):
 
     @cached_property
     def chordlen(self) -> np.ndarray:
-        """Returns length for each chord (segment) of the curve
+        """Returns length of every chord (segment) of the curve
 
         Returns
         -------
         lengths : np.ndarray
-            The array with lengths for each the curve chord
+            The array with length of every the curve chord
 
         """
 
@@ -1109,12 +1109,12 @@ class Curve(abc.Sequence):
 
     @cached_property
     def firstderiv(self) -> np.ndarray:
-        """Returns the first-order derivative in each curve point
+        """Returns the first-order derivative at every curve point
 
         Returns
         -------
         fder : np.ndarray
-            First-order derivative array in each point of curve
+            First-order derivative array at every point of curve
 
         See Also
         --------
@@ -1127,12 +1127,12 @@ class Curve(abc.Sequence):
 
     @cached_property
     def secondderiv(self) -> np.ndarray:
-        """Returns the second-order derivative in each curve point
+        """Returns the second-order derivative at every curve point
 
         Returns
         -------
         sder : np.ndarray
-            Second-order derivative array in each point of curve
+            Second-order derivative array at every point of curve
 
         See Also
         --------
@@ -1144,7 +1144,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def tangent(self) -> np.ndarray:
-        """Returns tangent vectors for each curve points
+        """Returns tangent vector at every curve point
 
         Notes
         -----
@@ -1153,7 +1153,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         tangent : np.ndarray
-            The array of tangent vectors for each curve points
+            The array of tangent vector at every curve point
 
         See Also
         --------
@@ -1166,20 +1166,20 @@ class Curve(abc.Sequence):
 
     @cached_property
     def normal(self) -> np.ndarray:
-        r"""Returns the normal (curvature) vectors for each point of curve
+        r"""Returns the normal vector at every point of curve
 
         .. math::
             \overline{e_2}(t) = \gamma''(t) - \langle \gamma''(t), e_1(t) \rangle \, e_1(t)
 
         Notes
         -----
-        The normal vector, sometimes called the curvature vector, indicates the deviance of the curve from
-        being a straight line.
+        The normal vector, sometimes called the curvature vector,
+        indicates the deviance of the curve from being a straight line.
 
         Returns
         -------
         normal : np.ndarray
-            The array MxN with normal vectors for each point of curve
+            The array MxN with normal vector at every point of curve
 
         See Also
         --------
@@ -1193,22 +1193,17 @@ class Curve(abc.Sequence):
 
     @cached_property
     def speed(self) -> np.ndarray:
-        """Returns 1xM array of the speed at the time (in each curve point) as tangent vector's magnitude
+        """Returns Mx1 array of the speed at the time (at every curve point) as tangent vector's magnitude
 
         Notes
         -----
         The speed is the tangent (velocity) vector's magnitude (norm).
-        In general speed may be zero in some point if the curve has zero-length segments.
-
-        Parameters
-        ----------
-        curve : Curve
-            Curve object
+        In general, speed may be zero at some point if the curve has zero-length segments.
 
         Returns
         -------
         speed : np.ndarray
-            The array with speed in each curve point
+            The array Mx1 with speed at every curve point
 
         See Also
         --------
@@ -1220,7 +1215,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def frenet1(self) -> np.ndarray:
-        r"""Returns the first Frenet vectors (tangent unit vectors) for each point of a curve
+        r"""Returns the first Frenet vectors (tangent unit vectors) at every point of a curve
 
         .. math::
 
@@ -1229,7 +1224,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         e1 : np.ndarray
-            The array of tangent unit vectors for each curve points
+            The array of tangent unit vector at every curve points
 
         Raises
         ------
@@ -1247,7 +1242,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def frenet2(self) -> np.ndarray:
-        r"""Returns the second Frenet vectors (normal unit vectors) for each point of a curve
+        r"""Returns the second Frenet vectors (normal unit vectors) at every point of a curve
 
         .. math::
 
@@ -1256,7 +1251,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         e2 : np.ndarray
-            The MxN array of normal unit vectors for each curve points
+            The MxN array of normal unit vector at every curve points
 
         Raises
         ------
@@ -1273,7 +1268,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def curvature(self) -> np.ndarray:
-        r"""Returns curvature for each point of the n-dimensional curve
+        r"""Returns curvature at every point of the curve
 
         The curvature of a plane curve or a space curve in three dimensions (and higher) is the magnitude of the
         acceleration of a particle moving with unit speed along a curve.
@@ -1309,7 +1304,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         k : np.ndarray
-            Array of the curvature values for each curve point
+            The array Mx1 of the curvature value at every curve point
 
         See Also
         --------
