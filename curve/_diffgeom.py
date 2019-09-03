@@ -127,7 +127,7 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
     Parameters
     ----------
     data : np.ndarray
-        Curve data or curve data direvatives
+        Curve data or MxN curve data derivatives array
     edge_order : {1, 2} int
         Specify how boundaries are treated.
         Gradient is calculated using N-th order accurate differences at the boundaries.
@@ -136,7 +136,7 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
     Returns
     -------
     dr_dt : np.ndarray
-        Direvatives data
+        MxN derivatives array
 
     """
 
