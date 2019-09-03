@@ -313,7 +313,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
         return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
     if curve.is1d:
-        k = curve.secondderiv / (1 + curve.firstderiv ** 2) ** 1.5
+        k = (curve.secondderiv / (1 + curve.firstderiv ** 2) ** 1.5).flatten()
     elif curve.is2d:
         fd_x = curve.firstderiv[:, 0]
         fd_y = curve.firstderiv[:, 1]
