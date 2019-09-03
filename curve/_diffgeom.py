@@ -312,10 +312,8 @@ def curvature(curve: 'Curve') -> np.ndarray:
     if not curve:
         return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
-    p = 3 / 2
-
     if curve.is1d:
-        k = curve.secondderiv / (1 + curve.firstderiv ** 2) ** p
+        k = curve.secondderiv / (1 + curve.firstderiv ** 2) ** 1.5
     else:
         # Compute curvature for 2 or higher dimensional curve
         e1_grad = gradient(curve.frenet1)
