@@ -5,6 +5,8 @@ Differential geometry of curves
 
 """
 
+import warnings
+
 import typing as t
 import numpy as np
 
@@ -121,6 +123,12 @@ def natural_parametrization(curve: 'Curve', chord_lengths: t.Optional[np.ndarray
     return np.hstack((0.0, np.cumsum(chord_lengths)))
 
 
+class GradientWarning(UserWarning):
+    """Raises when gradient computation problems occurred
+    """
+    pass
+
+
 def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.ndarray:
     """Computes gradient for MxN data array where N is the dimension
 
@@ -140,11 +148,22 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
 
     """
 
-    if data.shape[0] == 0:
+    m_rows = data.shape[0]
+
+    if m_rows == 0:
         return np.array([], dtype=np.float64)
 
-    if data.shape[0] < (edge_order + 1):
-        return np.zeros((data.shape[0], 1), dtype=np.float64)
+    for edge_order in range(edge_order, 0, -1):
+        if m_rows < (edge_order + 1):
+            warnings.warn((
+                'The number of data points {} too small to calculate a numerical gradient, '
+                'at least {} (edge_order + 1) elements are required.'
+            ).format(m_rows, edge_order + 1), GradientWarning)
+        else:
+            break
+    else:
+        warnings.warn('Cannot calculate a numerical gradient.', GradientWarning)
+        return np.zeros((m_rows, 1), dtype=np.float64)
 
     return np.gradient(data, axis=0, edge_order=edge_order)
 
