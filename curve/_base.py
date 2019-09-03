@@ -9,8 +9,10 @@ import weakref
 import numpy as np
 from cached_property import cached_property
 
-from .distance import MetricType, get_metric
-from . import _diffgeom
+from curve._distance import MetricType, get_metric
+from curve._numeric import allequal
+from curve import _diffgeom
+
 
 NumberType = _t.Union[int, float, np.number]
 
@@ -50,13 +52,6 @@ PointCurveUnionType = _t.Union[
 InplaceRetType = _t.Optional['Curve']
 
 DEFAULT_DTYPE = np.float64
-
-
-def _cmp(obj1: PointCurveUnionType, obj2: PointCurveUnionType):
-    if np.issubdtype(obj1.dtype, np.integer) and np.issubdtype(obj2.dtype, np.integer):
-        return np.equal
-    else:
-        return np.isclose
 
 
 class Axis(enum.IntEnum):
@@ -235,8 +230,7 @@ class Point(abc.Sequence):
         if self.ndim != other.ndim:
             return False
 
-        cmp = _cmp(self, other)
-        return np.all(cmp(self._data, other.data))
+        return allequal(self.data, other.data)
 
     def __matmul__(self, other: 'Point'):
         """Dot product of two points
@@ -759,23 +753,21 @@ class Curve(abc.Sequence):
         if self.ndim != other.ndim:
             return False
 
-        cmp = _cmp(self, other)
-
         if isinstance(other, Point):
-            return np.any(self._is_equal(other.data, self._data, cmp))
+            return np.any(allequal(other.data, self._data, axis=1))
         else:
             self_sz = self.size
             other_sz = other.size
 
             if self_sz == other_sz:
-                return np.all(cmp(self._data, other.data))
+                return allequal(self._data, other.data)
 
             if self_sz < other_sz:
                 return False
 
             for i in range(self_sz - other_sz + 1):
                 self_data = self._data[i:(i + other_sz)]
-                if np.all(cmp(self_data, other.data)):
+                if allequal(self_data, other.data):
                     return True
 
             return False
@@ -803,8 +795,7 @@ class Curve(abc.Sequence):
         if self.size != other.size:
             return False
 
-        cmp = _cmp(self, other)
-        return np.all(cmp(self._data, other.data))
+        return allequal(self.data, other.data)
 
     def __add__(self, other: 'Curve') -> 'Curve':
         """Returns concatenation of the curve and other curve
@@ -870,8 +861,7 @@ class Curve(abc.Sequence):
         else:
             data = self._data[slice(start, end)]
 
-        cmp = _cmp(self, point)
-        is_close = self._is_equal(point.data, data, cmp)
+        is_close = allequal(point.data, data, axis=1)
 
         if not np.any(is_close):
             raise ValueError('{} is not in curve and given interval'.format(point))
@@ -903,8 +893,7 @@ class Curve(abc.Sequence):
         """
 
         self._check_ndim(point)
-        cmp = _cmp(self, point)
-        return int(np.sum(self._is_equal(point.data, self._data, cmp)))
+        return int(np.sum(allequal(point.data, self._data, axis=1)))
 
     @property
     def data(self) -> np.ndarray:
@@ -1729,10 +1718,6 @@ class Curve(abc.Sequence):
         """
 
         return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
-
-    @staticmethod
-    def _is_equal(other_data, data, cmp) -> np.ndarray:
-        return np.all(cmp(other_data, data), axis=1)
 
     def _check_ndim(self, other: PointCurveUnionType):
         if self.ndim != other.ndim:
