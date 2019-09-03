@@ -395,6 +395,10 @@ class CurvePoint(Point):
         curve : Curve
             Curve object for this point
 
+        See Also
+        --------
+        Curve
+
         """
 
         return self._curve()
@@ -422,6 +426,10 @@ class CurvePoint(Point):
         fder : np.ndarray
              The 1xN array of first-order derivative in this curve point
 
+        See Also
+        --------
+        Curve.firstderiv
+
         """
 
         if self:
@@ -436,6 +444,10 @@ class CurvePoint(Point):
         sder : np.ndarray
              The 1xN array of second-order derivative in this curve point
 
+        See Also
+        --------
+        Curve.secondderiv
+
         """
 
         if self:
@@ -443,21 +455,62 @@ class CurvePoint(Point):
 
     @property
     def tangent(self) -> _t.Optional[np.ndarray]:
-        """Returns tangent unit vector for the curve point
+        """Returns tangent vector for the curve point
+
+        Notes
+        -----
+        This is alias for :func:`CurvePoint.firstderiv` property.
 
         Returns
         -------
         tangent : np.ndarray
-            The 1xN array of tangent unit vector for the curve point
+            The 1xN array of tangent vector for the curve point
 
-        Raises
-        ------
-        ValueError : Cannot compute vector norm (division by zero)
+        See Also
+        --------
+        firstderiv
+        Curve.tangent
 
         """
 
         if self:
             return self.curve.tangent[self.idx]
+
+    @property
+    def speed(self) -> _t.Optional[float]:
+        """Returns the speed in the point
+
+        Returns
+        -------
+        speed : float
+            The speed value in the point
+
+        See Also
+        --------
+        Curve.speed
+
+        """
+
+        if self:
+            return self.curve.speed[self.idx]
+
+    @property
+    def frenet1(self) -> _t.Optional[np.ndarray]:
+        """Returns the first Frenet vector (unit tangent) in the point
+
+        Returns
+        -------
+        e1 : np.ndarray
+            The first Frenet vector (unit tangent)
+
+        See Also
+        --------
+        Curve.frenet1
+
+        """
+
+        if self:
+            return self.curve.frenet1[self.idx]
 
     @property
     def curvature(self) -> _t.Optional[float]:
@@ -467,6 +520,10 @@ class CurvePoint(Point):
         -------
         k : float
             The curve curvature in this point or NaN if the point not valid.
+
+        See Also
+        --------
+        Curve.curvature
 
         """
 
@@ -984,6 +1041,10 @@ class Curve(abc.Sequence):
         t : np.ndarray
             Natural parameter vector
 
+        See Also
+        --------
+        chordlen
+
         """
 
         return _diffgeom.natural_parametrization(self, chord_lengths=self.chordlen)
@@ -1010,18 +1071,27 @@ class Curve(abc.Sequence):
         length : float
             The curve arc length
 
+        See Also
+        --------
+        chordlen
+
         """
 
         return _diffgeom.arclen(self)
 
     @cached_property
     def firstderiv(self) -> np.ndarray:
-        """Returns the first-order direvative in each curve point
+        """Returns the first-order derivative in each curve point
 
         Returns
         -------
         fder : np.ndarray
-            First-order direvative array in each point of curve
+            First-order derivative array in each point of curve
+
+        See Also
+        --------
+        tangent
+        secondderiv
 
         """
 
@@ -1029,12 +1099,16 @@ class Curve(abc.Sequence):
 
     @cached_property
     def secondderiv(self) -> np.ndarray:
-        """Returns the second-order direvative in each curve point
+        """Returns the second-order derivative in each curve point
 
         Returns
         -------
         sder : np.ndarray
-            Second-order direvative array in each point of curve
+            Second-order derivative array in each point of curve
+
+        See Also
+        --------
+        firstderiv
 
         """
 
@@ -1042,20 +1116,78 @@ class Curve(abc.Sequence):
 
     @cached_property
     def tangent(self) -> np.ndarray:
-        """Returns tangent unit vectors for each the curve point
+        """Returns tangent vectors for each curve points
+
+        Notes
+        -----
+        This is alias for :func:`Curve.firstderiv` property.
 
         Returns
         -------
         tangent : np.ndarray
+            The array of tangent vectors for each curve points
+
+        See Also
+        --------
+        firstderiv
+        speed
+
+        """
+
+        return self.firstderiv
+
+    @cached_property
+    def speed(self) -> np.ndarray:
+        """Returns 1xM array of the speed at the time (in each curve point) as tangent vector's magnitude
+
+        Notes
+        -----
+        The speed is the tangent (velocity) vector's magnitude (norm).
+        In general speed may be zero in some point if the curve has zero-length segments.
+
+        Parameters
+        ----------
+        curve : Curve
+            Curve object
+
+        Returns
+        -------
+        speed : np.ndarray
+            The array with speed in each curve point
+
+        See Also
+        --------
+        tangent
+
+        """
+
+        return _diffgeom.speed(self)
+
+    @cached_property
+    def frenet1(self) -> np.ndarray:
+        r"""Returns the first Frenet vectors (tangent unit vectors) for each point of a curve
+
+        .. math::
+
+            e_1(t) = \frac{\gamma'(t)}{||\gamma'(t)||}
+
+        Returns
+        -------
+        e1 : np.ndarray
             The array of tangent unit vectors for each curve points
 
         Raises
         ------
-        ValueError : Cannot compute vector norm (division by zero)
+        ValueError : Cannot compute unit vector if speed is equal to zero (division by zero)
+
+        See Also
+        --------
+        tangent
+        speed
 
         """
 
-        return _diffgeom.tangent(self)
+        return _diffgeom.frenet1(self)
 
     @cached_property
     def curvature(self) -> np.ndarray:
@@ -1096,6 +1228,11 @@ class Curve(abc.Sequence):
         -------
         k : np.ndarray
             Array of the curvature values for each curve point
+
+        See Also
+        --------
+        firstderiv
+        secondderiv
 
         """
 

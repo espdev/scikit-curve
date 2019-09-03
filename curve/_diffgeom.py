@@ -168,8 +168,13 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
     return np.gradient(data, axis=0, edge_order=edge_order)
 
 
-def tangent(curve: 'Curve') -> np.ndarray:
-    """Computes tangent unit vector (normalized vector) for each point of a n-dimensional curve
+def speed(curve: 'Curve') -> np.ndarray:
+    """Computes the speed at the time (in each curve point)
+
+    Notes
+    -----
+    The speed is the tangent (velocity) vector's magnitude (norm).
+    In general speed may be zero in some point if the curve has zero-length segments.
 
     Parameters
     ----------
@@ -178,25 +183,42 @@ def tangent(curve: 'Curve') -> np.ndarray:
 
     Returns
     -------
-    tangent : np.ndarray
+    speed : np.ndarray
+        The array with speed in each curve point
+
+    """
+
+    return np.sqrt(np.sum(curve.firstderiv ** 2, axis=1))
+
+
+def frenet1(curve: 'Curve') -> np.ndarray:
+    """Computes the first Frenet vectors (tangent unit vectors) for each point of a curve
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+
+    Returns
+    -------
+    e1 : np.ndarray
         The array of tangent unit vectors for each curve points
 
     Raises
     ------
-    ValueError : Cannot compute vector norm (division by zero)
+    ValueError : Cannot compute unit vector if speed is equal to zero (division by zero)
 
     """
 
     if not curve:
         return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
-    norm = np.sqrt(np.sum(curve.firstderiv ** 2, axis=1))
-
-    if np.any(np.isclose(norm, 0.0)):
-        raise ValueError('The curve has singularity and zero-length segments. '
+    if np.any(np.isclose(curve.speed, 0.0)):
+        raise ValueError('Cannot calculate the first Frenet vectors. '
+                         'The curve has singularity and zero-length segments. '
                          'Use "Curve.nonsingular" method to remove singularity.')
 
-    return curve.firstderiv / np.array(norm, ndmin=2).T
+    return curve.firstderiv / np.array(curve.speed, ndmin=2).T
 
 
 def curvature(curve: 'Curve') -> np.ndarray:

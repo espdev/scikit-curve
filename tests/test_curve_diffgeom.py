@@ -124,15 +124,15 @@ def test_coorientplane_3d(axis1, axis2):
     ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)], 0.5),
     ([(1, 2), (1, 2)], 0.70710678),
 ])
-def test_tangent_nd(curve_data, expected_value):
+def test_frenet1_nd(curve_data, expected_value):
     curve = Curve(curve_data)
 
     expected = np.ones_like(curve.data) * expected_value
-    assert curve.tangent == pytest.approx(expected)
+    assert curve.frenet1 == pytest.approx(expected)
 
 
-def test_tangent_error():
+def test_frenet1_error():
     curve = Curve([(1, 2, 3, 3, 3, 4), (1, 2, 3, 3, 3, 4)])
 
     with pytest.raises(ValueError):
-        curve.tangent  # noqa
+        curve.frenet1  # noqa
