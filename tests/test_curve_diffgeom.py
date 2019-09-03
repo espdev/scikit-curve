@@ -122,6 +122,7 @@ def test_coorientplane_3d(axis1, axis2):
     ([(1, 2, 3, 4), (1, 2, 3, 4)], 0.70710678),
     ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)], 0.57735027),
     ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)], 0.5),
+    ([(1, 2), (1, 2)], 0.70710678),
 ])
 def test_tangent_nd(curve_data, expected_value):
     curve = Curve(curve_data)
