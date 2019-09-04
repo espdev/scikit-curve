@@ -672,19 +672,19 @@ class CurvePoint(Point):
 
     @_potentially_invalid(raise_exc=True)
     def subcurve(self, other_point: 'CurvePoint', inclusive: bool = True) -> np.ndarray:
-        """Returns a sub-curve from the point to other curve point for the same curve
+        """Returns a sub-curve view from the point to other point in the same curve
 
         Parameters
         ----------
         other_point : CurvePoint
             Other point in the same curve
         inclusive : bool
-            If this flag is True, other point will be include to a sub-curve.
+            If this flag is True, other point will be included to a sub-curve.
 
         Returns
         -------
         curve : Curve
-            A sub-curve from the point to other curve point. This sub-curve is a view.
+            A sub-curve from the point to other curve point. This sub-curve is the view.
 
         Raises
         ------
@@ -700,8 +700,8 @@ class CurvePoint(Point):
         if self.curve is not other_point.curve:
             raise ValueError('Other point belongs to another curve')
 
-        end = 1 if inclusive else 0
-        return self.curve[self.idx:other_point.idx+end]
+        inc = 1 if inclusive else 0
+        return self.curve[self.idx:other_point.idx+inc]
 
 
 class Curve(abc.Sequence):
