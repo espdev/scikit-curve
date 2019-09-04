@@ -1,7 +1,17 @@
 # -*- coding: utf-8 -*-
 
 """
-Differential geometry of curves
+Differential geometry of n-dimensional curves
+
+The module provides numerical computing methods for
+curve's differential geometry in the plane and the Euclidean n-dimensional space.
+
+Here are some basic routines above the n-dimensional curves:
+
+    * Computing numerical gradient (differentiation) first and higher orders
+    * Computing chord and arc length, natural parametrization
+    * Computing tangent, normal, binormal, Frenet vectors
+    * Computing curvature and torsion
 
 """
 
