@@ -1556,44 +1556,6 @@ class Curve(abc.Sequence):
 
         return _diffgeom.torsion(self)
 
-    @classmethod
-    def from_points(cls, points: _t.Sequence[Point], dtype: DataType = None) -> 'Curve':
-        """Creates Curve object from sequence of Point objects
-
-        Parameters
-        ----------
-        points : Sequence[Point]
-            The sequence (can be iterator) of Point objects
-        dtype : numpy.dtype
-            The curve data type
-
-        Returns
-        -------
-        curve : Curve
-            The curve object
-
-        Raises
-        ------
-        ValueError : Invalid input sequence
-
-        Examples
-        --------
-
-        .. code-block:: python
-
-            # 3-D curve with 4 points
-            curve = Curve.from_points([Point([1, 5, 9]),
-                                       Point([2, 6, 10]),
-                                       Point([3, 7, 11]),
-                                       Point([4, 8, 12])])
-
-        """
-
-        if not all(isinstance(p, Point) for p in points):
-            raise ValueError('The sequence must be contain only Points')
-
-        return cls(np.array(list(points)), dtype=dtype)
-
     def reverse(self, inplace: bool = False) -> InplaceRetType:
         """Reverses the curve
 
@@ -1845,7 +1807,7 @@ class Curve(abc.Sequence):
 
         return self._data[:, axis]
 
-    def insert_dim(self, axis: int, values: _t.Union[np.ndarray, _t.Sequence[NumberType], None] = None) -> 'Curve':
+    def insertdim(self, axis: int, values: _t.Union[np.ndarray, _t.Sequence[NumberType], None] = None) -> 'Curve':
         """Insert new dimension to the curve and returns new curve
 
         Parameters
@@ -1872,7 +1834,7 @@ class Curve(abc.Sequence):
         .. code-block:: python
 
             >>> curve = Curve([(1, 2, 3, 4), (9, 10, 11, 12)])
-            >>> curve.insert_dim(1, [5, 6, 7, 8])
+            >>> curve.insertdim(1, [5, 6, 7, 8])
             Curve([[ 1.  5.  9.]
                    [ 2.  6. 10.]
                    [ 3.  7. 11.]
@@ -1891,7 +1853,7 @@ class Curve(abc.Sequence):
             raise IndexError(
                 'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
 
-    def append_dim(self, values: _t.Union[np.ndarray, _t.Sequence[NumberType], None] = None) -> 'Curve':
+    def appenddim(self, values: _t.Union[np.ndarray, _t.Sequence[NumberType], None] = None) -> 'Curve':
         """Appends new dimension to the end of curve and returns new curve
 
         Parameters
@@ -1915,7 +1877,7 @@ class Curve(abc.Sequence):
         .. code-block:: python
 
             >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-            >>> curve.append_dim([9, 10, 11, 12])
+            >>> curve.appenddim([9, 10, 11, 12])
             Curve([[ 1.  5.  9.]
                    [ 2.  6. 10.]
                    [ 3.  7. 11.]
@@ -1923,9 +1885,9 @@ class Curve(abc.Sequence):
 
         """
 
-        return self.insert_dim(self.ndim, values)
+        return self.insertdim(self.ndim, values)
 
-    def delete_dim(self, axis: IndexerType) -> 'Curve':
+    def deletedim(self, axis: IndexerType) -> 'Curve':
         """Returns a new curve object with deleted dimension(s)
 
         Notes
@@ -1953,7 +1915,7 @@ class Curve(abc.Sequence):
         .. code-block:: python
 
             >>> curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
-            >>> curve.delete_dim(-1)
+            >>> curve.deletedim(-1)
             Curve([[ 1.  5.]
                    [ 2.  6.]
                    [ 3.  7.]

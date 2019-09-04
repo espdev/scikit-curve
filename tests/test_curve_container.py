@@ -79,11 +79,15 @@ def test_from_points():
         Point([1, 5, 9]),
         Point([2, 6, 10]),
         Point([3, 7, 11]),
-        Point([4, 8, 12])
+        Point([4, 8, 12]),
     ]
 
-    curve = Curve.from_points(points)
-    assert curve.data == pytest.approx(np.array(points))
+    points_array = np.array(points)
+    curve = Curve(points_array)
+
+    assert curve.size == 4
+    assert curve.ndim == 3
+    assert curve.data == pytest.approx(points_array)
 
 
 @pytest.mark.parametrize('curve_data', [
@@ -187,36 +191,46 @@ def test_count(point_data, expected_count):
     assert curve.count(Point(point_data)) == expected_count
 
 
-@pytest.mark.parametrize('item, expected_data', [
+@pytest.mark.parametrize('index, expected_data', [
     (0, [1, 5]),
     (1, [2, 6]),
     (-1, [4, 8]),
     (-2, [3, 7]),
 ])
-def test_get_item_point(item, expected_data):
+def test_get_item_point(index, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    assert curve[item] == Point(expected_data)
+    assert curve[index] == Point(expected_data)
 
 
-@pytest.mark.parametrize('item, expected_data', [
+@pytest.mark.parametrize('indexer, expected_data', [
     (slice(None, 2), [(1, 2), (5, 6)]),
     (slice(1, 3), [(2, 3), (6, 7)]),
     (slice(-2, -1), [(3,), (7,)]),
     (slice(-2, None), [(3, 4), (7, 8)]),
     (slice(None), [(1, 2, 3, 4), (5, 6, 7, 8)]),
 ])
-def test_get_item_curve(item, expected_data):
+def test_get_item_curve(indexer, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    assert curve[item] == Curve(expected_data)
+    assert curve[indexer] == Curve(expected_data)
 
 
-@pytest.mark.parametrize('item, expected_data', [
-    ((slice(None, None), 0), np.array([1, 2, 3, 4])),
+@pytest.mark.parametrize('indexer, expected_data', [
+    ((slice(None), slice(0, 2)), [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    ((slice(None), slice(1, None)), [(5, 6, 7, 8), (9, 10, 11, 12)]),
+])
+def test_get_item_curve_less_dim(indexer, expected_data):
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
+    assert curve[indexer] == Curve(expected_data)
+
+
+@pytest.mark.parametrize('indexer, expected_data', [
+    ((slice(None), 0), np.array([1, 2, 3, 4])),
+    ((slice(None), slice(1)), np.array([1, 2, 3, 4])),
     ((slice(None, 2), 1), np.array([5, 6])),
 ])
-def test_get_item_values(item, expected_data):
+def test_get_item_values(indexer, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    assert curve[item] == pytest.approx(expected_data)
+    assert curve[indexer] == pytest.approx(expected_data)
 
 
 @pytest.mark.parametrize('index, value, expected_data', [
@@ -309,14 +323,14 @@ def test_get_values(axis, expected_data):
 
 def test_insert_dim():
     curve = Curve([(1, 2, 3, 4), (9, 10, 11, 12)])
-    curve1 = curve.insert_dim(1, [5, 6, 7, 8])
+    curve1 = curve.insertdim(1, [5, 6, 7, 8])
 
     assert curve1 == Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
 
 
 def test_append_dim():
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    curve1 = curve.append_dim([9, 10, 11, 12])
+    curve1 = curve.appenddim([9, 10, 11, 12])
 
     assert curve1 == Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
 
@@ -329,9 +343,16 @@ def test_append_dim():
 ])
 def test_delete_dim(index, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
-    curve1 = curve.delete_dim(index)
+    curve1 = curve.deletedim(index)
 
     assert curve1 == Curve(expected_data)
+
+
+def test_delete_dim_error():
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+    with pytest.raises(ValueError):
+        curve.deletedim(axis=Axis.Y)
 
 
 @pytest.mark.parametrize('curve_data, expected_data', [
