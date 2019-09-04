@@ -376,9 +376,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
     if not curve:
         return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
-    if curve.is1d:
-        k = (curve.secondderiv / (1 + curve.firstderiv ** 2) ** 1.5).flatten()
-    elif curve.is2d:
+    if curve.is2d:
         # Compute signed curvature value for a plane curve
         fd_x = curve.firstderiv[:, 0]
         fd_y = curve.firstderiv[:, 1]
@@ -445,12 +443,8 @@ def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
 
     Raises
     ------
-    ValueError : Curve has the dimension less than 2
     IndexError : Axis out of dimensions
     """
-
-    if curve.is1d:
-        raise ValueError('The curve must be 2 or higher dimensional.')
 
     if not curve or curve.size == 1:
         return True

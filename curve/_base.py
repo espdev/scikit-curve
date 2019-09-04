@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+"""
+The module provides the base classes and data types Point, CurvePoint and Curve
+
+"""
+
 import collections.abc as abc
 import typing as _t
 import textwrap
@@ -350,7 +355,7 @@ def _potentially_invalid(func, raise_exc=False, *args, **kwargs):
 
 
 class CurvePoint(Point):
-    """The class represents nd-point that is a nd-curve point
+    """The class represents nd-point that is a n-dimensional curve point
 
     This class is the view wrapper for a curve point data. This class should not used directly.
     It is used in Curve class.
@@ -707,57 +712,82 @@ class Curve(abc.Sequence):
     Notes
     -----
     Curve objects are mutable with the limitations.
-    Some methods that can change curve size or dimension return the copy of curve.
-    Also deleting data via ``__delitem__`` is not allowed.
+    Some methods can change the curve data in-place withous change data size. However, some methods that can change
+    curve size or dimension return the copy of the curve. Also deleting data via ``__delitem__`` is not allowed.
 
     Parameters
     ----------
     curve_data : CurveDataType
-        The data of n-dimensional curve. The data might be represented in the different types:
+        The data of n-dimensional curve (2 or higher). The data might be represented in the different types:
 
         * The sequence of the vectors with coordinates for every dimension.
           ``Sequence[Sequence[NumberType]]`` or ``Sequence[numpy.ndarray]``
-        * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension
-        * Another Curve object. It creates the copy of another curve
+        * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension.
+          N must be at least 2 (a plane curve).
+        * Another Curve object. It creates the copy of another curve by default (see ``copy`` argument)
+
+        If the data is not set empty curve will be created with ndmin dimensions (2 by default).
+
+    ndmin : int
+        The minimum curve dimension. By default is None and equal to input data dimension.
+        If it is set, ``copy`` argument is ignored.
 
     dtype : numeric type or numeric numpy.dtype
         The type of curve data. The type must be numeric type. For example, `float`, `int`, `np.float32`, ...
 
         If dtype is not set, by default dtype has value `np.float64`.
+        If it is set, ``copy`` argument is ignored.
 
     copy : bool
-        If this flag is True the copy will be created. If it is False the copy will not be created if possible.
-        If it is possible not create a copy, dtype argument will be ignored.
+        If this flag is True the copy of the data or curve will be created. If it is False the copy will not be
+        created if possible.
 
     Examples
     --------
 
     .. code-block:: python
 
-        # 2-D curve with 5 points
+        # 2-D curve with 5 points from list of lists
         curve = Curve([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
 
     .. code-block:: python
 
-        # 2-D curve with 4 points
+        # 2-D curve with 4 points from numpy array
         curve = Curve(np.array([(1, 2, 3, 4), (5, 6, 7, 8)]).T,
                       dtype=np.float32)
 
+    .. code-block:: python
+
+        # 3-D curve with 10 random points
+        curve = Curve(np.random.rand(10, 3))
+
     """
 
-    def __init__(self, curve_data: CurveDataType, dtype: _t.Optional[DataType] = None, copy: bool = True) -> None:
+    def __init__(self, curve_data: _t.Optional[CurveDataType] = None, ndmin: _t.Optional[int] = None,
+                 dtype: _t.Optional[DataType] = None, copy: bool = True) -> None:
         """Constructs Curve instance
         """
 
         is_transpose = True
         is_copy = True
+        is_ndmin = False
+
+        if ndmin is None:
+            ndmin = 2
+        else:
+            is_ndmin = True
+
+        if ndmin < 2:
+            raise ValueError('ndmin must be at least of 2')
+
+        if is_ndmin or dtype is not None:
+            copy = True
 
         if isinstance(curve_data, Curve):
             curve_data = curve_data.data
-            dtype = dtype or curve_data.dtype
 
         if isinstance(curve_data, np.ndarray):
-            if curve_data.ndim != 2:
+            if curve_data.size > 0 and curve_data.ndim != 2:
                 raise ValueError('If the curve data is ndarray it must be two-dimensional.')
             dtype = dtype or curve_data.dtype
             is_transpose = False
@@ -765,17 +795,36 @@ class Curve(abc.Sequence):
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
+        dtype = np.dtype(dtype)
 
         if not np.issubdtype(dtype, np.number):
             ValueError('dtype must be a numeric type.')
 
+        empty_data = np.reshape([], (0, ndmin)).astype(dtype)
+
+        if curve_data is None:
+            curve_data = empty_data
+            is_transpose = False
+
         if is_copy:
-            data = np.array(curve_data, ndmin=2, dtype=np.dtype(dtype))
+            data = np.array(curve_data, ndmin=2, dtype=dtype)
         else:
             data = curve_data
 
         if is_transpose:
             data = data.T
+
+        if data.size == 0:
+            data = empty_data
+
+        m, n = data.shape
+
+        if data.size > 0 and n < 2:
+            raise ValueError('The input data must be at least 2-dimensinal (a curve in the plane).')
+
+        if is_ndmin and m > 0 and n < ndmin:
+            # Change dimension to ndmin
+            data = np.hstack([data, np.zeros((m, ndmin - n), dtype=dtype)])
 
         self._data = data  # type: np.ndarray
 
@@ -1098,21 +1147,6 @@ class Curve(abc.Sequence):
 
         """
         return self._data.shape[1]
-
-    @property
-    def is1d(self) -> bool:
-        """Returns True if the curve is 1-d
-
-        The curve is 1-dimensional curve: :math:`y = f(x)`.
-
-        Returns
-        -------
-        flag : bool
-            True if the curve is 1-d
-
-        """
-
-        return self.ndim == 1
 
     @property
     def is2d(self) -> bool:
