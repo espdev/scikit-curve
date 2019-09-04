@@ -1534,13 +1534,7 @@ class Curve(abc.Sequence):
         The curvature of a plane curve or a space curve in three dimensions (and higher) is the magnitude of the
         acceleration of a particle moving with unit speed along a curve.
 
-        Curvature formula for 1-dimensional curve :math:`y = f(x)`:
-
-        .. math::
-
-            k = \frac{y''}{(1 + y'^2)^\frac{3}{2}}
-
-        and for 2-dimensional (a plane) curve :math:`\gamma(t) = (x(t), y(t))`:
+        Curvature formula for 2-dimensional (a plane) curve :math:`\gamma(t) = (x(t), y(t))`:
 
         .. math::
 
@@ -1552,7 +1546,7 @@ class Curve(abc.Sequence):
 
             k = \frac{||\gamma' \times \gamma''||}{||\gamma'||^3}
 
-        and for n-dimensional curve:
+        and for n-dimensional curve in general:
 
         .. math::
 
