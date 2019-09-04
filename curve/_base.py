@@ -705,15 +705,18 @@ class CurvePoint(Point):
 
 
 class Curve(abc.Sequence):
-    """A n-dimensional geometric curve representation
+    """The main class for n-dimensional geometric curve representation
 
-    The class represents n-dimensional geometric curve.
+    The class represents n-dimensional geometric curve in the plane or in the Euclidean n-dimensional space
+    given by a finity sequence of points.
 
     Notes
     -----
-    Curve objects are mutable with the limitations.
-    Some methods can change the curve data in-place withous change data size. However, some methods that can change
-    curve size or dimension return the copy of the curve. Also deleting data via ``__delitem__`` is not allowed.
+    Curve class implements ``Sequence`` interface but its instances are mutable with the limitations.
+
+    Some methods can change the curve data in-place withous change the data size.
+    However, some methods that can change curve size or dimension always return the copy of the curve.
+    Also deleting data via ``__delitem__`` is not allowed.
 
     Parameters
     ----------
@@ -724,23 +727,30 @@ class Curve(abc.Sequence):
           ``Sequence[Sequence[NumberType]]`` or ``Sequence[numpy.ndarray]``
         * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension.
           N must be at least 2 (a plane curve).
-        * Another Curve object. It creates the copy of another curve by default (see ``copy`` argument)
+        * Another Curve object. It creates the copy of another curve by default (see ``copy`` argument).
 
-        If the data is not set empty curve will be created with ndmin dimensions (2 by default).
+        If the data is not set empty curve will be created with ndmin dimensions (2 by default, see ``ndmin`` argument).
 
     ndmin : int
-        The minimum curve dimension. By default is None and equal to input data dimension.
+        The minimum curve dimension. By default it is ``None`` and equal to input data dimension.
+        If ``ndmin`` is more than input data dimension, additional dimensions will be added to
+        created curve object. All values in additional dimensions are equal to zero.
         If it is set, ``copy`` argument is ignored.
 
     dtype : numeric type or numeric numpy.dtype
-        The type of curve data. The type must be numeric type. For example, `float`, `int`, `np.float32`, ...
+        The type of curve data. The type must be a numeric type. For example, ``float``, ``int``, ``np.float32``, ...
 
-        If dtype is not set, by default dtype has value `np.float64`.
-        If it is set, ``copy`` argument is ignored.
+        If ``dtype`` argument is not set, by default dtype of curve data is ``np.float64``.
+        If ``dtype`` argument is set, ``copy`` argument is ignored.
 
     copy : bool
         If this flag is True the copy of the data or curve will be created. If it is False the copy will not be
         created if possible.
+
+    Raises
+    ------
+    ValueError : If the input data is invalid (1-d array or ndim > 2, for example)
+    ValueError : There is not a numeric ``dtype``
 
     Examples
     --------
@@ -761,10 +771,17 @@ class Curve(abc.Sequence):
         # 3-D curve with 10 random points
         curve = Curve(np.random.rand(10, 3))
 
+    .. code-block:: python
+
+        # 3-D curve from 2-D data with 5 random points
+        curve = Curve(np.random.rand(5, 2), ndmin=3)
+
     """
 
-    def __init__(self, curve_data: _t.Optional[CurveDataType] = None, ndmin: _t.Optional[int] = None,
-                 dtype: _t.Optional[DataType] = None, copy: bool = True) -> None:
+    def __init__(self, curve_data: _t.Optional[CurveDataType] = None,
+                 ndmin: _t.Optional[int] = None,
+                 dtype: _t.Optional[DataType] = None,
+                 copy: bool = True) -> None:
         """Constructs Curve instance
         """
 
