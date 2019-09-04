@@ -880,12 +880,17 @@ class Curve(abc.Sequence):
         return self.size != 0 and self.ndim != 0
 
     def __getitem__(self, indexer: IndexerType) -> _t.Union[PointCurveUnionType, np.ndarray]:
-        """Returns the point of curve or sub-curve or all coords fot given dimension
+        """Returns the point of curve or sub-curve or all coord values fot given axis
 
         Parameters
         ----------
         indexer : int, slice, list, np.array, tuple
             Index (int) or list of indexes or slice or tuple for getting the point or sub-slice
+
+        Raises
+        ------
+        TypeError : Invalid index type
+        IndexError : The index out of bounds curve size or dimensions
 
         Returns
         -------
@@ -914,7 +919,7 @@ class Curve(abc.Sequence):
                 return CurvePoint(data, self, index=indexer)
 
     def __setitem__(self, indexer: IndexerType, value: _t.Union[PointCurveUnionType, np.ndarray]) -> None:
-        """Sets point or sub-curve or values for given axis
+        """Sets a point or a sub-curve or coord values for given axis
 
         Parameters
         ----------
@@ -941,7 +946,7 @@ class Curve(abc.Sequence):
             "'{}' object doesn't support item deletion".format(type(self).__name__))
 
     def __contains__(self, other: PointCurveUnionType):
-        """Returns True if the curve contains given point data or sub-curve
+        """Returns True if the curve contains given point or sub-curve with the same dimension
 
         Parameters
         ----------
