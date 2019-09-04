@@ -885,6 +885,8 @@ class Curve(abc.Sequence):
         data = self._data[indexer]
 
         if data.ndim > 1:
+            if data.shape[1] == 1:
+                return data.ravel()
             return Curve(data, copy=False)
         else:
             if is_return_values:
@@ -1926,6 +1928,10 @@ class Curve(abc.Sequence):
     def delete_dim(self, axis: IndexerType) -> 'Curve':
         """Returns a new curve object with deleted dimension(s)
 
+        Notes
+        -----
+        If the curve is 2-dimensional this operation is not allowed and raises ``ValueError``.
+
         Parameters
         ----------
         axis : int, slice, list, np.arrau
@@ -1938,6 +1944,8 @@ class Curve(abc.Sequence):
 
         Raises
         ------
+        ValueError : if the curve is 2-dimensional
+        IndexError : indexation error
 
         Examples
         --------
@@ -1952,6 +1960,9 @@ class Curve(abc.Sequence):
                    [ 4.  8.]], size=4, ndim=2, dtype=float64)
 
         """
+
+        if self.is2d:
+            raise ValueError('Cannot delete dimensions from 2-dimensional curve.')
 
         try:
             return Curve(
