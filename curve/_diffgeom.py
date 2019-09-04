@@ -20,7 +20,7 @@ DEFAULT_GRAD_EDGE_ORDER = 2
 
 
 class DifferentialGeometryWarning(UserWarning):
-    """Raises when gradient computation problems occurred
+    """Raises when diffgeom computation problems occurred
     """
     pass
 
