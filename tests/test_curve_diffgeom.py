@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 
 from curve import Curve, Axis, DifferentialGeometryWarning
-from curve import rowdot
+from curve import dot1d
 
 
 @pytest.fixture
@@ -206,20 +206,20 @@ def test_frenet2_warn(curve_data):
 
 def test_circle_2d_frenet12_dot_product_zero(circle_curve_2d):
     curve = circle_curve_2d()
-    assert np.allclose(rowdot(curve.frenet1, curve.frenet2), 0.0)
+    assert np.allclose(dot1d(curve.frenet1, curve.frenet2), 0.0)
 
 
 def test_circle_3d_frenet12_dot_product_zero(circle_curve_3d):
     curve = circle_curve_3d()
-    assert np.allclose(rowdot(curve.frenet1, curve.frenet2), 0.0)
+    assert np.allclose(dot1d(curve.frenet1, curve.frenet2), 0.0)
 
 
 def test_frenet_vectors_orthogonal_3d(curve_3d):
     curve = curve_3d()
 
-    assert np.allclose(rowdot(curve.frenet1, curve.frenet2), 0.0)
-    assert np.allclose(rowdot(curve.frenet2, curve.frenet3), 0.0)
-    assert np.allclose(rowdot(curve.frenet1, curve.frenet3), 0.0)
+    assert np.allclose(dot1d(curve.frenet1, curve.frenet2), 0.0)
+    assert np.allclose(dot1d(curve.frenet2, curve.frenet3), 0.0)
+    assert np.allclose(dot1d(curve.frenet1, curve.frenet3), 0.0)
 
 
 def test_coorientplane_2d():

@@ -20,7 +20,7 @@ import warnings
 import typing as t
 import numpy as np
 
-from curve._numeric import rowdot
+from curve._numeric import dot1d
 
 if t.TYPE_CHECKING:
     from curve._base import Curve
@@ -207,7 +207,7 @@ def normal(curve: 'Curve') -> np.array:
     sder = curve.secondderiv
     e1 = curve.frenet1
 
-    return sder - rowdot(sder, e1)[:, np.newaxis] * e1
+    return sder - dot1d(sder, e1)[:, np.newaxis] * e1
 
 
 def binormal(curve: 'Curve') -> np.ndarray:
@@ -232,7 +232,7 @@ def binormal(curve: 'Curve') -> np.ndarray:
     e1 = curve.frenet1
     e2 = curve.frenet2
 
-    return tder - rowdot(tder, e1)[:, np.newaxis] * e1 - rowdot(tder, e2)[:, np.newaxis] * e2
+    return tder - dot1d(tder, e1)[:, np.newaxis] * e1 - dot1d(tder, e2)[:, np.newaxis] * e2
 
 
 def speed(curve: 'Curve') -> np.ndarray:
@@ -418,7 +418,7 @@ def torsion(curve: 'Curve') -> np.ndarray:
     e2_grad = gradient(curve.frenet2)
     tangent_norm = np.linalg.norm(curve.tangent, axis=1)
 
-    return rowdot(e2_grad, curve.frenet3) / tangent_norm
+    return dot1d(e2_grad, curve.frenet3) / tangent_norm
 
 
 def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
