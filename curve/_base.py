@@ -142,8 +142,11 @@ class Point(abc.Sequence):
         self._data = data
 
     def __repr__(self):
+        with np.printoptions(suppress=True, precision=4):
+            data_str = '{}'.format(self._data)
+
         return '{}({}, ndim={}, dtype={})'.format(
-            type(self).__name__, self._data, self.ndim, self._data.dtype)
+            type(self).__name__, data_str, self.ndim, self._data.dtype)
 
     def __len__(self) -> int:
         """Returns the point dimension
@@ -376,8 +379,15 @@ class CurvePoint(Point):
         self._idx = index
 
     def __repr__(self):
+        with np.printoptions(suppress=True, precision=4):
+            data_str = '{}'.format(self._data)
+
         return '{}({}, index={}, valid={})'.format(
-            type(self).__name__, self._data, self.idx, bool(self))
+            type(self).__name__, data_str, self.idx, bool(self))
+
+    @_potentially_invalid(raise_exc=True)
+    def __setitem__(self, indexer: IndexerType, value: _t.Union['Point', np.ndarray]) -> None:
+        self.curve[self.idx, indexer] = value
 
     def __copy__(self) -> 'CurvePoint':
         return self.__deepcopy__()
@@ -772,8 +782,9 @@ class Curve(abc.Sequence):
     def __repr__(self) -> str:
         name = type(self).__name__
 
-        arr_repr = '{}'.format(self._data)
-        arr_repr = textwrap.indent(arr_repr, ' ' * (len(name) + 1)).strip()
+        with np.printoptions(suppress=True, precision=4, edgeitems=4, threshold=10*self.ndim):
+            arr_repr = '{}'.format(self._data)
+            arr_repr = textwrap.indent(arr_repr, ' ' * (len(name) + 1)).strip()
 
         return '{}({}, size={}, ndim={}, dtype={})'.format(
             name, arr_repr, self.size, self.ndim, self.dtype)
@@ -855,7 +866,7 @@ class Curve(abc.Sequence):
             value = value.data
 
         self._data[indexer] = value
-        self._invalidate_cache()
+        self.invalidate()
 
     def __delitem__(self, key):
         raise TypeError(
@@ -1564,7 +1575,7 @@ class Curve(abc.Sequence):
 
         if inplace:
             self._data[:] = np.flipud(self._data)
-            self._invalidate_cache()
+            self.invalidate()
         else:
             return Curve(np.flipud(self._data))
 
@@ -2001,14 +2012,20 @@ class Curve(abc.Sequence):
 
         return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
 
-    def _check_ndim(self, other: PointCurveUnionType):
-        if self.ndim != other.ndim:
-            raise ValueError('The dimensions of the curve and other object do not match')
+    def invalidate(self):
+        """Invalidates the curve parameters cache
 
-    def _invalidate_cache(self):
+        All parameters such as tangent, normal, curvature, etc after call this method will be recalculate.
+
+        """
+
         cls = type(self)
         cached_props = [attr for attr in self.__dict__
                         if isinstance(getattr(cls, attr, None), cached_property)]
 
         for prop in cached_props:
             self.__dict__.pop(prop, None)
+
+    def _check_ndim(self, other: PointCurveUnionType):
+        if self.ndim != other.ndim:
+            raise ValueError('The dimensions of the curve and other object do not match')
