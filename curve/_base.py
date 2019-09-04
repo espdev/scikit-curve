@@ -710,6 +710,30 @@ class Curve(abc.Sequence):
     The class represents n-dimensional geometric curve in the plane or in the Euclidean n-dimensional space
     given by a finity sequence of points.
 
+    Internal data storage of curve points is NumPy MxN array where M is the number of curve points and N is curve
+    dimension. In other words, n-dimensional curve data is stored in 2-d array::
+
+        # 2-d curve representation
+        Curve([[x1 y1]
+               [x2 y2]
+               [x3 y3]
+               ...
+               [xM yM]])
+
+        # 3-d curve representation
+        Curve([[x1 y1 z1]
+               [x2 y2 z2]
+               [x3 y3 z3]
+               ...
+               [xM yM zM]])
+
+        # N-d curve representation
+        Curve([[x1 y1 z1 ... N1]
+               [x2 y2 z2 ... N2]
+               [x3 y3 z3 ... N3]
+               ...
+               [xM yM zM ... NM]])
+
     Notes
     -----
     Curve class implements ``Sequence`` interface but its instances are mutable with the limitations.
