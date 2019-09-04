@@ -52,6 +52,18 @@ def circle_curve_3d():
     return _circle_curve_3d
 
 
+@pytest.fixture
+def curve_3d():
+    def _curve_3d(n=200):
+        t = np.linspace(0, 2 * np.pi, n)
+        x = np.cos(t)
+        y = np.sin(t)
+        z = x * y
+
+        return Curve([x, y, z])
+    return _curve_3d
+
+
 def test_nonsingular():
     curve = Curve([(np.inf, np.inf, 1, 2, 2.0000000001, 3, np.nan, np.nan, 4, 4.00000000001, 20),
                    (np.inf, 0, 5, 6, 6.0000000001, 7, 10, np.nan, 8, 8.000000000001, np.nan)])
@@ -112,6 +124,21 @@ def test_curvature_circle_3d(circle_curve_3d):
 
     expected = np.ones(curve.size) * (1 / r)
     assert curve.curvature == pytest.approx(expected, abs=0.0005)
+
+
+def test_torsion_circle_2d(circle_curve_2d):
+    curve = circle_curve_2d()
+    assert np.allclose(curve.torsion, 0.0)
+
+
+def test_torsion_circle_3d(circle_curve_3d):
+    curve = circle_curve_3d()
+    assert np.allclose(curve.torsion, 0.0)
+
+
+def test_torsion_curve_3d(curve_3d):
+    curve = curve_3d()
+    assert not np.allclose(curve.torsion, 0.0)
 
 
 def test_tangent_2d():
@@ -185,6 +212,14 @@ def test_circle_2d_frenet12_dot_product_zero(circle_curve_2d):
 def test_circle_3d_frenet12_dot_product_zero(circle_curve_3d):
     curve = circle_curve_3d()
     assert np.allclose(rowdot(curve.frenet1, curve.frenet2), 0.0)
+
+
+def test_frenet_vectors_orthogonal_3d(curve_3d):
+    curve = curve_3d()
+
+    assert np.allclose(rowdot(curve.frenet1, curve.frenet2), 0.0)
+    assert np.allclose(rowdot(curve.frenet2, curve.frenet3), 0.0)
+    assert np.allclose(rowdot(curve.frenet1, curve.frenet3), 0.0)
 
 
 def test_coorientplane_2d():

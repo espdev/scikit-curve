@@ -529,6 +529,26 @@ class CurvePoint(Point):
 
     @property
     @_potentially_invalid
+    def binormal(self) -> _t.Optional[np.ndarray]:
+        """Returns binormal vector at the curve point
+
+        Returns
+        -------
+        binormal : np.ndarray
+            The 1xN array of binormal vector at the curve point
+
+        See Also
+        --------
+        Curve.binormal
+        normal
+        frenet3
+
+        """
+
+        return self.curve.binormal[self.idx]
+
+    @property
+    @_potentially_invalid
     def speed(self) -> _t.Optional[float]:
         """Returns the speed in the point
 
@@ -583,13 +603,31 @@ class CurvePoint(Point):
 
     @property
     @_potentially_invalid
+    def frenet3(self) -> _t.Optional[np.ndarray]:
+        """Returns the third Frenet vector (unit binormal vector) at the point
+
+        Returns
+        -------
+        e3 : np.ndarray
+            The third Frenet vector (unit binormal vector)
+
+        See Also
+        --------
+        Curve.frenet3
+
+        """
+
+        return self.curve.frenet3[self.idx]
+
+    @property
+    @_potentially_invalid
     def curvature(self) -> _t.Optional[float]:
-        """Returns the curve curvature value for this point
+        """Returns the curvature value at this point of the curve
 
         Returns
         -------
         k : float
-            The curve curvature in this point or NaN if the point not valid.
+            The curvature value at this point
 
         See Also
         --------
@@ -598,6 +636,24 @@ class CurvePoint(Point):
         """
 
         return self.curve.curvature[self.idx]
+
+    @property
+    @_potentially_invalid
+    def torsion(self) -> _t.Optional[float]:
+        """Returns the torsion value at this point of the curve
+
+        Returns
+        -------
+        tau : float
+            The torsion value at this point
+
+        See Also
+        --------
+        Curve.torsion
+
+        """
+
+        return self.curve.torsion[self.idx]
 
     @_potentially_invalid(raise_exc=True)
     def subcurve(self, other_point: 'CurvePoint', inclusive: bool = True) -> np.ndarray:
@@ -1246,6 +1302,34 @@ class Curve(abc.Sequence):
         return _diffgeom.normal(self)
 
     @cached_property
+    def binormal(self) -> np.ndarray:
+        r"""Returns the binormal vector at every point of the curve
+
+        .. math::
+            \overline{e_3}(t) = \gamma'''(t) - \langle \gamma'''(t), e_1(t) \rangle \, e_1(t)
+            - \langle \gamma'''(t), e_2(t) \rangle \, e_2(t)
+
+        Notes
+        -----
+        The binormal vector is always orthogonal to the tangent and normal vectors at every point of the curve.
+
+        Returns
+        -------
+        binormal : np.ndarray
+            The array MxN with binormal vector at every point of curve
+
+        See Also
+        --------
+        tangent
+        normal
+        frenet3
+        torsion
+
+        """
+
+        return _diffgeom.binormal(self)
+
+    @cached_property
     def speed(self) -> np.ndarray:
         """Returns Mx1 array of the speed at the time (at every curve point) as tangent vector's magnitude
 
@@ -1269,7 +1353,7 @@ class Curve(abc.Sequence):
 
     @cached_property
     def frenet1(self) -> np.ndarray:
-        r"""Returns the first Frenet vectors (tangent unit vectors) at every point of a curve
+        r"""Returns the first Frenet vector (tangent unit vector) at every point of the curve
 
         .. math::
 
@@ -1278,7 +1362,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         e1 : np.ndarray
-            The array of tangent unit vector at every curve points
+            The array of tangent unit vector at every curve point
 
         Raises
         ------
@@ -1289,6 +1373,7 @@ class Curve(abc.Sequence):
         tangent
         speed
         frenet2
+        frenet3
 
         """
 
@@ -1296,16 +1381,16 @@ class Curve(abc.Sequence):
 
     @cached_property
     def frenet2(self) -> np.ndarray:
-        r"""Returns the second Frenet vectors (normal unit vectors) at every point of a curve
+        r"""Returns the second Frenet vector (normal unit vector) at every point of the curve
 
         .. math::
 
-            e_2(t) = \frac{e1'(t)}{||e1'(t)||}
+            e_2(t) = \frac{e_1'(t)}{||e_1'(t)||}
 
         Returns
         -------
         e2 : np.ndarray
-            The MxN array of normal unit vector at every curve points
+            The MxN array of normal unit vector at every curve point
 
         Raises
         ------
@@ -1315,10 +1400,38 @@ class Curve(abc.Sequence):
         --------
         normal
         frenet1
+        frenet3
 
         """
 
         return _diffgeom.frenet2(self)
+
+    @cached_property
+    def frenet3(self) -> np.ndarray:
+        r"""Returns the third Frenet vector (binormal unit vector) at every point of the curve
+
+        .. math::
+
+            e_3(t) = \frac{\overline{e_3}(t)}{||\overline{e_3}(t)||}
+
+        Returns
+        -------
+        e2 : np.ndarray
+            The MxN array of normal unit vector at every curve point
+
+        Raises
+        ------
+        ValueError : Cannot compute unit vector if speed is equal to zero (division by zero)
+
+        See Also
+        --------
+        binormal
+        frenet1
+        frenet2
+
+        """
+
+        return _diffgeom.frenet3(self)
 
     @cached_property
     def curvature(self) -> np.ndarray:
@@ -1363,10 +1476,38 @@ class Curve(abc.Sequence):
         See Also
         --------
         normal
+        torsion
 
         """
 
         return _diffgeom.curvature(self)
+
+    @cached_property
+    def torsion(self) -> np.ndarray:
+        r"""Returns torsion at every point of the curve
+
+        The second generalized curvature is called torsion and measures the deviance of the curve
+        from being a plane curve. In other words, if the torsion is zero, the curve lies completely
+        in the same osculating plane (there is only one osculating plane for every point t).
+
+        It is defined as:
+
+        .. math::
+
+            \tau(t) = \chi_2(t) = \frac{\langle e_2'(t), e_3(t) \rangle}{\| \gamma'(t) \|}
+
+        Returns
+        -------
+        tau : np.ndarray
+            The array Mx1 of the torsion value at every curve point
+
+        See Also
+        --------
+        curvature
+
+        """
+
+        return _diffgeom.torsion(self)
 
     @classmethod
     def from_points(cls, points: _t.Sequence[Point], dtype: DataType = None) -> 'Curve':

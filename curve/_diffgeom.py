@@ -194,9 +194,35 @@ def normal(curve: 'Curve') -> np.array:
     if not curve:
         return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
-    dot_rdd_e1 = rowdot(curve.secondderiv, curve.frenet1, ndmin=2).T
+    sder = curve.secondderiv
+    e1 = curve.frenet1
 
-    return curve.secondderiv - dot_rdd_e1 * curve.frenet1
+    return sder - rowdot(sder, e1)[:, np.newaxis] * e1
+
+
+def binormal(curve: 'Curve') -> np.ndarray:
+    """Computes binormal vector at every point of a curve
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+
+    Returns
+    -------
+    binormal : np.ndarray
+        The array MxN with binormal vector at every point of curve
+
+    """
+
+    if not curve:
+        return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+    tder = curve.thirdderiv
+    e1 = curve.frenet1
+    e2 = curve.frenet2
+
+    return tder - rowdot(tder, e1)[:, np.newaxis] * e1 - rowdot(tder, e2)[:, np.newaxis] * e2
 
 
 def speed(curve: 'Curve') -> np.ndarray:
@@ -219,7 +245,19 @@ def speed(curve: 'Curve') -> np.ndarray:
 
     """
 
-    return np.linalg.norm(curve.firstderiv, axis=1)
+    return np.linalg.norm(curve.tangent, axis=1)
+
+
+def _frenet_vector_norm(v: np.ndarray, warn_msg: str) -> np.ndarray:
+    norm = np.linalg.norm(v, axis=1)
+    not_well_defined = np.isclose(norm, 0.0)
+    is_not_well_defined = np.any(not_well_defined)
+
+    if is_not_well_defined:
+        warnings.warn(warn_msg, DifferentialGeometryWarning, stacklevel=2)
+        norm[not_well_defined] = 1.0
+
+    return norm[:, np.newaxis]
 
 
 def frenet1(curve: 'Curve') -> np.ndarray:
@@ -235,30 +273,19 @@ def frenet1(curve: 'Curve') -> np.ndarray:
     e1 : np.ndarray
         The MxN array of tangent unit vectors for each curve points
 
-    Raises
-    ------
-    ValueError : Cannot compute unit vector if speed is equal to zero (division by zero)
-
     """
 
     if not curve:
         return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
-    norm = np.array(curve.speed)
+    not_well_defined_warn_msg = (
+        'Cannot calculate the first Frenet vectors (unit tangent vectors). '
+        'The curve has singularity and zero-length segments. '
+        'Use "Curve.nonsingular" method to remove singularity from the curve data.'
+    )
 
-    not_well_defined = np.isclose(norm, 0.0)
-    is_not_well_defined = np.any(not_well_defined)
-
-    if is_not_well_defined:
-        warnings.warn((
-            'Cannot calculate the first Frenet vectors (unit tangent vectors). '
-            'The curve has singularity and zero-length segments. '
-            'Use "Curve.nonsingular" method to remove singularity from the curve data.'
-        ), DifferentialGeometryWarning)
-
-        norm[not_well_defined] = 1.0
-
-    return curve.firstderiv / np.array(norm, ndmin=2).T
+    norm = _frenet_vector_norm(curve.tangent, not_well_defined_warn_msg)
+    return curve.tangent / norm
 
 
 def frenet2(curve: 'Curve') -> np.ndarray:
@@ -275,27 +302,54 @@ def frenet2(curve: 'Curve') -> np.ndarray:
 
     """
 
-    norm = np.linalg.norm(curve.normal, axis=1)
-    not_well_defined = np.isclose(norm, 0.0)
-    is_not_well_defined = np.any(not_well_defined)
+    if not curve:
+        return np.array([], ndmin=curve.ndim, dtype=np.float64)
 
-    if is_not_well_defined:
-        warnings.warn((
-            'Cannot calculate the second Frenet vectors (unit normal vectors). '
-            'The curve is straight line and normal vectors are not well defined. '
-        ), DifferentialGeometryWarning)
+    not_well_defined_warn_msg = (
+        'Cannot calculate the second Frenet vectors (unit normal vectors). '
+        'The curve is straight line and normal vectors are not well defined. '
+    )
 
-        norm[not_well_defined] = 1.0
-
-    e2 = curve.normal / np.array(norm, ndmin=2).T
+    norm = _frenet_vector_norm(curve.normal, not_well_defined_warn_msg)
+    e2 = curve.normal / norm
 
     # FIXME: what to do with not well defined the normal vectors?
 
     return e2
 
 
+def frenet3(curve: 'Curve') -> np.ndarray:
+    """Computes the third Frenet vector (binormal unit vector) at every point of a curve
+
+    Parameters
+    ----------
+        Curve object
+
+    Returns
+    -------
+    e3 : np.ndarray
+        The MxN array of binormal unit vector at every curve point
+
+    """
+
+    if not curve:
+        return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+    not_well_defined_warn_msg = (
+        'Cannot calculate the third Frenet vectors (unit binormal vectors). '
+        'May be the curve is straight line or a plane and binormal vectors are not well defined. '
+    )
+
+    norm = _frenet_vector_norm(curve.binormal, not_well_defined_warn_msg)
+    e3 = curve.binormal / norm
+
+    # FIXME: what to do with not well defined the binormal vectors?
+
+    return e3
+
+
 def curvature(curve: 'Curve') -> np.ndarray:
-    r"""Computes curvature for each point of a curve
+    """Computes the curvature at every point of a curve
 
     Parameters
     ----------
@@ -305,7 +359,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     k : np.ndarray
-        Array of the curvature values for each curve point
+        The array Mx1 with curvature value at every point of a curve
 
     """
 
@@ -325,9 +379,36 @@ def curvature(curve: 'Curve') -> np.ndarray:
     else:
         # Compute curvature for 3 or higher dimensional curve
         e1_grad = gradient(curve.frenet1)
-        k = np.linalg.norm(e1_grad, axis=1) / np.linalg.norm(curve.firstderiv, axis=1)
+        e1_grad_norm = np.linalg.norm(e1_grad, axis=1)
+        tangent_norm = np.linalg.norm(curve.tangent, axis=1)
+
+        k = e1_grad_norm / tangent_norm
 
     return k
+
+
+def torsion(curve: 'Curve') -> np.ndarray:
+    """Computes the torsion at every point of a curve
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+
+    Returns
+    -------
+    torsion : np.ndarray
+        The array Mx1 with torsion value at every point of a curve
+
+    """
+
+    if not curve:
+        return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+    e2_grad = gradient(curve.frenet2)
+    tangent_norm = np.linalg.norm(curve.tangent, axis=1)
+
+    return rowdot(e2_grad, curve.frenet3) / tangent_norm
 
 
 def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
