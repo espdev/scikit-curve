@@ -1008,7 +1008,7 @@ class Curve(abc.Sequence):
         if self.size != other.size:
             return False
 
-        return allequal(self.data, other.data)
+        return bool(allequal(self.data, other.data))
 
     def __add__(self, other: 'Curve') -> 'Curve':
         """Returns concatenation of the curve and other curve
@@ -1174,14 +1174,14 @@ class Curve(abc.Sequence):
 
     @property
     def is2d(self) -> bool:
-        """Returns True if the curve is plane
+        """Returns True if the curve is 2-dimensional
 
-        The plane curve is 2-dimensional curve (curve on plane).
+        The plane curve (2-dimensional) in XY plane
 
         Returns
         -------
         flag : bool
-            True if the curve is plane
+            True if the curve is 2-dimensional
 
         """
 
@@ -1189,14 +1189,14 @@ class Curve(abc.Sequence):
 
     @property
     def is3d(self) -> bool:
-        """Returns True if a curve is 3-dimensional
+        """Returns True if the curve is 3-dimensional
 
-        The spatial curve is 3-dimensional (curve in tri-dimensional space).
+        The spatial 3-dimensional curve (curve in tri-dimensional Euclidean space).
 
         Returns
         -------
         flag : bool
-            True if a curve is 3-space
+            True if the curve is 3-space
 
         """
 
@@ -1221,16 +1221,17 @@ class Curve(abc.Sequence):
     def t(self) -> np.ndarray:
         """Returns the natural parameter vector for the curve
 
-        Parametrization of a curve by the length of its arc.
+        Parametrization of the curve by the length of its arc.
 
         Returns
         -------
         t : np.ndarray
-            Natural parameter vector
+            The 1xM array natural parameter
 
         See Also
         --------
         chordlen
+        arclen
 
         """
 
@@ -1243,7 +1244,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         lengths : np.ndarray
-            The array with length of every the curve chord
+            The 1x(M-1) array with length of every the curve chord
 
         """
 
@@ -1273,7 +1274,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         fder : np.ndarray
-            The array MxN with first-order derivative at every point of curve
+            The MxN array with first-order derivative at every point of curve
 
         See Also
         --------
@@ -1292,7 +1293,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         sder : np.ndarray
-            The array MxN with second-order derivative at every point of curve
+            The MxN array with second-order derivative at every point of curve
 
         See Also
         --------
@@ -1310,7 +1311,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         tder : np.ndarray
-            The array MxN with third-order derivative at every point of curve
+            The MxN array with third-order derivative at every point of curve
 
         See Also
         --------
@@ -1332,7 +1333,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         tangent : np.ndarray
-            The array of tangent vector at every curve point
+            The MxN array of tangent vector at every curve point
 
         See Also
         --------
@@ -1358,7 +1359,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         normal : np.ndarray
-            The array MxN with normal vector at every point of curve
+            The MxN array with normal vector at every point of curve
 
         See Also
         --------
@@ -1385,7 +1386,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         binormal : np.ndarray
-            The array MxN with binormal vector at every point of curve
+            The MxN array with binormal vector at every point of curve
 
         See Also
         --------
@@ -1410,7 +1411,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         speed : np.ndarray
-            The array Mx1 with speed at every curve point
+            The Mx1 array with speed at every curve point
 
         See Also
         --------
@@ -1431,7 +1432,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         e1 : np.ndarray
-            The array of tangent unit vector at every curve point
+            The MxN array of tangent unit vector at every curve point
 
         Raises
         ------
@@ -1540,7 +1541,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         k : np.ndarray
-            The array Mx1 of the curvature value at every curve point
+            The 1xM array of the curvature value at every curve point
 
         See Also
         --------
@@ -1568,7 +1569,7 @@ class Curve(abc.Sequence):
         Returns
         -------
         tau : np.ndarray
-            The array Mx1 of the torsion value at every curve point
+            The 1xM array of the torsion value at every curve point
 
         See Also
         --------
@@ -1600,12 +1601,11 @@ class Curve(abc.Sequence):
             return Curve(np.flipud(self._data))
 
     def coorientplane(self, axis1: int = 0, axis2: int = 1, inplace: bool = False) -> InplaceRetType:
-        """Co-orients the curve to a plane automatically
+        """Co-orients the curve to given plane orientation
 
         Notes
         -----
-        This method is applicable to 2 or higher dimensional curves.
-        By default the method orients a curve to XY plane orientation.
+        By default the curve orients to XY plane orientation.
 
         Parameters
         ----------
@@ -1624,7 +1624,7 @@ class Curve(abc.Sequence):
         Raises
         ------
         ValueError : Curve has the dimension less than 2
-        IndexError : Axis out of dimensions
+        IndexError : Axis out of the curve dimensions
 
         """
 
@@ -2044,7 +2044,10 @@ class Curve(abc.Sequence):
     def invalidate(self):
         """Invalidates the curve parameters cache
 
-        All parameters such as tangent, normal, curvature, etc after call this method will be recalculate.
+        Notes
+        -----
+        All parameters such as tangent, normal, curvature, etc
+        after call this method will be re-calculated.
 
         """
 
