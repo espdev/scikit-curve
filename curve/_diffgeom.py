@@ -68,7 +68,7 @@ def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
 
 
 def chordlen(curve: 'Curve') -> np.ndarray:
-    """Computes length for each chord (segment) of a curve
+    """Computes length for every chord (segment) of a curve
 
     Notes
     -----
@@ -82,7 +82,7 @@ def chordlen(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     lengths : np.ndarray
-        Numpy vector with lengths for each curve segment
+        The array 1x(M-1) with lengths for every curve segment
 
     """
 
@@ -156,8 +156,8 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
 
     Returns
     -------
-    dr_dt : np.ndarray
-        MxN derivatives array
+    grad : np.ndarray
+        The array MxN of gradient vectors
 
     """
 
@@ -182,7 +182,7 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
 
 
 def normal(curve: 'Curve') -> np.array:
-    """Computes the normal vectors for each point of curve
+    """Computes the normal vector at every point of a curve
 
     Notes
     -----
@@ -197,7 +197,7 @@ def normal(curve: 'Curve') -> np.array:
     Returns
     -------
     normal : np.ndarray
-        The array MxN with normal vectors for each point of curve
+        The array MxN with normal vector at every point of a curve
 
     """
 
@@ -221,7 +221,7 @@ def binormal(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     binormal : np.ndarray
-        The array MxN with binormal vector at every point of curve
+        The array MxN with binormal vector at every point of a curve
 
     """
 
@@ -236,7 +236,7 @@ def binormal(curve: 'Curve') -> np.ndarray:
 
 
 def speed(curve: 'Curve') -> np.ndarray:
-    """Computes the speed at the time (in each curve point)
+    """Computes the speed at the time (at every curve point)
 
     Notes
     -----
@@ -251,7 +251,7 @@ def speed(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     speed : np.ndarray
-        The array with speed in each curve point
+        The array with speed at every curve point
 
     """
 
@@ -271,7 +271,7 @@ def _frenet_vector_norm(v: np.ndarray, warn_msg: str) -> np.ndarray:
 
 
 def frenet1(curve: 'Curve') -> np.ndarray:
-    """Computes the first Frenet vectors (tangent unit vectors) for each point of a curve
+    """Computes the first Frenet vector (tangent unit vector) at every point of a curve
 
     Parameters
     ----------
@@ -281,7 +281,7 @@ def frenet1(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     e1 : np.ndarray
-        The MxN array of tangent unit vectors for each curve points
+        The MxN array of tangent unit vector ar every curve point
 
     """
 
@@ -299,7 +299,7 @@ def frenet1(curve: 'Curve') -> np.ndarray:
 
 
 def frenet2(curve: 'Curve') -> np.ndarray:
-    """Computes the second Frenet vectors (normal unit vectors) for each point of a curve
+    """Computes the second Frenet vector (normal unit vector) at every point of a curve
 
     Parameters
     ----------
@@ -308,7 +308,7 @@ def frenet2(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     e2 : np.ndarray
-        The MxN array of normal unit vectors for each curve points
+        The MxN array of normal unit vector at every curve point
 
     """
 
@@ -369,7 +369,7 @@ def curvature(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     k : np.ndarray
-        The array Mx1 with curvature value at every point of a curve
+        The array 1xM with curvature value at every point of a curve
 
     """
 
@@ -408,7 +408,7 @@ def torsion(curve: 'Curve') -> np.ndarray:
     Returns
     -------
     torsion : np.ndarray
-        The array Mx1 with torsion value at every point of a curve
+        The array 1xM with torsion value at every point of a curve
 
     """
 
@@ -422,7 +422,7 @@ def torsion(curve: 'Curve') -> np.ndarray:
 
 
 def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
-    """Returns True if a curve co-oriented to a plane
+    """Returns True if a curve co-oriented to the given plane
 
     Notes
     -----
