@@ -15,6 +15,7 @@ Currently, the following interpolation methods are supported:
 """
 
 import typing as ty
+import warnings
 
 import numpy as np
 import scipy.interpolate as interp
@@ -28,6 +29,11 @@ InterpPType = ty.Union[np.ndarray, int]
 
 class InterpolationError(Exception):
     """Any interpolation errors
+    """
+
+
+class InterpolationWarning(RuntimeWarning):
+    """Any interpolation warning
     """
 
 
@@ -252,6 +258,7 @@ def interpolate(curve: 'Curve', t: InterpPType, method: str, **kwargs) -> 'Curve
     curve_type = type(curve)
 
     if not curve:
+        warnings.warn('The curve is empty. Interpolation is not possible.', InterpolationWarning)
         return curve_type(ndmin=curve.ndim, dtype=curve.dtype)
 
     if curve.size == 1:
