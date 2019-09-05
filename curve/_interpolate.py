@@ -202,13 +202,16 @@ def spline_interpolator(curve: 'Curve', w: ty.Optional[np.ndarray] = None, k: in
 
     """
 
+    splines = [
+        interp.InterpolatedUnivariateSpline(curve.t, y, w=w, k=k, ext=2, check_finite=False)
+        for y in curve.values()
+    ]
+
     def _interpolator(grid):
         interp_data = np.empty((grid.size, curve.ndim))
 
-        for i in range(curve.ndim):
-            y = curve.values(i)
-            sp = interp.InterpolatedUnivariateSpline(curve.t, y, w=w, k=k, ext=2, check_finite=False)
-            interp_data[:, i] = sp(grid)
+        for i, spline in enumerate(splines):
+            interp_data[:, i] = spline(grid)
 
         return type(curve)(interp_data, dtype=curve.dtype)
 
