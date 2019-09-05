@@ -32,9 +32,6 @@ class InterpolationError(Exception):
 
 
 def _make_interp_grid(curve: 'Curve', t: InterpPType) -> np.ndarray:
-    if curve.size == 1:
-        raise ValueError('Cannot interpolate curve with single point.')
-
     if isinstance(t, int):
         if t < 2:
             raise ValueError('There must be at least two interpolation points.')
@@ -256,6 +253,9 @@ def interpolate(curve: 'Curve', t: InterpPType, method: str, **kwargs) -> 'Curve
 
     if not curve:
         return curve_type(ndmin=curve.ndim, dtype=curve.dtype)
+
+    if curve.size == 1:
+        raise ValueError('Cannot interpolate curve with single point.')
 
     if method not in _INTERPOLATORS:
         raise ValueError('Unknown interpolation method "{}"'.format(method))
