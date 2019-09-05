@@ -1828,8 +1828,8 @@ class Curve(abc.Sequence):
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
 
-    def values(self, axis: _t.Union[int, Axis]) -> np.ndarray:
-        """Returns the vector with all values for given axis
+    def values(self, axis: _t.Union[int, Axis, None] = None) -> _t.Union[np.ndarray, abc.Iterator]:
+        """Returns the vector with all values for given axis or the iterator along all axes
 
         Notes
         -----
@@ -1840,13 +1840,13 @@ class Curve(abc.Sequence):
 
         Parameters
         ----------
-        axis : int, Axis
-            The axis for getting values
+        axis : int, Axis, None
+            The axis for getting values. If it is not set iterator along all axes will be returned
 
         Returns
         -------
-        values : np.ndarray
-            The vector with all values for given axis
+        values : np.ndarray, iterable
+            The vector with all values for given axis or iterator along all axes
 
         Examples
         --------
@@ -1862,14 +1862,17 @@ class Curve(abc.Sequence):
 
         """
 
-        if not isinstance(axis, int):
+        if axis is not None and not isinstance(axis, int):
             raise ValueError('Axis must be an integer')
 
-        if axis >= self.ndim:
+        if axis is not None and axis >= self.ndim:
             raise ValueError(
                 'The axis {} is out of the curve dimensions {}'.format(axis, self.ndim))
 
-        return self._data[:, axis]
+        if axis is not None:
+            return self._data[:, axis]
+        else:
+            return iter(self._data[:, i] for i in range(self.ndim))
 
     def insertdim(self, axis: int, values: _t.Union[np.ndarray, _t.Sequence[NumberType], None] = None) -> 'Curve':
         """Insert new dimension to the curve and returns new curve
