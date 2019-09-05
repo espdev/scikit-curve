@@ -8,62 +8,6 @@ from curve import Curve, Axis, DifferentialGeometryWarning
 from curve import dot1d
 
 
-@pytest.fixture
-def circle_curve_2d():
-    def _circle_curve_2d(n=100, r=10):
-        t = np.linspace(0.0, 2*np.pi, n)
-        x = np.cos(t) * r
-        y = np.sin(t) * r
-
-        return Curve([x, y])
-    return _circle_curve_2d
-
-
-@pytest.fixture
-def circle_curve_3d():
-    def _circle_curve_3d(n=200, r=10, theta=0.73):
-        t = np.linspace(0, 2 * np.pi, n)
-        x = np.cos(t) * r
-        y = np.sin(t) * r
-        z = np.ones_like(t)
-
-        rx = np.array([
-            [1, 0, 0],
-            [0, np.cos(theta), -np.sin(theta)],
-            [0, np.sin(theta), np.cos(theta)],
-        ])
-
-        ry = np.array([
-            [np.cos(theta), 0, np.sin(theta)],
-            [0, 1, 0],
-            [-np.sin(theta), 0, np.cos(theta)],
-        ])
-
-        curve = Curve([x, y, z])
-
-        for i, p in enumerate(curve):
-            data = rx @ p.data
-            data = ry @ data
-
-            curve[i] = data
-
-        return curve
-
-    return _circle_curve_3d
-
-
-@pytest.fixture
-def curve_3d():
-    def _curve_3d(n=200):
-        t = np.linspace(0, 2 * np.pi, n)
-        x = np.cos(t)
-        y = np.sin(t)
-        z = x * y
-
-        return Curve([x, y, z])
-    return _curve_3d
-
-
 def test_nonsingular():
     curve = Curve([(np.inf, np.inf, 1, 2, 2.0000000001, 3, np.nan, np.nan, 4, 4.00000000001, 20),
                    (np.inf, 0, 5, 6, 6.0000000001, 7, 10, np.nan, 8, 8.000000000001, np.nan)])
