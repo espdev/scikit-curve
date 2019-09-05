@@ -2086,7 +2086,7 @@ class Curve(abc.Sequence):
 
         return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
 
-    def interpolate(self, t: _t.Union[np.ndarray, int], method: str = 'linear', **kwargs) -> 'Curve':
+    def interpolate(self, ti: _t.Union[np.ndarray, int], method: str = 'linear', **kwargs) -> 'Curve':
         """Interpolates the curve data
 
         The method interpolates the curve data by given grid or
@@ -2094,7 +2094,7 @@ class Curve(abc.Sequence):
 
         Parameters
         ----------
-        t : np.ndarray, int
+        ti : np.ndarray, int
             Interpolation grid or the number of points. In other words, it is parametrization data-vector:
                 * If it is ``np.ndarray`` that is interpreted as grid of interpolation.
                   The grid should be 1xM array with increasing ordered values.
@@ -2158,7 +2158,7 @@ class Curve(abc.Sequence):
 
         """
 
-        return _interpolate.interpolate(self, t=t, method=method, **kwargs)
+        return _interpolate.interpolate(self, ti=ti, method=method, **kwargs)
 
     def invalidate(self):
         """Invalidates the curve parameters cache
