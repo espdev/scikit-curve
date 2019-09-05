@@ -2097,7 +2097,14 @@ class Curve(abc.Sequence):
                   The grid should be 1xM array with increasing ordered values.
                 * If it is ``int`` that is interpreted as the number of points in uniformly interpolated curve.
         method : str
-            Interpolation method
+            Interpolation method:
+                * ``linear`` -- linear interpolation
+                * ``cubic`` -- cubic spline interpolation
+                * ``hermite`` -- piecewise-cubic interpolation matching values and first derivatives
+                * ``akima`` -- Akima interpolation
+                * ``pchip`` -- PCHIP 1-d monotonic cubic interpolation
+                * ``spline`` -- General k-order weighted spline interpolation
+
         **kwargs : mapping
             Additional interpolator parameters dependent on interpolation method
 

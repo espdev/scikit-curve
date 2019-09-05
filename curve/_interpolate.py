@@ -3,6 +3,15 @@
 """
 This module provides routines for n-dimensional curve interpolation
 
+Currently, the following interpolation methods are supported:
+
+    * ``linear`` -- linear interpolation
+    * ``cubic`` -- cubic spline interpolation
+    * ``hermite`` -- piecewise-cubic interpolation matching values and first derivatives
+    * ``akima`` -- Akima interpolation
+    * ``pchip`` -- PCHIP 1-d monotonic cubic interpolation
+    * ``spline`` -- General k-order spline interpolation
+
 """
 
 import typing as ty
@@ -112,7 +121,7 @@ def cubic_interpolator(curve: 'Curve', bc_type='not-a-knot'):
     return interp.CubicSpline(curve.t, curve.data, axis=0, bc_type=bc_type, extrapolate=False)
 
 
-def hermit_interpolator(curve: 'Curve'):
+def hermite_interpolator(curve: 'Curve'):
     """Piecewise-cubic interpolator matching values and first derivatives
 
     See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.CubicHermiteSpline.html
@@ -125,7 +134,7 @@ def hermit_interpolator(curve: 'Curve'):
     Returns
     -------
     interpolator : CubicHermiteSpline
-        Hermit cubic spline interpolator object
+        Hermite cubic spline interpolator object
 
     """
 
@@ -164,7 +173,7 @@ def pchip_interpolator(curve: 'Curve'):
 
     Returns
     -------
-    interpolator : Akima1DInterpolator
+    interpolator : PchipInterpolator
         PCHIP interpolator object
 
     """
@@ -172,12 +181,47 @@ def pchip_interpolator(curve: 'Curve'):
     return interp.PchipInterpolator(curve.t, curve.data, axis=0, extrapolate=False)
 
 
+def spline_interpolator(curve: 'Curve', w: ty.Optional[np.ndarray] = None, k: int = 3):
+    """General k-order spline interpolation
+
+    See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.InterpolatedUnivariateSpline.html
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+    w : np.ndarray, None
+        Weights for spline fitting. Must be positive. If None (default), weights are all equal
+    k : int
+        Degree of the spline. Must be 1 <= k <= 5
+
+    Returns
+    -------
+    interpolator : callable
+        interpolation function
+
+    """
+
+    def _interpolator(grid):
+        interp_data = np.empty((grid.size, curve.ndim))
+
+        for i in range(curve.ndim):
+            y = curve.values(i)
+            sp = interp.InterpolatedUnivariateSpline(curve.t, y, w=w, k=k, ext=2, check_finite=False)
+            interp_data[:, i] = sp(grid)
+
+        return type(curve)(interp_data, dtype=curve.dtype)
+
+    return _interpolator
+
+
 _INTERPOLATORS = {
     'linear': linear_interpolator,
     'cubic': cubic_interpolator,
-    'hermit': hermit_interpolator,
+    'hermite': hermite_interpolator,
     'akima': akima_interpolator,
     'pchip': pchip_interpolator,
+    'spline': spline_interpolator,
 }
 
 

@@ -9,7 +9,7 @@ from curve import interp_methods
 @pytest.mark.parametrize('ndmin', [None, 2, 3, 4])
 @pytest.mark.parametrize('method', interp_methods())
 def test_interp(ndmin, method):
-    curve = Curve([[1, 3, 6], [1, 3, 6]], ndmin=ndmin)
-    expected = Curve([[1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6]], ndmin=ndmin)
+    curve = Curve([[1, 3, 6, 9], [1, 3, 6, 9]], ndmin=ndmin)
+    expected = Curve([[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9]], ndmin=ndmin)
 
-    assert curve.interpolate(6, method=method) == expected
+    assert curve.interpolate(9, method=method) == expected
