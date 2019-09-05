@@ -20,6 +20,7 @@ from cached_property import cached_property
 from curve._distance import MetricType, get_metric
 from curve._numeric import allequal
 from curve import _diffgeom
+from curve import _interpolate
 
 
 NumberType = _t.Union[int, float, np.number]
@@ -747,13 +748,14 @@ class Curve(abc.Sequence):
     curve_data : CurveDataType
         The data of n-dimensional curve (2 or higher). The data might be represented in the different types:
 
-        * The sequence of the vectors with coordinates for every dimension.
-          ``Sequence[Sequence[NumberType]]`` or ``Sequence[numpy.ndarray]``
+        * The sequence of the vectors with coordinates for every dimension:
+          ``[X, Y, Z, ..., N]`` where X, Y, ... are 1xM arrays.
         * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension.
           N must be at least 2 (a plane curve).
         * Another Curve object. It creates the copy of another curve by default (see ``copy`` argument).
 
-        If the data is not set empty curve will be created with ndmin dimensions (2 by default, see ``ndmin`` argument).
+        If the data is not set empty curve will be created with ndmin dimensions
+        (2 by default, see ``ndmin`` argument).
 
     ndmin : int
         The minimum curve dimension. By default it is ``None`` and equal to input data dimension.
@@ -1256,10 +1258,32 @@ class Curve(abc.Sequence):
         --------
         chordlen
         arclen
+        tn
 
         """
 
         return _diffgeom.natural_parametrization(self, chord_lengths=self.chordlen)
+
+    @cached_property
+    def tn(self) -> np.ndarray:
+        """Returns the normalized natural parameter vector for the curve
+
+        Parametrization of the curve by the length of its arc normalized to 1.0.
+
+        Returns
+        -------
+        tn : np.ndarray
+            The 1xM array normalized natural parameter
+
+        See Also
+        --------
+        chordlen
+        arclen
+        t
+
+        """
+
+        return self.t / self.t[-1]
 
     @cached_property
     def chordlen(self) -> np.ndarray:
@@ -2058,6 +2082,73 @@ class Curve(abc.Sequence):
         """
 
         return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
+
+    def interpolate(self, t: _t.Union[np.ndarray, int], method: str = 'linear', **kwargs) -> 'Curve':
+        """Interpolates the curve data
+
+        The method interpolates the curve data by given grid or
+        given number of points on uniformly interpolated curve.
+
+        Parameters
+        ----------
+        t : np.ndarray, int
+            Interpolation grid or the number of points. In other words, it is parametrization data-vector:
+                * If it is ``np.ndarray`` that is interpreted as grid of interpolation.
+                  The grid should be 1xM array with increasing ordered values.
+                * If it is ``int`` that is interpreted as the number of points in uniformly interpolated curve.
+        method : str
+            Interpolation method
+        **kwargs : mapping
+            Additional interpolator parameters dependent on interpolation method
+
+        Returns
+        -------
+        curve : Curve
+            Interpolated curve
+
+        Raises
+        ------
+        ValueError : invalid data or parameters
+        InterpolationError : any computation of interpolation errors
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> curve = Curve([[1, 3, 6], [1, 3, 6]])
+            >>> curve
+            Curve([[1. 1.]
+                   [3. 3.]
+                   [6. 6.]], size=3, ndim=2, dtype=float64)
+
+            >>> curve.interpolate(t=6)
+            Curve([[1. 1.]
+                   [2. 2.]
+                   [3. 3.]
+                   [4. 4.]
+                   [5. 5.]
+                   [6. 6.]], size=6, ndim=2, dtype=float64)
+
+        .. code-block:: python
+
+            >>> curve = Curve([[1, 3, 6], [1, 3, 6]], ndmin=3)
+            >>> curve
+            Curve([[1. 1. 0.]
+                   [3. 3. 0.]
+                   [6. 6. 0.]], size=3, ndim=3, dtype=float64)
+
+            >>> curve.interpolate(t=6)
+            Curve([[1. 1. 0.]
+                   [2. 2. 0.]
+                   [3. 3. 0.]
+                   [4. 4. 0.]
+                   [5. 5. 0.]
+                   [6. 6. 0.]], size=6, ndim=3, dtype=float64)
+
+        """
+
+        return _interpolate.interpolate(self, t=t, method=method, **kwargs)
 
     def invalidate(self):
         """Invalidates the curve parameters cache
