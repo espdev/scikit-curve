@@ -47,6 +47,36 @@ class InterpolationWarning(RuntimeWarning):
 
 class InterpolationGrid:
     """Interpolation grid interface
+
+    The interface for all classes which create interpolation grids.
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+        class LinspaceGrid(InterpolationGrid):
+            def __init__(self, pcount):
+                '''The constructor is used for initialization and setup'''
+                self.pcount = pcount
+
+            def __call__(self, curve):
+                '''The __call__ method is used for creating an interpolation grid'''
+                return np.linspace(0, curve.arclen, self.pcount)
+
+        curve = Curve(...)
+
+        grid = LinspaceGrid()
+        grid_data = grid(curve)
+
+        # or use it in `Curve.interpolate` method:
+        curve_i = curve.interpolate(grid)
+
+    See Also
+    --------
+    InterpolationUniformGrid
+    ExtrapolationUniformGrid
+
     """
 
     def __call__(self, curve: 'Curve') -> np.ndarray:
