@@ -232,7 +232,7 @@ def linear_interpolator_factory(curve: 'Curve', *,
 
     """
 
-    cumarc_norm = np.hstack((0, np.cumsum(curve.chordlen)))
+    cumarc = curve.t
 
     def _interpolator(interp_grid: np.ndarray):
         if not extrapolate:
@@ -245,7 +245,7 @@ def linear_interpolator_factory(curve: 'Curve', *,
                 drop_indices = np.flatnonzero((interp_grid < 0) | (interp_grid > curve.arclen))
                 interp_grid = np.delete(interp_grid, drop_indices)
 
-        tbins = np.digitize(interp_grid, cumarc_norm)
+        tbins = np.digitize(interp_grid, cumarc)
 
         n = curve.size
 
@@ -253,7 +253,7 @@ def linear_interpolator_factory(curve: 'Curve', *,
         tbins[(tbins >= n) | np.isclose(interp_grid, 1)] = n - 1
         tbins -= 1
 
-        s = (interp_grid - cumarc_norm[tbins]) / curve.chordlen[tbins]
+        s = (interp_grid - cumarc[tbins]) / curve.chordlen[tbins]
 
         tbins_data = curve.data[tbins, :]
         tbins1_data = curve.data[tbins + 1, :]
