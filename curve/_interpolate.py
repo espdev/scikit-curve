@@ -481,6 +481,7 @@ def interpolate(curve: 'Curve', ti: InterpPType, method: str, **kwargs) -> 'Curv
 
     interpolator_factory = get_interpolator_factory(method)
     interpolator = interpolator_factory(curve, **kwargs)
+
     interp_grid = _make_interp_grid(curve, ti)
 
     try:
