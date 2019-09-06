@@ -3,7 +3,7 @@
 """
 This module provides routines for n-dimensional curve interpolation
 
-Currently, the following interpolation methods are supported:
+The following interpolation methods are available out of the box:
 
     * ``linear`` -- linear interpolation
     * ``cubic`` -- cubic spline interpolation
@@ -15,7 +15,9 @@ Currently, the following interpolation methods are supported:
 """
 
 import typing as ty
+from collections import abc
 import warnings
+import functools
 
 import numpy as np
 import scipy.interpolate as interp
@@ -25,6 +27,8 @@ if ty.TYPE_CHECKING:
 
 
 InterpPType = ty.Union[np.ndarray, int]
+
+_INTERPOLATORS = {}  # type: ty.Dict[str, abc.Callable]
 
 
 class InterpolationError(Exception):
@@ -128,7 +132,28 @@ def _make_interp_grid(curve: 'Curve', ti: InterpPType) -> np.ndarray:
     return grid
 
 
-def linear_interpolator(curve: 'Curve', extrapolate: bool = True):
+def register_interpolator_factory(method: str):
+    """Registers interpolator factory
+
+    This decorator can be used for registering custom interpolators.
+
+    Parameters
+    ----------
+    method : str
+        interpolation method
+
+    """
+
+    def decorator(func):
+        if method in _INTERPOLATORS:
+            raise ValueError('"{}" interpolation method already registered'.format(method))
+        _INTERPOLATORS[method] = func
+    return decorator
+
+
+@register_interpolator_factory(method='linear')
+def linear_interpolator_factory(curve: 'Curve', *,
+                                extrapolate: bool = True):
     """Linearly interpolates a n-dimensional curve data
 
     Parameters
@@ -181,9 +206,10 @@ def linear_interpolator(curve: 'Curve', extrapolate: bool = True):
     return _interpolator
 
 
-def cubic_interpolator(curve: 'Curve',
-                       bc_type='not-a-knot',
-                       extrapolate: ty.Union[bool, str, None] = None):
+@register_interpolator_factory(method='cubic')
+def cubic_interpolator_factory(curve: 'Curve', *,
+                               bc_type='not-a-knot',
+                               extrapolate: ty.Union[bool, str, None] = None):
     """Cubic spline interpolator
 
     Parameters
@@ -219,8 +245,9 @@ def cubic_interpolator(curve: 'Curve',
     return interp.CubicSpline(curve.t, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
 
 
-def hermite_interpolator(curve: 'Curve',
-                         extrapolate: ty.Union[bool, str, None] = None):
+@register_interpolator_factory(method='hermite')
+def hermite_interpolator_factory(curve: 'Curve', *,
+                                 extrapolate: ty.Union[bool, str, None] = None):
     """Piecewise-cubic interpolator matching values and first derivatives
 
     Parameters
@@ -253,7 +280,8 @@ def hermite_interpolator(curve: 'Curve',
     return interp.CubicHermiteSpline(curve.t, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
 
 
-def akima_interpolator(curve: 'Curve'):
+@register_interpolator_factory(method='akima')
+def akima_interpolator_factory(curve: 'Curve'):
     """Akima interpolator
 
     Parameters
@@ -281,7 +309,9 @@ def akima_interpolator(curve: 'Curve'):
     return interp.Akima1DInterpolator(curve.t, curve.data, axis=0)
 
 
-def pchip_interpolator(curve: 'Curve', extrapolate: ty.Optional[bool] = None):
+@register_interpolator_factory(method='pchip')
+def pchip_interpolator_factory(curve: 'Curve', *,
+                               extrapolate: ty.Optional[bool] = None):
     """PCHIP 1-d monotonic cubic interpolation
 
     Parameters
@@ -312,10 +342,11 @@ def pchip_interpolator(curve: 'Curve', extrapolate: ty.Optional[bool] = None):
     return interp.PchipInterpolator(curve.t, curve.data, axis=0, extrapolate=extrapolate)
 
 
-def spline_interpolator(curve: 'Curve',
-                        w: ty.Optional[np.ndarray] = None,
-                        k: int = 3,
-                        extrapolate: ty.Union[int, str] = 'extrapolate'):
+@register_interpolator_factory(method='spline')
+def spline_interpolator_factory(curve: 'Curve', *,
+                                w: ty.Optional[np.ndarray] = None,
+                                k: int = 3,
+                                extrapolate: ty.Union[int, str] = 'extrapolate'):
     """General weighted k-order spline interpolation
 
     Parameters
@@ -363,14 +394,53 @@ def spline_interpolator(curve: 'Curve',
     return _interpolator
 
 
-_INTERPOLATORS = {
-    'linear': linear_interpolator,
-    'cubic': cubic_interpolator,
-    'hermite': hermite_interpolator,
-    'akima': akima_interpolator,
-    'pchip': pchip_interpolator,
-    'spline': spline_interpolator,
-}
+def interp_methods() -> ty.List[str]:
+    """Returns the list of interpolation methods
+
+    Returns
+    -------
+    methods : List[str]
+        The list of interpolation methods
+
+    """
+
+    return list(_INTERPOLATORS.keys())
+
+
+def get_interpolator_factory(method: str, **kwargs) -> abc.Callable:
+    """Returns the interpolator factory for given method
+
+    Parameters
+    ----------
+    method : str
+        Interpolation method
+    kwargs : mapping
+        Additional arguments for construct interpolator. It is dependent from method.
+
+    Returns
+    -------
+    interpolator_factory : callable
+        Interpolator factory function
+
+    See Also
+    --------
+    interp_methods
+
+    Raises
+    ------
+    NameError : If interpolation method is unknown
+
+    """
+
+    if method not in _INTERPOLATORS:
+        raise NameError('Cannot find interpolation method "{}"'.format(method))
+
+    interpolator_factory = _INTERPOLATORS[method]
+
+    if not kwargs:
+        return interpolator_factory
+    else:
+        return functools.partial(interpolator_factory, **kwargs)
 
 
 def interpolate(curve: 'Curve', ti: InterpPType, method: str, **kwargs) -> 'Curve':
@@ -409,7 +479,8 @@ def interpolate(curve: 'Curve', ti: InterpPType, method: str, **kwargs) -> 'Curv
     if method not in _INTERPOLATORS:
         raise ValueError('Unknown interpolation method "{}"'.format(method))
 
-    interpolator = _INTERPOLATORS[method](curve, **kwargs)
+    interpolator_factory = get_interpolator_factory(method)
+    interpolator = interpolator_factory(curve, **kwargs)
     interp_grid = _make_interp_grid(curve, ti)
 
     try:
@@ -418,16 +489,3 @@ def interpolate(curve: 'Curve', ti: InterpPType, method: str, **kwargs) -> 'Curv
         raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
 
     return curve_type(interp_data, dtype=curve.dtype)
-
-
-def interp_methods() -> ty.List[str]:
-    """Returns the list of interpolation methods
-
-    Returns
-    -------
-    methods : List[str]
-        The list of interpolation methods
-
-    """
-
-    return list(_INTERPOLATORS.keys())
