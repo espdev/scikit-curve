@@ -15,7 +15,7 @@ from curve import make_uniform_interp_grid, interp_methods
     (5, (4, 4), 'length', [-2.82842712, -1.41421356, 0., 1.41421356, 2.82842712, 4.24264069, 5.65685425, 7.07106781, 8.48528137]),
 ])
 def test_make_uniform_interp_grid(pcount, extrap_size, extrap_units, expected):
-    curve = Curve([(1, 3, 5), (1, 3, 5)])
+    curve = Curve([(1, 3, 5)] * 2)
 
     grid = make_uniform_interp_grid(
         curve, pcount, extrap_size=extrap_size, extrap_units=extrap_units)
@@ -26,7 +26,23 @@ def test_make_uniform_interp_grid(pcount, extrap_size, extrap_units, expected):
 @pytest.mark.parametrize('ndmin', [None, 2, 3, 4])
 @pytest.mark.parametrize('method', interp_methods())
 def test_interp(ndmin, method):
-    curve = Curve([[1, 3, 6, 9], [1, 3, 6, 9]], ndmin=ndmin)
-    expected = Curve([[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9]], ndmin=ndmin)
+    curve = Curve([(1, 3, 6, 9)] * 2, ndmin=ndmin)
+    expected = Curve([(1, 2, 3, 4, 5, 6, 7, 8, 9)] * 2, ndmin=ndmin)
 
     assert curve.interpolate(9, method=method) == expected
+
+
+@pytest.mark.parametrize('method', [
+    'linear',
+    'cubic',
+    'hermite',
+    'pchip',
+    'spline',
+])
+def test_extrap(method):
+    curve = Curve([(1, 3, 5, 7, 9)] * 2)
+    grid = make_uniform_interp_grid(curve, pcount=9, extrap_size=(3, 3), extrap_units='points')
+
+    expected = [(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)] * 2
+
+    assert curve.interpolate(grid, method) == Curve(expected)
