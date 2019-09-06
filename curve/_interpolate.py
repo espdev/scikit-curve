@@ -26,7 +26,11 @@ if ty.TYPE_CHECKING:
     from curve._base import Curve
 
 
-InterpPType = ty.Union[np.ndarray, int, 'InterpolationUniformGrid']
+InterpGridType = ty.Union[
+    np.ndarray,
+    int,
+    'InterpolationGrid',
+]
 
 _INTERPOLATORS = {}  # type: ty.Dict[str, abc.Callable]
 
@@ -41,103 +45,129 @@ class InterpolationWarning(RuntimeWarning):
     """
 
 
-class InterpolationUniformGrid:
-    """The helper class for creating uniform interpolation grids
+class InterpolationGrid:
+    """Interpolation grid interface
+    """
 
-    This is helper class for creating uniform 1-d grids for interpolating of curves.
+    def __call__(self, curve: 'Curve') -> np.ndarray:
+        raise NotImplementedError
 
-    The interpolation grid vector can be make from the number of points or from the chord length.
-    Also extrapolation pieces can be make from the number of points or as the piece lengths.
+
+class InterpolationUniformGrid(InterpolationGrid):
+    """The helper class to create uniform interpolation grid
+
+    The helper class to create 1-d uniform grid that can be used for interpolating curves.
 
     Parameters
     ----------
-    pcount_len : int, float
-        The number of points or the length of chord
-    extrap_left : int, float
-        The number of points or the length of left extrapolation piece
-    extrap_right : int, float
-        The number of points or the length of right extrapolation piece
-    interp_units : str
-        The units for representation of parameters:
-            ``points`` {default} -- ``pcount_len`` is interpreted as number of points
-            ``length`` {default} -- ``pcount_len`` are interpreted as chord length
-    extrap_units : str
-        The units for representation of parameters:
-            ``points`` {default} -- ``extrap_left/extrap_right`` is interpreted as number of points
-            ``length`` {default} -- ``extrap_left/extrap_right`` are interpreted as lengths
+    fill : int, float
+        Defines filling for interpolation grid. It is dependent on 'kind' argument.
+    kind : str
+        The kind of fill parameter for creating a grid
+        If 'kind' is "point", 'fill' is the number of points (strictly).
+        if 'kind' is "length", 'fill' is length of chord (approximately).
+
+    See Also
+    --------
+    ExtrapolationUniformGrid
 
     """
 
-    def __init__(self, pcount_len: ty.Union[int, float],
-                 extrap_left: ty.Union[int, float] = 0,
-                 extrap_right: ty.Union[int, float] = 0,
-                 interp_units: str = 'points',
-                 extrap_units: str = 'points'):
-        if interp_units == 'points' and pcount_len < 2:
-            raise ValueError('There must be at least two interpolation points.')
-        if extrap_left < 0 or extrap_right < 0:
-            raise ValueError('"extrap_left" and "extrap_right" must be >= 0.')
-        if interp_units not in ('points', 'length'):
-            raise ValueError('Unknown "interp_units": {}'.format(interp_units))
-        if extrap_units not in ('points', 'length'):
-            raise ValueError('Unknown "extrap_units": {}'.format(extrap_units))
+    def __init__(self, fill: ty.Union[int, float], kind: str = 'point'):
+        if kind not in ('point', 'length'):
+            raise ValueError('Unknown "kind": {}'.format(kind))
+        if kind == 'point':
+            if not isinstance(fill, int):
+                raise TypeError('"fill" must be an integer for "kind" == "point".')
+            if fill < 2:
+                raise ValueError('There must be at least two interpolation points.')
+        elif kind == 'length':
+            if not isinstance(fill, (int, float)):
+                raise TypeError('"fill" must be an integer or float for "kind" == "length".')
 
-        self.pcount_len = pcount_len
-        self.extrap_left = extrap_left
-        self.extrap_right = extrap_right
-        self.interp_units = interp_units
-        self.extrap_units = extrap_units
+        self.fill = fill
+        self.kind = kind
 
     def __call__(self, curve: 'Curve') -> np.ndarray:
-        """Makes interpolation grid for given curve
+        if curve.size < 2:
+            raise ValueError('The curve size {} is too few'.format(curve.size))
 
-        Parameters
-        ----------
-        curve : Curve
-            Curve object
-
-        Returns
-        -------
-        grid : np.ndarray
-            Uniform interpolation grid
-
-        """
-
-        if not curve:
-            raise ValueError('The curve is empty.')
-        if curve.size == 1:
-            raise ValueError('The curve size is too few: {}'.format(curve.size))
-
-        if self.interp_units == 'points':
-            pcount = self.pcount_len
+        if self.kind == 'length':
+            pcount = int(curve.arclen / self.fill) + 1
         else:
-            pcount = int(curve.arclen / self.pcount_len + 1)
+            pcount = self.fill
 
         interp_grid = np.linspace(0, curve.arclen, pcount)
-        interp_chordlen = interp_grid[1] - interp_grid[0]
+        return interp_grid
 
-        if self.extrap_units == 'points':
-            extrap_left_pcount = self.extrap_left
-            extrap_right_pcount = self.extrap_right
+
+class ExtrapolationUniformGrid(InterpolationGrid):
+    """The helper class to create uniform extrapolation pieces in interpolation grid
+
+    The helper class to create 1-d uniform extrapolation pieces before and after interpolation interval.
+
+    Parameters
+    ----------
+    interp_grid : InterpUniformGrid
+        An interpolation grid constructed object.
+    before : int, float
+        Defines filling for "before" extrapolation piece. It is dependent on 'kind' argument.
+    after : int, float
+        Defines filling for "after" extrapolation piece. It is dependent on 'kind' argument.
+    kind : str
+        The kind of 'before' and 'after' parameters for creating a grid
+        If 'kind' is "point", 'before'/`after' are the number of points on extrap pieces (strictly).
+        if 'kind' is "length", 'before'/`after' are extrap piece lengths (approximately).
+
+    See Also
+    --------
+    InterpolationUniformGrid
+
+    """
+
+    def __init__(self, interp_grid: InterpolationUniformGrid,
+                 before: ty.Union[int, float] = 0,
+                 after: ty.Union[int, float] = 0,
+                 kind: str = 'point'):
+        if kind not in ('point', 'length'):
+            raise ValueError('Unknown "kind": {}'.format(kind))
+        if kind == 'point':
+            if not isinstance(before, int) or not isinstance(after, int):
+                raise TypeError('"before" and "after" arguments must be an integer for "kind" == "point".')
+        elif kind == 'length':
+            if not isinstance(before, (int, float)) or not isinstance(after, (int, float)):
+                raise TypeError('"before" and "after" arguments must be an integer or float for "kind" == "length".')
+
+        self.interp_grid = interp_grid
+        self.before = before
+        self.after = after
+        self.kind = kind
+
+    def __call__(self, curve: 'Curve') -> np.ndarray:
+        grid = self.interp_grid(curve)
+        interp_chordlen = grid[1] - grid[0]
+
+        if self.kind == 'point':
+            pcount_before = self.before
+            pcount_after = self.after
         else:
-            extrap_left_pcount = int(self.extrap_left / interp_chordlen)
-            extrap_right_pcount = int(self.extrap_right / interp_chordlen)
+            pcount_before = int(self.before / interp_chordlen)
+            pcount_after = int(self.after / interp_chordlen)
 
-        extrap_left_grid = np.linspace(
-            -interp_chordlen * extrap_left_pcount, -interp_chordlen, extrap_left_pcount)
+        grid_before = np.linspace(
+            -interp_chordlen * pcount_before, -interp_chordlen, pcount_before)
 
-        extrap_right_grid = np.linspace(
-            interp_grid[-1] + interp_chordlen,
-            interp_grid[-1] + interp_chordlen * extrap_right_pcount, extrap_right_pcount)
+        grid_after = np.linspace(
+            grid[-1] + interp_chordlen, grid[-1] + interp_chordlen * pcount_after, pcount_after)
 
-        return np.hstack([extrap_left_grid, interp_grid, extrap_right_grid])
+        return np.hstack([grid_before, grid, grid_after])
 
 
-def _make_interp_grid(curve: 'Curve', pcount_or_grid: InterpPType) -> np.ndarray:
-    if isinstance(pcount_or_grid, InterpolationUniformGrid):
+def _make_interp_grid(curve: 'Curve', pcount_or_grid: InterpGridType) -> np.ndarray:
+    if isinstance(pcount_or_grid, InterpolationGrid):
         grid = pcount_or_grid(curve)
     elif isinstance(pcount_or_grid, int):
-        grid = InterpolationUniformGrid(pcount_len=pcount_or_grid)(curve)
+        grid = InterpolationUniformGrid(pcount_or_grid)(curve)
     else:
         grid = np.array(pcount_or_grid, dtype=np.float64)
 
@@ -471,14 +501,14 @@ def get_interpolator_factory(method: str, **kwargs) -> abc.Callable:
         return functools.partial(interpolator_factory, **kwargs)
 
 
-def interpolate(curve: 'Curve', pcount_or_grid: InterpPType, method: str, **kwargs) -> 'Curve':
+def interpolate(curve: 'Curve', pcount_or_grid: InterpGridType, method: str, **kwargs) -> 'Curve':
     """Interpolates a n-dimensional curve data using given method and grid
 
     Parameters
     ----------
     curve : Curve
         Curve object
-    pcount_or_grid : np.ndarray, int
+    pcount_or_grid : np.ndarray, int, InterpolationUniformGrid, ExtrapolationUniformGrid
         Interpolation grid or the number of points
     method : str
         Interpolation method

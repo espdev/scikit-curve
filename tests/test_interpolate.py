@@ -3,31 +3,35 @@
 import pytest
 
 from curve import Curve
-from curve import InterpolationUniformGrid, interp_methods
+from curve import InterpolationUniformGrid, ExtrapolationUniformGrid, interp_methods
 
 
-@pytest.mark.parametrize('pcount, extrap_left, extrap_right, interp_units, extrap_units, expected', [
-    (3, 0, 0, 'points', 'points', [0., 2.82842712, 5.65685425]),
-    (5, 0, 0, 'points', 'points', [0., 1.41421356, 2.82842712, 4.24264069, 5.65685425]),
-    (3, 2, 2, 'points', 'points', [-5.65685425, -2.82842712, 0., 2.82842712, 5.65685425, 8.48528137, 11.3137085]),
-    (5, 2, 2, 'points', 'points', [-2.82842712, -1.41421356, 0., 1.41421356, 2.82842712, 4.24264069, 5.65685425,
-                                   7.07106781, 8.48528137]),
-    (3, 6, 6, 'points', 'length', [-5.65685425, -2.82842712, 0., 2.82842712, 5.65685425, 8.48528137, 11.3137085]),
-    (5, 4, 4, 'points', 'length', [-2.82842712, -1.41421356, 0., 1.41421356, 2.82842712, 4.24264069, 5.65685425,
-                                   7.07106781, 8.48528137]),
+@pytest.mark.parametrize('fill, interp_kind, before, after, extrap_kind, expected', [
+    (3, 'point', 0, 0, 'point', [0., 2.82842712, 5.65685425]),
+    (5, 'point', 0, 0, 'point', [0., 1.41421356, 2.82842712, 4.24264069, 5.65685425]),
+    (3, 'point', 2, 2, 'point', [-5.65685425, -2.82842712, 0., 2.82842712, 5.65685425, 8.48528137, 11.3137085]),
+    (5, 'point', 2, 2, 'point', [-2.82842712, -1.41421356, 0., 1.41421356, 2.82842712, 4.24264069, 5.65685425,
+                                 7.07106781, 8.48528137]),
+    (3, 'point', 6, 6, 'length', [-5.65685425, -2.82842712, 0., 2.82842712, 5.65685425, 8.48528137, 11.3137085]),
+    (5, 'point', 4, 4, 'length', [-2.82842712, -1.41421356, 0., 1.41421356, 2.82842712, 4.24264069, 5.65685425,
+                                  7.07106781, 8.48528137]),
 ])
-def test_uniform_interp_grid(pcount, extrap_left, extrap_right, interp_units, extrap_units, expected):
-    curve = Curve([(1, 3, 5)] * 2)
-
-    grid = InterpolationUniformGrid(
-        pcount_len=pcount,
-        extrap_left=extrap_left,
-        extrap_right=extrap_right,
-        interp_units=interp_units,
-        extrap_units=extrap_units
+def test_uniform_interp_grid(fill, interp_kind, before, after, extrap_kind, expected):
+    interp_grid = InterpolationUniformGrid(
+        fill=fill,
+        kind=interp_kind,
     )
 
-    assert grid(curve) == pytest.approx(expected)
+    extrap_grid = ExtrapolationUniformGrid(
+        interp_grid,
+        before=before,
+        after=after,
+        kind=extrap_kind,
+    )
+
+    curve = Curve([(1, 3, 5)] * 2)
+
+    assert extrap_grid(curve) == pytest.approx(expected)
 
 
 @pytest.mark.parametrize('ndmin', [None, 2, 3, 4])
@@ -48,12 +52,9 @@ def test_interp(ndmin, method):
 ])
 def test_extrap(method):
     curve = Curve([(1, 3, 5, 7, 9)] * 2)
-    grid = InterpolationUniformGrid(
-        pcount_len=9,
-        extrap_left=3,
-        extrap_right=3,
-        extrap_units='points'
-    )
+    grid = ExtrapolationUniformGrid(
+        InterpolationUniformGrid(9, kind='point'),
+        before=3, after=3, kind='point')
 
     expected = [(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)] * 2
 

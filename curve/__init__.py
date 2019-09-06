@@ -8,7 +8,9 @@ from curve._diffgeom import DifferentialGeometryWarning
 from curve._interpolate import (
     InterpolationError,
     InterpolationWarning,
+    InterpolationGrid,
     InterpolationUniformGrid,
+    ExtrapolationUniformGrid,
     interp_methods,
     get_interpolator_factory,
     register_interpolator_factory,
@@ -32,7 +34,9 @@ __all__ = [
     # interpolate
     'InterpolationError',
     'InterpolationWarning',
+    'InterpolationGrid',
     'InterpolationUniformGrid',
+    'ExtrapolationUniformGrid',
     'get_interpolator_factory',
     'register_interpolator_factory',
     'interp_methods',
