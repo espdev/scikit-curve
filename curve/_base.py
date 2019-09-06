@@ -2094,7 +2094,7 @@ class Curve(abc.Sequence):
 
         Parameters
         ----------
-        pcount_or_grid : np.ndarray, int, InterpolationUniformGrid, ExtrapolationUniformGrid
+        pcount_or_grid : np.ndarray, int, UniformInterpolationGrid, UniformExtrapolationGrid
             Interpolation grid or the number of points. In other words, it is parametrization data-vector:
                 * If it is ``np.ndarray`` that is interpreted as grid of interpolation.
                   The grid should be 1xM array with increasing ordered values.

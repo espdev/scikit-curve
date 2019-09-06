@@ -3,7 +3,7 @@
 import pytest
 
 from curve import Curve
-from curve import InterpolationUniformGrid, ExtrapolationUniformGrid, interp_methods
+from curve import UniformInterpolationGrid, UniformExtrapolationGrid, interp_methods
 
 
 @pytest.mark.parametrize('fill, interp_kind, before, after, extrap_kind, expected', [
@@ -17,12 +17,12 @@ from curve import InterpolationUniformGrid, ExtrapolationUniformGrid, interp_met
                                   7.07106781, 8.48528137]),
 ])
 def test_uniform_interp_grid(fill, interp_kind, before, after, extrap_kind, expected):
-    interp_grid = InterpolationUniformGrid(
+    interp_grid = UniformInterpolationGrid(
         fill=fill,
         kind=interp_kind,
     )
 
-    extrap_grid = ExtrapolationUniformGrid(
+    extrap_grid = UniformExtrapolationGrid(
         interp_grid,
         before=before,
         after=after,
@@ -52,8 +52,8 @@ def test_interp(ndmin, method):
 ])
 def test_extrap(method):
     curve = Curve([(1, 3, 5, 7, 9)] * 2)
-    grid = ExtrapolationUniformGrid(
-        InterpolationUniformGrid(9, kind='point'),
+    grid = UniformExtrapolationGrid(
+        UniformInterpolationGrid(9, kind='point'),
         before=3, after=3, kind='point')
 
     expected = [(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)] * 2

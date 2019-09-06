@@ -74,8 +74,8 @@ class InterpolationGrid:
 
     See Also
     --------
-    InterpolationUniformGrid
-    ExtrapolationUniformGrid
+    UniformInterpolationGrid
+    UniformExtrapolationGrid
 
     """
 
@@ -83,7 +83,7 @@ class InterpolationGrid:
         raise NotImplementedError
 
 
-class InterpolationUniformGrid(InterpolationGrid):
+class UniformInterpolationGrid(InterpolationGrid):
     """The helper class to create uniform interpolation grid
 
     The helper class to create 1-d uniform grid that can be used for interpolating curves.
@@ -99,7 +99,7 @@ class InterpolationUniformGrid(InterpolationGrid):
 
     See Also
     --------
-    ExtrapolationUniformGrid
+    UniformExtrapolationGrid
 
     """
 
@@ -131,7 +131,7 @@ class InterpolationUniformGrid(InterpolationGrid):
         return interp_grid
 
 
-class ExtrapolationUniformGrid(InterpolationGrid):
+class UniformExtrapolationGrid(InterpolationGrid):
     """The helper class to create uniform extrapolation pieces in interpolation grid
 
     The helper class to create 1-d uniform extrapolation pieces before and after interpolation interval.
@@ -151,11 +151,11 @@ class ExtrapolationUniformGrid(InterpolationGrid):
 
     See Also
     --------
-    InterpolationUniformGrid
+    UniformInterpolationGrid
 
     """
 
-    def __init__(self, interp_grid: InterpolationUniformGrid,
+    def __init__(self, interp_grid: UniformInterpolationGrid,
                  before: ty.Union[int, float] = 0,
                  after: ty.Union[int, float] = 0,
                  kind: str = 'point'):
@@ -197,7 +197,7 @@ def _make_interp_grid(curve: 'Curve', pcount_or_grid: InterpGridType) -> np.ndar
     if isinstance(pcount_or_grid, InterpolationGrid):
         grid = pcount_or_grid(curve)
     elif isinstance(pcount_or_grid, int):
-        grid = InterpolationUniformGrid(pcount_or_grid)(curve)
+        grid = UniformInterpolationGrid(pcount_or_grid)(curve)
     else:
         grid = np.array(pcount_or_grid, dtype=np.float64)
 
@@ -536,7 +536,7 @@ def interpolate(curve: 'Curve', pcount_or_grid: InterpGridType, method: str, **k
     ----------
     curve : Curve
         Curve object
-    pcount_or_grid : np.ndarray, int, InterpolationUniformGrid, ExtrapolationUniformGrid
+    pcount_or_grid : np.ndarray, int, UniformInterpolationGrid, UniformExtrapolationGrid
         Interpolation grid or the number of points
     method : str
         Interpolation method
