@@ -127,7 +127,7 @@ def _make_interp_grid(curve: 'Curve', ti: InterpPType) -> np.ndarray:
         warnings.warn((
             'The interpolation grid in range [{}, {}]. '
             'It does not cover the whole curve parametrization range [{}, {}].').format(
-                np.min(grid), np.max(grid)), 0, curve.arclen)
+                np.min(grid), np.max(grid), 0, curve.arclen), InterpolationWarning)
 
     return grid
 
