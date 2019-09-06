@@ -41,7 +41,7 @@ class InterpolationError(Exception):
 
 
 class InterpolationWarning(RuntimeWarning):
-    """Any interpolation warning
+    """Any interpolation warnings
     """
 
 
