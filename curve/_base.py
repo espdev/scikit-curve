@@ -24,15 +24,16 @@ from curve._interpolate import InterpGridSpecType, interpolate
 
 
 NumberType = ty.Union[int, float, np.number]
+SequenceNumberType = ty.Sequence[NumberType]
 
 PointDataType = ty.Union[
-    ty.Sequence[NumberType],
+    SequenceNumberType,
     np.ndarray,
     'Point',
 ]
 
 CurveDataType = ty.Union[
-    ty.Sequence[ty.Sequence[NumberType]],
+    ty.Sequence[SequenceNumberType],
     ty.Sequence[np.ndarray],
     ty.Sequence['Point'],
     np.ndarray,
@@ -1638,8 +1639,7 @@ class Curve(abc.Sequence):
         """
 
         if inplace:
-            self._data[:] = np.flipud(self._data)
-            self.invalidate()
+            self[:] = np.flipud(self._data)
         else:
             return Curve(np.flipud(self._data))
 
