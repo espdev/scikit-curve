@@ -2086,7 +2086,7 @@ class Curve(abc.Sequence):
 
         return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
 
-    def interpolate(self, pcount_or_grid: _interpolate.InterpGridType, method: str = 'linear', **kwargs) -> 'Curve':
+    def interpolate(self, pcount_or_grid: _interpolate.InterpGridSpecType, method: str = 'linear', **kwargs) -> 'Curve':
         """Interpolates the curve data
 
         The method interpolates the curve data by given grid or
@@ -2158,7 +2158,7 @@ class Curve(abc.Sequence):
 
         """
 
-        return _interpolate.interpolate(self, pcount_or_grid=pcount_or_grid, method=method, **kwargs)
+        return _interpolate.interpolate(self, grid_spec=pcount_or_grid, method=method, **kwargs)
 
     def invalidate(self):
         """Invalidates the curve parameters cache

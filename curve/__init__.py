@@ -11,9 +11,10 @@ from curve._interpolate import (
     InterpolationGrid,
     UniformInterpolationGrid,
     UniformExtrapolationGrid,
+    InterpolatorBase,
     interp_methods,
-    get_interpolator_factory,
-    register_interpolator_factory,
+    get_interpolator,
+    register_interpolator,
 )
 from curve._numeric import isequal, allequal, dot1d
 
@@ -37,9 +38,10 @@ __all__ = [
     'InterpolationGrid',
     'UniformInterpolationGrid',
     'UniformExtrapolationGrid',
-    'get_interpolator_factory',
-    'register_interpolator_factory',
+    'InterpolatorBase',
     'interp_methods',
+    'get_interpolator',
+    'register_interpolator',
 
     # numeric
     'isequal',

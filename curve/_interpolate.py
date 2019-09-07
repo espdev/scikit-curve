@@ -26,9 +26,10 @@ if ty.TYPE_CHECKING:
     from curve._base import Curve
 
 
-InterpGridType = ty.Union[
-    np.ndarray,
+InterpGridSpecType = ty.Union[
     int,
+    np.ndarray,
+    ty.Sequence[float],
     'InterpolationGrid',
 ]
 
@@ -193,55 +194,59 @@ class UniformExtrapolationGrid(InterpolationGrid):
         return np.hstack([grid_before, grid, grid_after])
 
 
-def _make_interp_grid(curve: 'Curve', pcount_or_grid: InterpGridType) -> np.ndarray:
-    if isinstance(pcount_or_grid, InterpolationGrid):
-        grid = pcount_or_grid(curve)
-    elif isinstance(pcount_or_grid, int):
-        grid = UniformInterpolationGrid(pcount_or_grid)(curve)
-    else:
-        grid = np.array(pcount_or_grid, dtype=np.float64)
+class InterpolatorBase:
+    """The base class for all interpolators
 
-    if grid.ndim != 1:
-        raise ValueError(
-            'The interpolation grid should be 1xM array where M is number of points in interpolated curve')
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
 
-    dt = np.diff(grid)
+    See Also
+    --------
+    register_interpolator
 
-    if np.any(dt < 0) or np.any(np.isclose(dt, 0)):
-        raise ValueError(
-            'The values in the interpolation grid must be strictly increasing ordered.')
+    """
 
-    if np.min(grid) > 0 or np.max(grid) < curve.arclen:
-        warnings.warn((
-            'The interpolation grid in range [{}, {}]. '
-            'It does not cover the whole curve parametrization range [{}, {}].').format(
-                np.min(grid), np.max(grid), 0, curve.arclen), InterpolationWarning)
+    def __init__(self, curve: 'Curve'):
+        self._curve = curve
 
-    return grid
+    def __call__(self, grid: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+
+    @property
+    def curve(self):
+        return self._curve
 
 
-def register_interpolator_factory(method: str):
-    """Registers interpolator factory
+def register_interpolator(method: str):
+    """Registers an interpolator class
 
-    This decorator can be used for registering custom interpolators.
+    This decorator can be used for registering custom interpolator classes.
 
     Parameters
     ----------
     method : str
-        interpolation method
+        Interpolation method
+
+    See Also
+    --------
+    InterpolatorBase
 
     """
 
-    def decorator(func):
+    def decorator(cls):
         if method in _INTERPOLATORS:
-            raise ValueError('"{}" interpolation method already registered'.format(method))
-        _INTERPOLATORS[method] = func
+            raise ValueError('"{}" interpolation method already registered for {}'.format(
+                method, _INTERPOLATORS[method]))
+        if not issubclass(cls, InterpolatorBase):
+            raise TypeError('{} is not a subclass of InterpolatorBase'.format(cls))
+        _INTERPOLATORS[method] = cls
     return decorator
 
 
-@register_interpolator_factory(method='linear')
-def linear_interpolator_factory(curve: 'Curve', *,
-                                extrapolate: bool = True):
+@register_interpolator(method='linear')
+class LinearInterpolator(InterpolatorBase):
     """Linearly interpolates a n-dimensional curve data
 
     Parameters
@@ -249,53 +254,43 @@ def linear_interpolator_factory(curve: 'Curve', *,
     curve : Curve
         Curve object
     extrapolate : bool
-        If bool, determines whether to extrapolate to out-of-bounds points.
-
-    Returns
-    -------
-    interpolator : callable
-        Linear interpolator function
-
-    Notes
-    -----
-    This interpolator supports extrapolation.
+        Determines whether to extrapolate to out-of-bounds.
 
     """
 
-    def _interpolator(interp_grid: np.ndarray):
-        if not extrapolate:
-            if np.min(interp_grid) < 0 or np.max(interp_grid) > curve.arclen:
+    def __init__(self, curve: 'Curve', *, extrapolate: bool = True):
+        super().__init__(curve)
+        self.extrapolate = extrapolate
+
+    def __call__(self, grid: np.ndarray) -> np.ndarray:
+        if not self.extrapolate:
+            if np.min(grid) < 0 or np.max(grid) > self.curve.arclen:
                 warnings.warn((
                     '"extrapolate" is disabled but interpolation grid is out-of-bounds curve data. '
                     'The grid will be cut down to curve data bounds.'
                 ), InterpolationWarning)
 
-                drop_indices = np.flatnonzero((interp_grid < 0) | (interp_grid > curve.arclen))
-                interp_grid = np.delete(interp_grid, drop_indices)
+                drop_indices = np.flatnonzero((grid < 0) | (grid > self.curve.arclen))
+                grid = np.delete(grid, drop_indices)
 
-        tbins = np.digitize(interp_grid, curve.t)
-
-        n = curve.size
+        tbins = np.digitize(grid, self.curve.t)
+        n = self.curve.size
 
         tbins[(tbins <= 0)] = 1
-        tbins[(tbins >= n) | np.isclose(interp_grid, 1)] = n - 1
+        tbins[(tbins >= n) | np.isclose(grid, 1)] = n - 1
         tbins -= 1
 
-        s = (interp_grid - curve.t[tbins]) / curve.chordlen[tbins]
+        s = (grid - self.curve.t[tbins]) / self.curve.chordlen[tbins]
 
-        tbins_data = curve.data[tbins, :]
-        tbins1_data = curve.data[tbins + 1, :]
+        tbins_data = self.curve.data[tbins, :]
+        tbins1_data = self.curve.data[tbins + 1, :]
 
         interp_data = (tbins_data + (tbins1_data - tbins_data) * s[:, np.newaxis])
         return interp_data
 
-    return _interpolator
 
-
-@register_interpolator_factory(method='cubic')
-def cubic_interpolator_factory(curve: 'Curve', *,
-                               bc_type='not-a-knot',
-                               extrapolate: ty.Union[bool, str, None] = None):
+@register_interpolator(method='cubic')
+class CubicSplineInterpolator(InterpolatorBase):
     """Cubic spline interpolator
 
     Parameters
@@ -311,15 +306,6 @@ def cubic_interpolator_factory(curve: 'Curve', *,
         If None (default), extrapolate is set to ‘periodic’
         for bc_type='periodic' and to True otherwise.
 
-    Returns
-    -------
-    interpolator : CubicSpline
-        cubic spline interpolator object
-
-    Notes
-    -----
-    This interpolator supports extrapolation.
-
     References
     ----------
     .. [1] `CubicSpline
@@ -328,12 +314,20 @@ def cubic_interpolator_factory(curve: 'Curve', *,
 
     """
 
-    return interp.CubicSpline(curve.t, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
+    def __init__(self, curve: 'Curve', *,
+                 bc_type='not-a-knot',
+                 extrapolate: ty.Optional[ty.Union[bool, str]] = None):
+        super().__init__(curve)
+
+        self.spline = interp.CubicSpline(
+            curve.t, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
+
+    def __call__(self, grid: np.ndarray) -> np.ndarray:
+        return self.spline(grid)
 
 
-@register_interpolator_factory(method='hermite')
-def hermite_interpolator_factory(curve: 'Curve', *,
-                                 extrapolate: ty.Union[bool, str, None] = None):
+@register_interpolator(method='hermite')
+class CubicHermiteSplineInterpolator(InterpolatorBase):
     """Piecewise-cubic interpolator matching values and first derivatives
 
     Parameters
@@ -346,15 +340,6 @@ def hermite_interpolator_factory(curve: 'Curve', *,
         If ‘periodic’, periodic extrapolation is used.
         If None (default), it is set to True.
 
-    Returns
-    -------
-    interpolator : CubicHermiteSpline
-        Hermite cubic spline interpolator object
-
-    Notes
-    -----
-    This interpolator supports extrapolation.
-
     References
     ----------
     .. [1] `CubicHermiteSpline
@@ -363,11 +348,18 @@ def hermite_interpolator_factory(curve: 'Curve', *,
 
     """
 
-    return interp.CubicHermiteSpline(curve.t, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
+    def __init__(self, curve: 'Curve', *, extrapolate: ty.Optional[ty.Union[bool, str]] = None):
+        super().__init__(curve)
+
+        self.spline = interp.CubicHermiteSpline(
+            curve.t, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
+
+    def __call__(self, grid: np.ndarray) -> np.ndarray:
+        return self.spline(grid)
 
 
-@register_interpolator_factory(method='akima')
-def akima_interpolator_factory(curve: 'Curve'):
+@register_interpolator(method='akima')
+class AkimaInterpolator(InterpolatorBase):
     """Akima interpolator
 
     Parameters
@@ -375,14 +367,9 @@ def akima_interpolator_factory(curve: 'Curve'):
     curve : Curve
         Curve object
 
-    Returns
-    -------
-    interpolator : Akima1DInterpolator
-        Akima spline interpolator object
-
     Notes
     -----
-    This interpolator does not support approximation
+    This interpolator does not support extrapolation
 
     References
     ----------
@@ -392,12 +379,16 @@ def akima_interpolator_factory(curve: 'Curve'):
 
     """
 
-    return interp.Akima1DInterpolator(curve.t, curve.data, axis=0)
+    def __init__(self, curve: 'Curve'):
+        super().__init__(curve)
+        self.akima = interp.Akima1DInterpolator(curve.t, curve.data, axis=0)
+
+    def __call__(self, grid: np.ndarray) -> np.ndarray:
+        return self.akima(grid)
 
 
-@register_interpolator_factory(method='pchip')
-def pchip_interpolator_factory(curve: 'Curve', *,
-                               extrapolate: ty.Optional[bool] = None):
+@register_interpolator(method='pchip')
+class PchipInterpolator(InterpolatorBase):
     """PCHIP 1-d monotonic cubic interpolation
 
     Parameters
@@ -408,15 +399,6 @@ def pchip_interpolator_factory(curve: 'Curve', *,
         Whether to extrapolate to out-of-bounds points based on first and last intervals,
         or to return NaNs.
 
-    Returns
-    -------
-    interpolator : PchipInterpolator
-        PCHIP interpolator object
-
-    Notes
-    -----
-    This interpolator supports extrapolation.
-
     References
     ----------
     .. [1] `PchipInterpolator
@@ -425,14 +407,16 @@ def pchip_interpolator_factory(curve: 'Curve', *,
 
     """
 
-    return interp.PchipInterpolator(curve.t, curve.data, axis=0, extrapolate=extrapolate)
+    def __init__(self, curve: 'Curve', *, extrapolate: ty.Optional[bool] = None):
+        super().__init__(curve)
+        self.pchip = interp.PchipInterpolator(curve.t, curve.data, axis=0, extrapolate=extrapolate)
+
+    def __call__(self, grid: np.ndarray) -> np.ndarray:
+        return self.pchip(grid)
 
 
-@register_interpolator_factory(method='spline')
-def spline_interpolator_factory(curve: 'Curve', *,
-                                w: ty.Optional[np.ndarray] = None,
-                                k: int = 3,
-                                extrapolate: ty.Union[int, str] = 'extrapolate'):
+@register_interpolator(method='spline')
+class SplineInterpolator(InterpolatorBase):
     """General weighted k-order spline interpolation
 
     Parameters
@@ -447,15 +431,6 @@ def spline_interpolator_factory(curve: 'Curve', *,
         Controls the extrapolation mode for elements not in the interval
         defined by the knot sequence. See [1]_ for details.
 
-    Returns
-    -------
-    interpolator : callable
-        interpolation function
-
-    Notes
-    -----
-    This interpolator supports extrapolation.
-
     References
     ----------
     .. [1] `InterpolatedUnivariateSpline
@@ -464,20 +439,25 @@ def spline_interpolator_factory(curve: 'Curve', *,
 
     """
 
-    splines = [
-        interp.InterpolatedUnivariateSpline(curve.t, values, w=w, k=k, ext=extrapolate, check_finite=False)
-        for values in curve.values()
-    ]
+    def __init__(self, curve: 'Curve', *,
+                 w: ty.Optional[np.ndarray] = None,
+                 k: int = 3,
+                 extrapolate: ty.Union[int, str] = 0):
+        super().__init__(curve)
 
-    def _interpolator(grid):
-        interp_data = np.empty((grid.size, curve.ndim))
+        self.splines = [
+            interp.InterpolatedUnivariateSpline(
+                curve.t, values, w=w, k=k, ext=extrapolate, check_finite=False)
+            for values in curve.values()
+        ]
 
-        for i, spline in enumerate(splines):
+    def __call__(self, grid: np.ndarray) -> np.ndarray:
+        interp_data = np.empty((grid.size, self.curve.ndim))
+
+        for i, spline in enumerate(self.splines):
             interp_data[:, i] = spline(grid)
 
-        return type(curve)(interp_data, dtype=curve.dtype)
-
-    return _interpolator
+        return interp_data
 
 
 def interp_methods() -> ty.List[str]:
@@ -493,7 +473,7 @@ def interp_methods() -> ty.List[str]:
     return list(_INTERPOLATORS.keys())
 
 
-def get_interpolator_factory(method: str, **kwargs) -> abc.Callable:
+def get_interpolator(method: str, **kwargs) -> abc.Callable:
     """Returns the interpolator factory for given method
 
     Parameters
@@ -529,15 +509,49 @@ def get_interpolator_factory(method: str, **kwargs) -> abc.Callable:
         return functools.partial(interpolator_factory, **kwargs)
 
 
-def interpolate(curve: 'Curve', pcount_or_grid: InterpGridType, method: str, **kwargs) -> 'Curve':
+def _get_interp_grid(curve: 'Curve', grid_spec: InterpGridSpecType) -> np.ndarray:
+    if isinstance(grid_spec, InterpolationGrid):
+        grid = grid_spec(curve)
+    elif isinstance(grid_spec, int):
+        grid = UniformInterpolationGrid(grid_spec)(curve)
+    elif isinstance(grid_spec, (np.ndarray, abc.Sequence)):
+        grid = np.array(grid_spec, dtype=np.float64)
+    else:
+        raise ValueError('Invalid type {} of interpolation grid'.format(type(grid_spec)))
+
+    if grid.ndim != 1:
+        raise ValueError(
+            'The interpolation grid should be 1xM array where M is number of points in interpolated curve')
+    if not np.issubdtype(grid.dtype, np.number):
+        raise ValueError('Invalid dtype {} of interpolation grid'.format(grid.dtype))
+
+    dt = np.diff(grid)
+
+    if np.any(dt < 0) or np.any(np.isclose(dt, 0)):
+        raise ValueError(
+            'The values in the interpolation grid must be strictly increasing ordered.')
+
+    if np.min(grid) > 0 or np.max(grid) < curve.arclen:
+        warnings.warn((
+            'The interpolation grid in range [{}, {}]. '
+            'It does not cover the whole curve parametrization range [{}, {}].').format(
+            np.min(grid), np.max(grid), 0, curve.arclen), InterpolationWarning)
+
+    return grid
+
+
+def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kwargs) -> 'Curve':
     """Interpolates a n-dimensional curve data using given method and grid
 
     Parameters
     ----------
     curve : Curve
         Curve object
-    pcount_or_grid : np.ndarray, int, UniformInterpolationGrid, UniformExtrapolationGrid
-        Interpolation grid or the number of points
+    grid_spec : np.ndarray, int, UniformInterpolationGrid, UniformExtrapolationGrid
+        Interpolation grid specification:
+            * The number of points
+            * The array Mx1 or Sequence[float]
+            * InterpolationGrid object
     method : str
         Interpolation method
 
@@ -566,10 +580,10 @@ def interpolate(curve: 'Curve', pcount_or_grid: InterpGridType, method: str, **k
         raise ValueError('Unknown interpolation method "{}"'.format(method))
 
     try:
-        interpolator_factory = get_interpolator_factory(method)
-        interpolator = interpolator_factory(curve, **kwargs)
+        interpolator_cls = get_interpolator(method)
+        interpolator = interpolator_cls(curve, **kwargs)
 
-        interp_grid = _make_interp_grid(curve, pcount_or_grid)
+        interp_grid = _get_interp_grid(curve, grid_spec)
         interp_data = interpolator(interp_grid)
     except Exception as err:
         raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
