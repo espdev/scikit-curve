@@ -553,7 +553,7 @@ def _get_interp_grid(curve: 'Curve', grid_spec: InterpGridSpecType) -> np.ndarra
     return grid
 
 
-def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kwargs) -> 'Curve':
+def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kwargs) -> np.ndarray:
     """Interpolates a n-dimensional curve data using given method and grid
 
     Parameters
@@ -570,8 +570,8 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kw
 
     Returns
     -------
-    curve : Curve
-        Interpolated curve
+    interp_data : np.ndarray
+        Interpolated data
 
     Raises
     ------
@@ -580,11 +580,9 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kw
 
     """
 
-    curve_type = type(curve)
-
     if not curve:
         warnings.warn('The curve is empty. Interpolation is not possible.', InterpolationWarning)
-        return curve_type(ndmin=curve.ndim, dtype=curve.dtype)
+        return np.array([])
 
     if curve.size == 1:
         raise ValueError('Cannot interpolate curve with single point.')
@@ -601,4 +599,4 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kw
     except Exception as err:
         raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
 
-    return curve_type(interp_data, dtype=curve.dtype)
+    return interp_data

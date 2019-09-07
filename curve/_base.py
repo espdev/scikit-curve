@@ -2161,7 +2161,8 @@ class Curve(abc.Sequence):
 
         """
 
-        return interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
+        interp_data = interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
+        return Curve(interp_data, ndmin=self.ndim, dtype=self.dtype)
 
     def invalidate(self):
         """Invalidates the curve parameters cache
