@@ -1264,25 +1264,27 @@ class Curve(abc.Sequence):
         return _diffgeom.cumarclen(self)
 
     @cached_property
-    def tn(self) -> np.ndarray:
-        """Returns the normalized natural parameter vector for the curve
+    def t(self) -> np.ndarray:
+        """Returns parametrization vector for the curve
 
-        Parametrization of the curve by the length of its arc normalized to 1.0.
+        Notes
+        -----
+        This is alias for `cumarclen` for `Curve` class
 
         Returns
         -------
-        tn : np.ndarray
-            The 1xM array normalized natural parameter
+        t : np.ndarray
+            The 1xM array parameter vector
 
         See Also
         --------
         chordlen
         arclen
-        t
+        cumarclen
 
         """
 
-        return self.t / self.t[-1]
+        return self.cumarclen
 
     @cached_property
     def chordlen(self) -> np.ndarray:
