@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pytest
+import numpy as np
 
 from curve import Curve
 from curve import UniformInterpolationGrid, UniformExtrapolationGrid, interp_methods
@@ -52,6 +53,7 @@ def test_interp(ndmin, method):
     curve = Curve([(1, 3, 6, 9)] * 2, ndmin=ndmin)
     expected = Curve([(1, 2, 3, 4, 5, 6, 7, 8, 9)] * 2, ndmin=ndmin)
 
+    assert np.allclose(expected.chordlen, expected.chordlen[0])
     assert curve.interpolate(9, method=method) == expected
 
 
