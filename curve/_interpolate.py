@@ -273,14 +273,14 @@ class LinearInterpolator(InterpolatorBase):
                 drop_indices = np.flatnonzero((grid < 0) | (grid > self.curve.arclen))
                 grid = np.delete(grid, drop_indices)
 
-        tbins = np.digitize(grid, self.curve.t)
+        tbins = np.digitize(grid, self.curve.cumarclen)
         n = self.curve.size
 
         tbins[(tbins <= 0)] = 1
         tbins[(tbins >= n) | np.isclose(grid, 1)] = n - 1
         tbins -= 1
 
-        s = (grid - self.curve.t[tbins]) / self.curve.chordlen[tbins]
+        s = (grid - self.curve.cumarclen[tbins]) / self.curve.chordlen[tbins]
 
         tbins_data = self.curve.data[tbins, :]
         tbins1_data = self.curve.data[tbins + 1, :]
@@ -329,7 +329,7 @@ class CubicSplineInterpolator(InterpolatorBase):
         super().__init__(curve)
 
         self.spline = interp.CubicSpline(
-            curve.t, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
+            curve.cumarclen, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.spline(grid)
@@ -361,7 +361,7 @@ class CubicHermiteSplineInterpolator(InterpolatorBase):
         super().__init__(curve)
 
         self.spline = interp.CubicHermiteSpline(
-            curve.t, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
+            curve.cumarclen, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.spline(grid)
@@ -390,7 +390,7 @@ class AkimaInterpolator(InterpolatorBase):
 
     def __init__(self, curve: 'Curve'):
         super().__init__(curve)
-        self.akima = interp.Akima1DInterpolator(curve.t, curve.data, axis=0)
+        self.akima = interp.Akima1DInterpolator(curve.cumarclen, curve.data, axis=0)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.akima(grid)
@@ -418,7 +418,7 @@ class PchipInterpolator(InterpolatorBase):
 
     def __init__(self, curve: 'Curve', *, extrapolate: ty.Optional[bool] = None):
         super().__init__(curve)
-        self.pchip = interp.PchipInterpolator(curve.t, curve.data, axis=0, extrapolate=extrapolate)
+        self.pchip = interp.PchipInterpolator(curve.cumarclen, curve.data, axis=0, extrapolate=extrapolate)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.pchip(grid)
@@ -456,7 +456,7 @@ class SplineInterpolator(InterpolatorBase):
 
         self.splines = [
             interp.InterpolatedUnivariateSpline(
-                curve.t, values, w=w, k=k, ext=extrapolate, check_finite=False)
+                curve.cumarclen, values, w=w, k=k, ext=extrapolate, check_finite=False)
             for values in curve.values()
         ]
 

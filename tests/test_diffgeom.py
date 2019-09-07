@@ -42,14 +42,14 @@ def test_arclen_2():
     assert curve.arclen == pytest.approx(6.156362579862037)
 
 
-def test_natural_parametrization():
+def test_cumarclen():
     n = 5
     data = np.arange(n)
     curve = Curve([data] * 2, copy=False)
 
     expected = np.cumsum([0.0] + [1.4142135623730951] * (n - 1))
 
-    assert curve.t == pytest.approx(expected)
+    assert curve.cumarclen == pytest.approx(expected)
 
 
 def test_curvature_circle_2d(circle_curve_2d):

@@ -1244,25 +1244,24 @@ class Curve(abc.Sequence):
         return self.ndim >= 3
 
     @cached_property
-    def t(self) -> np.ndarray:
-        """Returns the natural parameter vector for the curve
+    def cumarclen(self) -> np.ndarray:
+        """Returns the cumulative arc length of the curve (natural parametrization)
 
         Parametrization of the curve by the length of its arc.
 
         Returns
         -------
-        t : np.ndarray
-            The 1xM array natural parameter
+        cumarc : np.ndarray
+            The 1xM array cumulative arc
 
         See Also
         --------
         chordlen
         arclen
-        tn
 
         """
 
-        return _diffgeom.natural_parametrization(self, chord_lengths=self.chordlen)
+        return _diffgeom.cumarclen(self)
 
     @cached_property
     def tn(self) -> np.ndarray:

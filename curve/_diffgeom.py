@@ -116,8 +116,8 @@ def arclen(curve: 'Curve') -> float:
     return float(np.sum(chordlen(curve)))
 
 
-def natural_parametrization(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None) -> np.ndarray:
-    """Computes natural parameter vector for given curve
+def cumarclen(curve: 'Curve') -> np.ndarray:
+    """Computes cumulative arc length of a curve (natural parametrization)
 
     Parametrization of a curve by the length of its arc.
 
@@ -125,21 +125,15 @@ def natural_parametrization(curve: 'Curve', chord_lengths: t.Optional[np.ndarray
     ----------
     curve : Curve
         Curve object
-    chord_lengths : np.ndarray
-        An array with lengths for each curve chord (segment).
-        If it is not set it will be computed.
 
     Returns
     -------
-    t : np.ndarray
-        Natural parameter vector
+    cumarclen : np.ndarray
+        Cumulative arc length Mx1 array where M is the curve size (the number of points)
 
     """
 
-    if chord_lengths is None:
-        chord_lengths = chordlen(curve)
-
-    return np.hstack((0.0, np.cumsum(chord_lengths)))
+    return np.hstack((0.0, np.cumsum(curve.chordlen)))
 
 
 def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.ndarray:
