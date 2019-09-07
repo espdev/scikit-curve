@@ -601,10 +601,10 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **pa
         raise ValueError('Unknown interpolation method "{}"'.format(method))
 
     interpolator_cls = get_interpolator(method)
+    interp_grid = get_interpolation_grid(grid_spec, curve)
 
     try:
         interpolator = interpolator_cls(curve, **params)
-        interp_grid = get_interpolation_grid(grid_spec, curve)
         interp_data = interpolator(interp_grid)
     except Exception as err:
         raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
