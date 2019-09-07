@@ -200,6 +200,8 @@ class InterpolatorBase:
     ----------
     curve : Curve
         Curve object
+    kwargs : mapping
+        An interpolator parameters
 
     See Also
     --------
@@ -207,7 +209,7 @@ class InterpolatorBase:
 
     """
 
-    def __init__(self, curve: 'Curve'):
+    def __init__(self, curve: 'Curve', **kwargs):
         self._curve = curve
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
@@ -483,18 +485,24 @@ def interp_methods() -> ty.List[str]:
     return list(_INTERPOLATORS.keys())
 
 
-def get_interpolator(method: str) -> ty.Type[InterpolatorBase]:
-    """Returns the interpolator class for given method
+def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
+    """Creates and returns the interpolator instance for given method
+
+    Creates an interpolator instance for given method, curve and parameters.
 
     Parameters
     ----------
     method : str
         Interpolation method
+    curve : Curve
+        Curve object
+    params : mapping
+        The interpolator parameters
 
     Returns
     -------
-    interpolator : Type[InterpolatorBase]
-        Interpolator class object
+    interpolator : InterpolatorBase
+        Interpolator instance
 
     See Also
     --------
@@ -503,12 +511,20 @@ def get_interpolator(method: str) -> ty.Type[InterpolatorBase]:
     Raises
     ------
     NameError : If interpolation method is unknown
+    InterpolationError : Cannot create interpolator
 
     """
 
     if method not in _INTERPOLATORS:
         raise NameError('Cannot find interpolation method "{}"'.format(method))
-    return _INTERPOLATORS[method]
+
+    interpolator_cls = _INTERPOLATORS[method]
+
+    try:
+        return interpolator_cls(curve, **params)
+    except Exception as err:
+        raise InterpolationError(
+            'Cannot create interpolator "{}": {}'.format(interpolator_cls, err)) from err
 
 
 def get_interpolation_grid(grid_spec: InterpGridSpecType, curve: 'Curve') -> np.ndarray:
@@ -600,11 +616,10 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **pa
     if method not in _INTERPOLATORS:
         raise ValueError('Unknown interpolation method "{}"'.format(method))
 
-    interpolator_cls = get_interpolator(method)
+    interpolator = get_interpolator(method, curve, **params)
     interp_grid = get_interpolation_grid(grid_spec, curve)
 
     try:
-        interpolator = interpolator_cls(curve, **params)
         interp_data = interpolator(interp_grid)
     except Exception as err:
         raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
