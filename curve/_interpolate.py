@@ -298,7 +298,17 @@ class CubicSplineInterpolator(InterpolatorBase):
     curve : Curve
         Curve object
     bc_type : str
-        Boundary condition type. See scipy docs for details [1]_.
+        Boundary condition type:
+            * 'not-a-knot' (default)
+            * 'periodic'
+            * 'clamped'
+            * 'natural'
+
+        If bc_type is a 2-tuple, the first and the second value will be applied at the
+        curve start and end respectively.
+
+        See scipy docs for details [1]_.
+
     extrapolate : bool, str, None
         If bool, determines whether to extrapolate to out-of-bounds
         points based on first and last intervals, or to return NaNs.
@@ -315,7 +325,7 @@ class CubicSplineInterpolator(InterpolatorBase):
     """
 
     def __init__(self, curve: 'Curve', *,
-                 bc_type='not-a-knot',
+                 bc_type: ty.Union[str, ty.Tuple[str, str]] = 'not-a-knot',
                  extrapolate: ty.Optional[ty.Union[bool, str]] = None):
         super().__init__(curve)
 
