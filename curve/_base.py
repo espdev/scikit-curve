@@ -20,7 +20,7 @@ from cached_property import cached_property
 from curve._distance import MetricType, get_metric
 from curve._numeric import allequal
 from curve import _diffgeom
-from curve import _interpolate
+from curve._interpolate import InterpGridSpecType, interpolate
 
 
 NumberType = _t.Union[int, float, np.number]
@@ -2086,7 +2086,7 @@ class Curve(abc.Sequence):
 
         return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
 
-    def interpolate(self, pcount_or_grid: _interpolate.InterpGridSpecType, method: str = 'linear', **kwargs) -> 'Curve':
+    def interpolate(self, grid_spec: InterpGridSpecType, method: str = 'linear', **kwargs) -> 'Curve':
         """Interpolates the curve data
 
         The method interpolates the curve data by given grid or
@@ -2094,13 +2094,15 @@ class Curve(abc.Sequence):
 
         Parameters
         ----------
-        pcount_or_grid : np.ndarray, int, UniformInterpolationGrid, UniformExtrapolationGrid
+        grid_spec : np.ndarray, Sequence[float], int, InterpolationGrid
             Interpolation grid or the number of points. In other words, it is parametrization data-vector:
-                * If it is ``np.ndarray`` that is interpreted as grid of interpolation.
+                * If it is ``np.ndarray`` or sequence that is interpreted as grid of interpolation.
                   The grid should be 1xM array with increasing ordered values.
                 * If it is ``int`` that is interpreted as the number of points in uniformly interpolated curve.
+                * If it is ``InterpolationGrid`` that is interpreted as interp grid object.
+                  The grid data will be computed with using the curve parametrization.
         method : str
-            Interpolation method:
+            Interpolation methods that available by default:
                 * ``linear`` -- linear interpolation
                 * ``cubic`` -- cubic spline interpolation
                 * ``hermite`` -- piecewise-cubic interpolation matching values and first derivatives
@@ -2158,7 +2160,7 @@ class Curve(abc.Sequence):
 
         """
 
-        return _interpolate.interpolate(self, grid_spec=pcount_or_grid, method=method, **kwargs)
+        return interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
 
     def invalidate(self):
         """Invalidates the curve parameters cache
