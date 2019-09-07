@@ -123,7 +123,7 @@ class UniformInterpolationGrid(InterpolationGrid):
             raise ValueError('The curve size {} is too few'.format(curve.size))
 
         if self.kind == 'length':
-            pcount = int(curve.arclen / self.fill) + 1
+            pcount = round(curve.arclen / self.fill) + 1
         else:
             pcount = self.fill
 
@@ -175,14 +175,14 @@ class UniformExtrapolationGrid(InterpolationGrid):
 
     def __call__(self, curve: 'Curve') -> np.ndarray:
         grid = self.interp_grid(curve)
-        interp_chordlen = grid[1] - grid[0]
+        interp_chordlen = np.diff(grid).mean()
 
         if self.kind == 'point':
             pcount_before = self.before
             pcount_after = self.after
         else:
-            pcount_before = int(self.before / interp_chordlen)
-            pcount_after = int(self.after / interp_chordlen)
+            pcount_before = round(self.before / interp_chordlen)
+            pcount_after = round(self.after / interp_chordlen)
 
         grid_before = np.linspace(
             -interp_chordlen * pcount_before, -interp_chordlen, pcount_before)
@@ -565,12 +565,11 @@ def interpolate(curve: 'Curve', pcount_or_grid: InterpGridType, method: str, **k
     if method not in _INTERPOLATORS:
         raise ValueError('Unknown interpolation method "{}"'.format(method))
 
-    interpolator_factory = get_interpolator_factory(method)
-    interpolator = interpolator_factory(curve, **kwargs)
-
-    interp_grid = _make_interp_grid(curve, pcount_or_grid)
-
     try:
+        interpolator_factory = get_interpolator_factory(method)
+        interpolator = interpolator_factory(curve, **kwargs)
+
+        interp_grid = _make_interp_grid(curve, pcount_or_grid)
         interp_data = interpolator(interp_grid)
     except Exception as err:
         raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
