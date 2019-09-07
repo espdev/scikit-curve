@@ -325,7 +325,7 @@ class CubicSplineInterpolator(InterpolatorBase):
     """
 
     def __init__(self, curve: 'Curve', *,
-                 bc_type: ty.Union[str, ty.Tuple[str, str]] = 'not-a-knot',
+                 bc_type: ty.Union[str, ty.Tuple[ty.Any, ty.Any]] = 'not-a-knot',
                  extrapolate: ty.Optional[ty.Union[bool, str]] = None):
         super().__init__(curve)
 
