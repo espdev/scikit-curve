@@ -17,7 +17,6 @@ The following interpolation methods are available out of the box:
 import typing as ty
 from collections import abc
 import warnings
-import functools
 
 import numpy as np
 import scipy.interpolate as interp
@@ -33,7 +32,7 @@ InterpGridSpecType = ty.Union[
     'InterpolationGrid',
 ]
 
-_INTERPOLATORS = {}  # type: ty.Dict[str, abc.Callable]
+_INTERPOLATORS = {}  # type: ty.Dict[str, ty.Type['InterpolatorBase']]
 
 
 class InterpolationError(Exception):
@@ -484,20 +483,18 @@ def interp_methods() -> ty.List[str]:
     return list(_INTERPOLATORS.keys())
 
 
-def get_interpolator(method: str, **kwargs) -> abc.Callable:
-    """Returns the interpolator factory for given method
+def get_interpolator(method: str) -> ty.Type[InterpolatorBase]:
+    """Returns the interpolator class for given method
 
     Parameters
     ----------
     method : str
         Interpolation method
-    kwargs : mapping
-        Additional arguments for construct interpolator. It is dependent from method.
 
     Returns
     -------
-    interpolator_factory : callable
-        Interpolator factory function
+    interpolator : Type[InterpolatorBase]
+        Interpolator class object
 
     See Also
     --------
@@ -511,16 +508,27 @@ def get_interpolator(method: str, **kwargs) -> abc.Callable:
 
     if method not in _INTERPOLATORS:
         raise NameError('Cannot find interpolation method "{}"'.format(method))
-
-    interpolator_factory = _INTERPOLATORS[method]
-
-    if not kwargs:
-        return interpolator_factory
-    else:
-        return functools.partial(interpolator_factory, **kwargs)
+    return _INTERPOLATORS[method]
 
 
-def _get_interp_grid(curve: 'Curve', grid_spec: InterpGridSpecType) -> np.ndarray:
+def get_interpolation_grid(grid_spec: InterpGridSpecType, curve: 'Curve') -> np.ndarray:
+    """Returns interpolation grid data using grid spec and curve object
+
+    Parameters
+    ----------
+    curve : Curve
+        Curve object
+
+    grid_spec : InterpGridSpecType
+        Grid specification
+
+    Returns
+    -------
+    grid_data : np.ndarray
+        Grid data for given spec and curve object
+
+    """
+
     if isinstance(grid_spec, InterpolationGrid):
         grid = grid_spec(curve)
     elif isinstance(grid_spec, int):
@@ -553,7 +561,7 @@ def _get_interp_grid(curve: 'Curve', grid_spec: InterpGridSpecType) -> np.ndarra
     return grid
 
 
-def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kwargs) -> np.ndarray:
+def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **params) -> np.ndarray:
     """Interpolates a n-dimensional curve data using given method and grid
 
     Parameters
@@ -567,6 +575,8 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kw
             * InterpolationGrid object
     method : str
         Interpolation method
+    params : mapping
+        Additional parameters for given interpolation method
 
     Returns
     -------
@@ -590,11 +600,11 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **kw
     if method not in _INTERPOLATORS:
         raise ValueError('Unknown interpolation method "{}"'.format(method))
 
-    try:
-        interpolator_cls = get_interpolator(method)
-        interpolator = interpolator_cls(curve, **kwargs)
+    interpolator_cls = get_interpolator(method)
 
-        interp_grid = _get_interp_grid(curve, grid_spec)
+    try:
+        interpolator = interpolator_cls(curve, **params)
+        interp_grid = get_interpolation_grid(grid_spec, curve)
         interp_data = interpolator(interp_grid)
     except Exception as err:
         raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
