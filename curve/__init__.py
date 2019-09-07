@@ -15,7 +15,6 @@ from curve._interpolate import (
     interp_methods,
     get_interpolator,
     register_interpolator,
-    get_interpolation_grid,
 )
 from curve._numeric import isequal, allequal, dot1d
 
@@ -43,7 +42,6 @@ __all__ = [
     'interp_methods',
     'get_interpolator',
     'register_interpolator',
-    'get_interpolation_grid',
 
     # numeric
     'isequal',

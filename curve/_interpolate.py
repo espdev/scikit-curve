@@ -212,12 +212,80 @@ class InterpolatorBase:
     def __init__(self, curve: 'Curve', **kwargs):
         self._curve = curve
 
-    def __call__(self, grid: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
+    def __call__(self, grid_spec: InterpGridSpecType) -> np.ndarray:
+        grid = self._get_interpolation_grid(grid_spec)
+        try:
+            return self._interpolate(grid)
+        except Exception as err:
+            raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
 
     @property
-    def curve(self):
+    def curve(self) -> 'Curve':
         return self._curve
+
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
+        """Implements interpolation on the given grid
+
+        This method should implement the interpolation for given grid and curve.
+
+        Parameters
+        ----------
+        grid : np.ndarray
+            The array 1xM with interpolation grid data
+
+        Returns
+        -------
+        interp_data : np.ndarray
+            Interpolated MxN data
+
+        """
+        raise NotImplementedError
+
+    def _get_interpolation_grid(self, grid_spec: InterpGridSpecType) -> np.ndarray:
+        """Returns interpolation grid data using grid spec and curve object
+
+        Parameters
+        ----------
+        grid_spec : InterpGridSpecType
+            Grid specification
+
+        Returns
+        -------
+        grid_data : np.ndarray
+            Grid data for given spec and curve object
+
+        """
+
+        if isinstance(grid_spec, InterpolationGrid):
+            grid = grid_spec(self.curve)
+        elif isinstance(grid_spec, int):
+            grid = UniformInterpolationGrid(grid_spec)(self.curve)
+        elif isinstance(grid_spec, (np.ndarray, abc.Sequence)):
+            grid = np.array(grid_spec, dtype=np.float64)
+        else:
+            raise ValueError('Invalid type {} of interpolation grid'.format(type(grid_spec)))
+
+        if grid.ndim != 1:
+            raise ValueError(
+                'The interpolation grid should be 1xM array where M is number of points in interpolated curve')
+        if not np.issubdtype(grid.dtype, np.number):
+            raise ValueError('Invalid dtype {} of interpolation grid'.format(grid.dtype))
+
+        dt = np.diff(grid)
+
+        if np.any(dt < 0) or np.any(np.isclose(dt, 0)):
+            raise ValueError(
+                'The values in the interpolation grid must be strictly increasing ordered.')
+
+        t_start, t_end = self.curve.t[0], self.curve.t[-1]
+
+        if np.min(grid) > t_start or np.max(grid) < t_end:
+            warnings.warn((
+                'The interpolation grid in range [{}, {}]. '
+                'It does not cover the whole curve parametrization range [{}, {}].').format(
+                np.min(grid), np.max(grid), t_start, t_end), InterpolationWarning)
+
+        return grid
 
 
 def register_interpolator(method: str):
@@ -263,7 +331,7 @@ class LinearInterpolator(InterpolatorBase):
         super().__init__(curve)
         self.extrapolate = extrapolate
 
-    def __call__(self, grid: np.ndarray) -> np.ndarray:
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
         if not self.extrapolate:
             t_start, t_end = self.curve.t[0], self.curvet[-1]
 
@@ -334,7 +402,7 @@ class CubicSplineInterpolator(InterpolatorBase):
         self.spline = interp.CubicSpline(
             curve.t, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
 
-    def __call__(self, grid: np.ndarray) -> np.ndarray:
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
         return self.spline(grid)
 
 
@@ -366,7 +434,7 @@ class CubicHermiteSplineInterpolator(InterpolatorBase):
         self.spline = interp.CubicHermiteSpline(
             curve.t, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
 
-    def __call__(self, grid: np.ndarray) -> np.ndarray:
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
         return self.spline(grid)
 
 
@@ -395,7 +463,7 @@ class AkimaInterpolator(InterpolatorBase):
         super().__init__(curve)
         self.akima = interp.Akima1DInterpolator(curve.t, curve.data, axis=0)
 
-    def __call__(self, grid: np.ndarray) -> np.ndarray:
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
         return self.akima(grid)
 
 
@@ -423,7 +491,7 @@ class PchipInterpolator(InterpolatorBase):
         super().__init__(curve)
         self.pchip = interp.PchipInterpolator(curve.t, curve.data, axis=0, extrapolate=extrapolate)
 
-    def __call__(self, grid: np.ndarray) -> np.ndarray:
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
         return self.pchip(grid)
 
 
@@ -463,7 +531,7 @@ class SplineInterpolator(InterpolatorBase):
             for values in curve.values()
         ]
 
-    def __call__(self, grid: np.ndarray) -> np.ndarray:
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
         interp_data = np.empty((grid.size, self.curve.ndim))
 
         for i, spline in enumerate(self.splines):
@@ -527,56 +595,6 @@ def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
             'Cannot create interpolator "{}": {}'.format(interpolator_cls, err)) from err
 
 
-def get_interpolation_grid(grid_spec: InterpGridSpecType, curve: 'Curve') -> np.ndarray:
-    """Returns interpolation grid data using grid spec and curve object
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    grid_spec : InterpGridSpecType
-        Grid specification
-
-    Returns
-    -------
-    grid_data : np.ndarray
-        Grid data for given spec and curve object
-
-    """
-
-    if isinstance(grid_spec, InterpolationGrid):
-        grid = grid_spec(curve)
-    elif isinstance(grid_spec, int):
-        grid = UniformInterpolationGrid(grid_spec)(curve)
-    elif isinstance(grid_spec, (np.ndarray, abc.Sequence)):
-        grid = np.array(grid_spec, dtype=np.float64)
-    else:
-        raise ValueError('Invalid type {} of interpolation grid'.format(type(grid_spec)))
-
-    if grid.ndim != 1:
-        raise ValueError(
-            'The interpolation grid should be 1xM array where M is number of points in interpolated curve')
-    if not np.issubdtype(grid.dtype, np.number):
-        raise ValueError('Invalid dtype {} of interpolation grid'.format(grid.dtype))
-
-    dt = np.diff(grid)
-
-    if np.any(dt < 0) or np.any(np.isclose(dt, 0)):
-        raise ValueError(
-            'The values in the interpolation grid must be strictly increasing ordered.')
-
-    t_start, t_end = curve.t[0], curve.t[-1]
-
-    if np.min(grid) > t_start or np.max(grid) < t_end:
-        warnings.warn((
-            'The interpolation grid in range [{}, {}]. '
-            'It does not cover the whole curve parametrization range [{}, {}].').format(
-            np.min(grid), np.max(grid), t_start, t_end), InterpolationWarning)
-
-    return grid
-
-
 def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **params) -> np.ndarray:
     """Interpolates a n-dimensional curve data using given method and grid
 
@@ -617,11 +635,6 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **pa
         raise ValueError('Unknown interpolation method "{}"'.format(method))
 
     interpolator = get_interpolator(method, curve, **params)
-    interp_grid = get_interpolation_grid(grid_spec, curve)
-
-    try:
-        interp_data = interpolator(interp_grid)
-    except Exception as err:
-        raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
+    interp_data = interpolator(grid_spec)
 
     return interp_data
