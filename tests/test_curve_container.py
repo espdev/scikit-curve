@@ -25,18 +25,6 @@ def test_construct(data, size, ndim, dtype):
     assert curve.dtype == dtype
 
 
-def test_construct_no_t_data():
-    curve = Curve([(1, 2, 3, 4)] * 2)
-    assert curve.t_data is curve.cumarclen
-
-
-def test_construct_t_data():
-    t = [0, 1, 2, 3]
-    curve = Curve([(1, 2, 3, 4)] * 2, t_data=t)
-    assert curve.t_data == pytest.approx(t)
-    assert curve.t_data != pytest.approx(curve.cumarclen)
-
-
 @pytest.mark.parametrize('data, ndmin, size, ndim', [
     (None, None, 0, 2),
     (None, 3, 0, 3),

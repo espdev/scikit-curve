@@ -63,7 +63,7 @@ class InterpolationGrid:
 
             def __call__(self, curve):
                 '''The __call__ method is used for creating an interpolation grid'''
-                return np.linspace(curve.t_data[0], curve.t_data[-1], self.pcount)
+                return np.linspace(0, curve.arclen, self.pcount)
 
         curve = Curve(...)
 
@@ -128,7 +128,7 @@ class UniformInterpolationGrid(InterpolationGrid):
         else:
             pcount = self.fill
 
-        interp_grid = np.linspace(curve.t_data[0], curve.t_data[-1], pcount)
+        interp_grid = np.linspace(0, curve.arclen, pcount)
         return interp_grid
 
 
@@ -264,25 +264,23 @@ class LinearInterpolator(InterpolatorBase):
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         if not self.extrapolate:
-            t_start, t_end = self.curve.t_data[0], self.curve.t_data[-1]
-
-            if np.min(grid) < t_start or np.max(grid) > t_end:
+            if np.min(grid) < 0 or np.max(grid) > self.curve.arclen:
                 warnings.warn((
                     '"extrapolate" is disabled but interpolation grid is out-of-bounds curve data. '
                     'The grid will be cut down to curve data bounds.'
                 ), InterpolationWarning)
 
-                drop_indices = np.flatnonzero((grid < t_start) | (grid > t_end))
+                drop_indices = np.flatnonzero((grid < 0) | (grid > self.curve.arclen))
                 grid = np.delete(grid, drop_indices)
 
-        tbins = np.digitize(grid, self.curve.t_data)
+        tbins = np.digitize(grid, self.curve.cumarclen)
         n = self.curve.size
 
         tbins[(tbins <= 0)] = 1
         tbins[(tbins >= n) | np.isclose(grid, 1)] = n - 1
         tbins -= 1
 
-        s = (grid - self.curve.t_data[tbins]) / self.curve.chordlen[tbins]
+        s = (grid - self.curve.cumarclen[tbins]) / self.curve.chordlen[tbins]
 
         tbins_data = self.curve.data[tbins, :]
         tbins1_data = self.curve.data[tbins + 1, :]
@@ -331,7 +329,7 @@ class CubicSplineInterpolator(InterpolatorBase):
         super().__init__(curve)
 
         self.spline = interp.CubicSpline(
-            curve.t_data, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
+            curve.cumarclen, curve.data, axis=0, bc_type=bc_type, extrapolate=extrapolate)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.spline(grid)
@@ -363,7 +361,7 @@ class CubicHermiteSplineInterpolator(InterpolatorBase):
         super().__init__(curve)
 
         self.spline = interp.CubicHermiteSpline(
-            curve.t_data, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
+            curve.cumarclen, curve.data, curve.frenet1, axis=0, extrapolate=extrapolate)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.spline(grid)
@@ -392,7 +390,7 @@ class AkimaInterpolator(InterpolatorBase):
 
     def __init__(self, curve: 'Curve'):
         super().__init__(curve)
-        self.akima = interp.Akima1DInterpolator(curve.t_data, curve.data, axis=0)
+        self.akima = interp.Akima1DInterpolator(curve.cumarclen, curve.data, axis=0)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.akima(grid)
@@ -420,7 +418,7 @@ class PchipInterpolator(InterpolatorBase):
 
     def __init__(self, curve: 'Curve', *, extrapolate: ty.Optional[bool] = None):
         super().__init__(curve)
-        self.pchip = interp.PchipInterpolator(curve.t_data, curve.data, axis=0, extrapolate=extrapolate)
+        self.pchip = interp.PchipInterpolator(curve.cumarclen, curve.data, axis=0, extrapolate=extrapolate)
 
     def __call__(self, grid: np.ndarray) -> np.ndarray:
         return self.pchip(grid)
@@ -458,7 +456,7 @@ class SplineInterpolator(InterpolatorBase):
 
         self.splines = [
             interp.InterpolatedUnivariateSpline(
-                curve.t_data, values, w=w, k=k, ext=extrapolate, check_finite=False)
+                curve.cumarclen, values, w=w, k=k, ext=extrapolate, check_finite=False)
             for values in curve.values()
         ]
 
@@ -542,13 +540,11 @@ def _get_interp_grid(curve: 'Curve', grid_spec: InterpGridSpecType) -> np.ndarra
         raise ValueError(
             'The values in the interpolation grid must be strictly increasing ordered.')
 
-    t_start, t_end = curve.t_data[0], curve.t_data[-1]
-
-    if np.min(grid) > t_start or np.max(grid) < t_end:
+    if np.min(grid) > 0 or np.max(grid) < curve.arclen:
         warnings.warn((
             'The interpolation grid in range [{}, {}]. '
             'It does not cover the whole curve parametrization range [{}, {}].').format(
-            np.min(grid), np.max(grid), t_start, t_end), InterpolationWarning)
+            np.min(grid), np.max(grid), 0, curve.arclen), InterpolationWarning)
 
     return grid
 
