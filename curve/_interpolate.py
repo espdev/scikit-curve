@@ -600,6 +600,41 @@ class SplineInterpolator(InterpolatorBase):
         return interp_data
 
 
+try:
+    import csaps
+except ImportError:
+    pass
+else:
+    @register_interpolator(method='csaps')
+    class CsapsApproximator(InterpolatorBase):
+        """Cubic spline approximation
+
+        Cubic spline approximation using [1]_.
+
+        Parameters
+        ----------
+        smooth : Optional[float]
+            Smoothing parameter. See for details [1]_.
+        weights : Optional[np.ndarray]
+            Weights for spline fitting. Must be positive. If None (default), weights are all equal
+
+        References
+        ----------
+        .. [1] `csaps <https://github.com/espdev/csaps>`_
+
+        """
+
+        def __init__(self, curve: 'Curve',
+                     smooth: ty.Optional[float] = None,
+                     weights: ty.Optional[np.ndarray] = None):
+            super().__init__(curve)
+            self.csaps = csaps.UnivariateCubicSmoothingSpline(
+                curve.t, curve.data.T, weights=weights, smooth=smooth)
+
+        def _interpolate(self, grid: np.ndarray) -> np.ndarray:
+            return self.csaps(grid).T
+
+
 def interp_methods() -> ty.List[str]:
     """Returns the list of interpolation methods
 
