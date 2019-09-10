@@ -4,10 +4,9 @@ import typing as ty
 
 import numpy as np
 
-from mpl_toolkits.mplot3d import proj3d, Axes3D
+from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from matplotlib.collections import LineCollection
-from matplotlib.patches import FancyArrowPatch
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 import matplotlib.pyplot as plt
