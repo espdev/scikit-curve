@@ -138,8 +138,8 @@ class UniformExtrapolationGrid(InterpolationGrid):
 
     Parameters
     ----------
-    interp_grid : InterpUniformGrid
-        An interpolation grid constructed object.
+    interp_grid : InterpolationGrid
+        An interpolation grid `InterpolationGrid`-based object.
     before : int, float
         Defines filling for "before" extrapolation piece. It is dependent on 'kind' argument.
     after : int, float
@@ -191,6 +191,66 @@ class UniformExtrapolationGrid(InterpolationGrid):
             grid[-1] + interp_chordlen, grid[-1] + interp_chordlen * pcount_after, pcount_after)
 
         return np.hstack([grid_before, grid, grid_after])
+
+
+class PreservedSpeedInterpolationGrid(InterpolationGrid):
+    """The helper class for creating interpolation grid with preserving the curve speed function
+
+    This class creates a non-uniform interpolation grid
+    that preserve the curve speed function along the curve.
+
+    Absolute values of the speed at every curve point will be decrease
+    (or increase) dependent to the number of the grid points.
+
+    Parameters
+    ----------
+    pcount : int
+        The number of points for interpolation grid.
+    interp_kind : str
+        kind of the speed function interpolation method. By default 'linear'.
+        See for details: https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+        >>> x = np.logspace(0, 1, 10)
+        >>> y = np.logspace(0, 1, 10)
+        >>> curve = Curve([x, y])
+        >>> uniform_grid = UniformInterpolationGrid(fill=30, kind='point')
+        >>> speed_grid = PreservedSpeedInterpolationGrid(pcount=30)
+        >>> print(curve.t)
+        [ 0.          1.1006533   3.05792239  6.53849373 12.72792206]
+        >>> print(speed_grid(curve))
+        [ 0.          0.50133887  1.14899588  1.94297104  2.92122314  4.15966978
+          5.65831096  7.5521494   9.90868643 12.72792206]
+        >>> print(uniform_grid(curve))
+        [ 0.          1.41421356  2.82842712  4.24264069  5.65685425  7.07106781
+          8.48528137  9.89949494 11.3137085  12.72792206]
+
+    See Also
+    --------
+    UniformInterpolationGrid
+
+    """
+
+    def __init__(self, pcount: int, interp_kind: str = 'linear'):
+        self.pcount = pcount
+        self.interp_kind = interp_kind
+
+    def __call__(self, curve: 'Curve') -> np.ndarray:
+        x = np.linspace(0, 1, curve.size-1)
+        xi = np.linspace(0, 1, self.pcount-1)
+
+        interpolator = interp.interp1d(x, curve.chordlen, kind=self.interp_kind)
+        chordlen_i = interpolator(xi)
+        cumarclen_i = np.hstack((0.0, np.cumsum(chordlen_i)))
+
+        # Normalize cumulative chord lengths to the curve arclen
+        grid = (cumarclen_i / cumarclen_i[-1]) * curve.arclen
+
+        return grid
 
 
 class InterpolatorBase:

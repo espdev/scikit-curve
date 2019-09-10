@@ -4,7 +4,8 @@ import pytest
 import numpy as np
 
 from curve import Curve
-from curve import UniformInterpolationGrid, UniformExtrapolationGrid, interp_methods
+from curve import UniformInterpolationGrid, UniformExtrapolationGrid, \
+    PreservedSpeedInterpolationGrid, interp_methods
 
 
 @pytest.mark.parametrize('fill, interp_kind, extrap, extrap_kind, expected', [
@@ -97,3 +98,13 @@ def test_extrap_kind_length(method, denom, exlen):
     curve_e = curve.interpolate(extrap_grid, method=method)
 
     assert curve_e.arclen == pytest.approx(curve_i.arclen + extraplen * 2)
+
+
+def test_preserved_speed_interp_grid():
+    x = np.logspace(0, 1, 10)
+    y = np.logspace(0, 1, 10)
+    curve = Curve([x, y])
+
+    grid = PreservedSpeedInterpolationGrid(pcount=10)
+
+    assert grid(curve) == pytest.approx(curve.t)
