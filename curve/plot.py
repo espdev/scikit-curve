@@ -88,7 +88,7 @@ def curveplot(curve: 'Curve',
     """
 
     if curve.ndim > 3:
-        raise ValueError('Cannot plot the {}-dimensional curve.')
+        raise ValueError('Cannot plot the {}-dimensional curve.'.format(curve.ndim))
 
     return_axes = False
 
