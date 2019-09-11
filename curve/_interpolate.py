@@ -10,7 +10,8 @@ The following interpolation methods are available out of the box:
     * ``hermite`` -- piecewise-cubic interpolation matching values and first derivatives
     * ``akima`` -- Akima interpolation
     * ``pchip`` -- PCHIP 1-d monotonic cubic interpolation
-    * ``spline`` -- General k-order spline interpolation
+    * ``spline`` -- Smoothing weighted k-order spline interpolation/approximation
+    * ``csaps`` -- Smoothing weighted natural cubic spline interpolation/approximation (required csaps module)
 
 """
 
@@ -557,16 +558,18 @@ class PchipInterpolator(InterpolatorBase):
 
 @register_interpolator(method='spline')
 class SplineInterpolator(InterpolatorBase):
-    """General weighted k-order spline interpolation
+    """General weighted k-order smoothing spline interpolation
 
     Parameters
     ----------
     curve : Curve
         Curve object
-    w : np.ndarray, None
-        Weights for spline fitting. Must be positive. If None (default), weights are all equal
     k : int
-        Degree of the spline. Must be 1 <= k <= 5
+        Degree of the spline. Must be in the range [1..5]
+    smooth : float
+        Positive smoothing factor. See [1]_ for details. By default 0 -- k-interpolant.
+    weights : np.ndarray, None
+        Weights for spline fitting. Must be positive. If None (default), weights are all equal
     extrapolate : int, str
         Controls the extrapolation mode for elements not in the interval
         defined by the knot sequence. See [1]_ for details.
@@ -574,20 +577,21 @@ class SplineInterpolator(InterpolatorBase):
     References
     ----------
     .. [1] `InterpolatedUnivariateSpline
-            <https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.InterpolatedUnivariateSpline.html>`_
+            <https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.UnivariateSpline.html>`_
             on SciPy docs.
 
     """
 
     def __init__(self, curve: 'Curve', *,
-                 w: ty.Optional[np.ndarray] = None,
                  k: int = 3,
+                 smooth: float = 0.0,
+                 weights: ty.Optional[np.ndarray] = None,
                  extrapolate: ty.Union[int, str] = 0):
         super().__init__(curve)
 
         self.splines = [
-            interp.InterpolatedUnivariateSpline(
-                curve.t, values, w=w, k=k, ext=extrapolate, check_finite=False)
+            interp.UnivariateSpline(
+                curve.t, values, w=weights, k=k, s=smooth, ext=extrapolate, check_finite=False)
             for values in curve.values()
         ]
 
@@ -606,7 +610,7 @@ except ImportError:
     pass
 else:
     @register_interpolator(method='csaps')
-    class CsapsApproximator(InterpolatorBase):
+    class CsapsInterpolator(InterpolatorBase):
         """Cubic spline approximation
 
         Cubic spline approximation using [1]_.
