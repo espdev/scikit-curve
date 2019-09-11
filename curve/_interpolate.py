@@ -726,9 +726,6 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **pa
     if curve.size == 1:
         raise ValueError('Cannot interpolate curve with single point.')
 
-    if method not in _INTERPOLATORS:
-        raise ValueError('Unknown interpolation method "{}"'.format(method))
-
     interpolator = get_interpolator(method, curve, **params)
     interp_data = interpolator(grid_spec)
 
