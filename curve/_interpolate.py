@@ -614,9 +614,9 @@ else:
         Parameters
         ----------
         smooth : Optional[float]
-            Smoothing parameter. See for details [1]_.
+            Smoothing parameter in the range [0..1]. See for details [1]_.
         weights : Optional[np.ndarray]
-            Weights for spline fitting. Must be positive. If None (default), weights are all equal
+            Weights for spline fitting. Must be positive. If None (default), weights are all equal.
 
         References
         ----------
@@ -636,12 +636,12 @@ else:
 
 
 def interp_methods() -> ty.List[str]:
-    """Returns the list of interpolation methods
+    """Returns the list of available interpolation methods
 
     Returns
     -------
     methods : List[str]
-        The list of interpolation methods
+        The list of available interpolation methods
 
     """
 
@@ -679,7 +679,7 @@ def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
     """
 
     if method not in _INTERPOLATORS:
-        raise NameError('Cannot find interpolation method "{}"'.format(method))
+        raise NameError('Cannot find the interpolator for given method "{}"'.format(method))
 
     interpolator_cls = _INTERPOLATORS[method]
 
