@@ -147,8 +147,8 @@ class UniformExtrapolationGrid(InterpolationGrid):
         Defines filling for "after" extrapolation piece. It is dependent on 'kind' argument.
     kind : str
         The kind of 'before' and 'after' parameters for creating a grid
-        If 'kind' is "point", 'before'/`after' are the number of points on extrap pieces (strictly).
-        if 'kind' is "length", 'before'/`after' are extrap piece lengths (approximately).
+        If 'kind' is "point", 'before'/'after' are the number of points on extrap pieces (strictly).
+        if 'kind' is "length", 'before'/'after' are extrap piece lengths (approximately).
 
     See Also
     --------
