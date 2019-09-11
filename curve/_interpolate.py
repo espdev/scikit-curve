@@ -697,20 +697,20 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **pa
     ----------
     curve : Curve
         Curve object
-    grid_spec : np.ndarray, int, UniformInterpolationGrid, UniformExtrapolationGrid
+    grid_spec : np.ndarray, int, InterpolationGrid
         Interpolation grid specification:
-            * The number of points
-            * The array Mx1 or Sequence[float]
-            * InterpolationGrid object
+            * The number of points (uniform grid)
+            * The array 1xM or Sequence[float]
+            * InterpolationGrid-based object
     method : str
-        Interpolation method
+        Interpolation method. See `interp_methods`.
     params : mapping
         Additional parameters for given interpolation method
 
     Returns
     -------
     interp_data : np.ndarray
-        Interpolated data
+        Interpolated MxN data
 
     Raises
     ------
