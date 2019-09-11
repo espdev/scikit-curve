@@ -11,7 +11,7 @@ The following interpolation methods are available out of the box:
     * ``akima`` -- Akima interpolation
     * ``pchip`` -- PCHIP 1-d monotonic cubic interpolation
     * ``spline`` -- Smoothing weighted k-order spline interpolation/approximation
-    * ``csaps`` -- Smoothing weighted natural cubic spline interpolation/approximation (required csaps module)
+    * ``csaps`` -- Smoothing weighted natural cubic spline interpolation/approximation
 
 """
 
@@ -21,6 +21,7 @@ import warnings
 
 import numpy as np
 import scipy.interpolate as interp
+import csaps
 
 if ty.TYPE_CHECKING:
     from curve._base import Curve
@@ -604,39 +605,36 @@ class SplineInterpolator(InterpolatorBase):
         return interp_data
 
 
-try:
-    import csaps
-except ImportError:
-    pass
-else:
-    @register_interpolator(method='csaps')
-    class CsapsInterpolator(InterpolatorBase):
-        """Cubic spline approximation
+@register_interpolator(method='csaps')
+class CsapsInterpolator(InterpolatorBase):
+    """Cubic spline approximation
 
-        Cubic spline approximation using [1]_.
+    Cubic spline approximation using [1]_.
 
-        Parameters
-        ----------
-        smooth : Optional[float]
-            Smoothing parameter in the range [0..1]. See for details [1]_.
-        weights : Optional[np.ndarray]
-            Weights for spline fitting. Must be positive. If None (default), weights are all equal.
+    Parameters
+    ----------
+    smooth : Optional[float]
+        Smoothing parameter in the range [0..1]. See for details [1]_.
+        By default ``smooth`` is equal to 1.0 -- cubic-interpolant.
+        If ``smooth`` is None, the smoothing parameter will be calculated automatically.
+    weights : Optional[np.ndarray]
+        Weights for spline fitting. Must be positive. If None (default), weights are all equal.
 
-        References
-        ----------
-        .. [1] `csaps <https://github.com/espdev/csaps>`_
+    References
+    ----------
+    .. [1] `csaps <https://github.com/espdev/csaps>`_
 
-        """
+    """
 
-        def __init__(self, curve: 'Curve',
-                     smooth: ty.Optional[float] = None,
-                     weights: ty.Optional[np.ndarray] = None):
-            super().__init__(curve)
-            self.csaps = csaps.UnivariateCubicSmoothingSpline(
-                curve.t, curve.data.T, weights=weights, smooth=smooth)
+    def __init__(self, curve: 'Curve',
+                 smooth: ty.Optional[float] = 1.0,
+                 weights: ty.Optional[np.ndarray] = None):
+        super().__init__(curve)
+        self.csaps = csaps.UnivariateCubicSmoothingSpline(
+            curve.t, curve.data.T, weights=weights, smooth=smooth)
 
-        def _interpolate(self, grid: np.ndarray) -> np.ndarray:
-            return self.csaps(grid).T
+    def _interpolate(self, grid: np.ndarray) -> np.ndarray:
+        return self.csaps(grid).T
 
 
 def interp_methods() -> ty.List[str]:

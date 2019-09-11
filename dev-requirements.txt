@@ -1,9 +1,11 @@
 numpy
 scipy
+csaps
 cached_property
 decorator
-jupyter
 matplotlib
+ipython
+jupyter
 sphinx
 numpydoc
 pytest

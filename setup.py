@@ -28,12 +28,10 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
+        'csaps',
         'cached_property',
         'decorator',
     ],
-    extras_require={
-        'csaps': ['csaps'],
-    },
     packages=find_packages(exclude=['tests', '*.tests', '*.tests.*', 'tests.*']),
     url='https://github.com/espdev/scikit-curve',
     license='BSD 3-Clause',
