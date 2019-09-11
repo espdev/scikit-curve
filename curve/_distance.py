@@ -55,13 +55,13 @@ def get_metric(name: str, **kwargs) -> abc.Callable:
     ----------
     name : str
         Metric name
-    **kwargs : any
+    kwargs : any
         Additional keyword-arguments for metric
 
     Returns
     -------
     metric : callable
-        Metric callable or partial callable if **kwargs were set
+        Metric callable or partial callable if kwargs were set
 
     Raises
     ------
