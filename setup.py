@@ -37,7 +37,7 @@ setup(
     license='BSD 3-Clause',
     author='Eugene Prilepin',
     author_email='esp.home@gmail.com',
-    description='A set of tools to manipule curves in Python',
+    description='A toolkit to manipulate n-dimensional geometric curves in Python',
     long_description=get_long_description(),
     long_description_content_type='text/markdown',
     classifiers=[

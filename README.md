@@ -7,7 +7,7 @@
 
 :warning: :construction: **UNDER DEVELOPMENT** :construction:  :warning:
 
-A set of tools to manipulate n-dimensional geometric curves in Python.
+A toolkit to manipulate n-dimensional geometric curves in Python.
 
 ```python
 import matplotlib.pyplot as plt
