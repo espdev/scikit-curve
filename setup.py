@@ -28,7 +28,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
-        'csaps',
+        'csaps >= 0.6.0',
         'cached_property',
         'decorator',
     ],
