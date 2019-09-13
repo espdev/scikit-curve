@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 
 """
-The module provides the base classes and data types Point, CurvePoint and Curve
+The module provides data types to manipulate n-dimensional geometric curves
+
+The module contains the following basic classes:
+
+    * `Point`
+    * `CurvePoint`
+    * `Curve`
 
 """
 
@@ -17,47 +23,12 @@ import numpy as np
 from decorator import decorator
 from cached_property import cached_property
 
+import curve._typing as _ty
 from curve._distance import MetricType, get_metric
 from curve._numeric import allequal
 from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
 
-
-NumberType = ty.Union[int, float, np.number]
-SequenceNumberType = ty.Sequence[NumberType]
-
-PointDataType = ty.Union[
-    SequenceNumberType,
-    np.ndarray,
-    'Point',
-]
-
-CurveDataType = ty.Union[
-    ty.Sequence[SequenceNumberType],
-    ty.Sequence[np.ndarray],
-    ty.Sequence['Point'],
-    np.ndarray,
-    'Curve',
-]
-
-DataType = ty.Union[
-    ty.Type[int],
-    ty.Type[float],
-    np.dtype,
-]
-
-IndexerType = ty.Union[
-    int,
-    slice,
-    ty.Sequence[int],
-    np.array,
-]
-
-PointCurveUnionType = ty.Union[
-    'Point',
-    'CurvePoint',
-    'Curve',
-]
 
 InplaceRetType = ty.Optional['Curve']
 
@@ -120,7 +91,7 @@ class Point(abc.Sequence):
 
     __slots__ = ('_data', )
 
-    def __init__(self, point_data: PointDataType, dtype: ty.Optional[DataType] = None, copy: bool = True) -> None:
+    def __init__(self, point_data: _ty.PointData, dtype: _ty.DType = None, copy: bool = True) -> None:
         """Constructs the point
         """
 
@@ -196,7 +167,7 @@ class Point(abc.Sequence):
         else:
             return data
 
-    def __setitem__(self, indexer: IndexerType, value: ty.Union['Point', np.ndarray]) -> None:
+    def __setitem__(self, indexer: _ty.Indexer, value: ty.Union['Point', np.ndarray]) -> None:
         """Sets point or value for given axis
 
         Parameters
@@ -308,7 +279,7 @@ class Point(abc.Sequence):
         """
         return self._data.size
 
-    def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> NumberType:
+    def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> _ty.Numeric:
         """Compute distance from this point to other point by given metric
 
         Parameters
@@ -393,7 +364,7 @@ class CurvePoint(Point):
             type(self).__name__, data_str, self.idx, bool(self))
 
     @_potentially_invalid(raise_exc=True)
-    def __setitem__(self, indexer: IndexerType, value: ty.Union['Point', np.ndarray]) -> None:
+    def __setitem__(self, indexer: _ty.Indexer, value: ty.Union['Point', np.ndarray]) -> None:
         self.curve[self.idx, indexer] = value
 
     def __copy__(self) -> 'CurvePoint':
@@ -805,9 +776,9 @@ class Curve(abc.Sequence):
 
     """
 
-    def __init__(self, curve_data: ty.Optional[CurveDataType] = None,
+    def __init__(self, curve_data: ty.Optional[_ty.CurveData] = None,
                  ndmin: ty.Optional[int] = None,
-                 dtype: ty.Optional[DataType] = None,
+                 dtype: _ty.DType = None,
                  copy: bool = True) -> None:
         """Constructs Curve instance
         """
@@ -906,7 +877,7 @@ class Curve(abc.Sequence):
 
         return self.size != 0 and self.ndim != 0
 
-    def __getitem__(self, indexer: IndexerType) -> ty.Union[PointCurveUnionType, np.ndarray]:
+    def __getitem__(self, indexer: _ty.Indexer) -> ty.Union[_ty.PointCurveUnion, np.ndarray]:
         """Returns the point of curve or sub-curve or all coord values fot given axis
 
         Parameters
@@ -945,7 +916,7 @@ class Curve(abc.Sequence):
                     indexer = self.size + indexer
                 return CurvePoint(data, self, index=indexer)
 
-    def __setitem__(self, indexer: IndexerType, value: ty.Union[PointCurveUnionType, np.ndarray]) -> None:
+    def __setitem__(self, indexer: _ty.Indexer, value: ty.Union[_ty.PointCurveUnion, np.ndarray]) -> None:
         """Sets a point or a sub-curve or coord values for given axis
 
         Parameters
@@ -972,7 +943,7 @@ class Curve(abc.Sequence):
         raise TypeError(
             "'{}' object doesn't support item deletion".format(type(self).__name__))
 
-    def __contains__(self, other: PointCurveUnionType):
+    def __contains__(self, other: _ty.PointCurveUnion):
         """Returns True if the curve contains given point or sub-curve with the same dimension
 
         Parameters
@@ -1679,7 +1650,7 @@ class Curve(abc.Sequence):
             if not inplace:
                 return self
 
-    def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
+    def insert(self, index: _ty.Indexer, other: _ty.PointCurveUnion) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve
 
         Parameters
@@ -1749,7 +1720,7 @@ class Curve(abc.Sequence):
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
 
-    def append(self, other: PointCurveUnionType):
+    def append(self, other: _ty.PointCurveUnion):
         """Appends point or curve data to the end of the curve and returns new curve
 
         Parameters
@@ -1783,7 +1754,7 @@ class Curve(abc.Sequence):
 
         return self.insert(self.size, other)
 
-    def delete(self, index: IndexerType) -> 'Curve':
+    def delete(self, index: _ty.Indexer) -> 'Curve':
         """Returns a new curve object with deleted point or sub-curve
 
         Parameters
@@ -1875,7 +1846,7 @@ class Curve(abc.Sequence):
         else:
             return iter(self._data[:, i] for i in range(self.ndim))
 
-    def insertdim(self, axis: int, values: ty.Union[np.ndarray, ty.Sequence[NumberType], None] = None) -> 'Curve':
+    def insertdim(self, axis: int, values: ty.Union[np.ndarray, _ty.NumericSequence, None] = None) -> 'Curve':
         """Insert new dimension to the curve and returns new curve
 
         Parameters
@@ -1921,7 +1892,7 @@ class Curve(abc.Sequence):
             raise IndexError(
                 'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
 
-    def appenddim(self, values: ty.Union[np.ndarray, ty.Sequence[NumberType], None] = None) -> 'Curve':
+    def appenddim(self, values: ty.Union[np.ndarray, _ty.NumericSequence, None] = None) -> 'Curve':
         """Appends new dimension to the end of curve and returns new curve
 
         Parameters
@@ -1955,7 +1926,7 @@ class Curve(abc.Sequence):
 
         return self.insertdim(self.ndim, values)
 
-    def deletedim(self, axis: IndexerType) -> 'Curve':
+    def deletedim(self, axis: _ty.Indexer) -> 'Curve':
         """Returns a new curve object with deleted dimension(s)
 
         Notes
@@ -2181,6 +2152,6 @@ class Curve(abc.Sequence):
         for prop in cached_props:
             self.__dict__.pop(prop, None)
 
-    def _check_ndim(self, other: PointCurveUnionType):
+    def _check_ndim(self, other: _ty.PointCurveUnion):
         if self.ndim != other.ndim:
             raise ValueError('The dimensions of the curve and other object do not match')
