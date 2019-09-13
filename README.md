@@ -26,4 +26,4 @@ curveplot(curve_i, param='speed', normals=True, marker='.')
 plt.show()
 ```
 
-![lissajous](assets/lissajous_plot.png)
+![lissajous plot](https://github.com/espdev/scikit-curve/blob/master/assets/lissajous_plot.png)
