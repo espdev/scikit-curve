@@ -1,9 +1,10 @@
 # scikit-curve
 
 [![PyPI version](https://img.shields.io/pypi/v/scikit-curve.svg)](https://pypi.python.org/pypi/scikit-curve)
+![Supported Python versions](https://img.shields.io/pypi/pyversions/scikit-curve.svg)
+[![BSD License](https://img.shields.io/pypi/l/scikit-curve.svg)](https://github.com/espdev/scikit-curve/blob/master/LICENSE)
 [![Build status](https://travis-ci.org/espdev/scikit-curve.svg?branch=master)](https://travis-ci.org/espdev/scikit-curve)
 [![Docs status](https://readthedocs.org/projects/scikit-curve/badge/)](https://scikit-curve.readthedocs.io/en/latest/)
-[![BSD License](https://img.shields.io/pypi/l/scikit-curve.svg)](https://github.com/espdev/scikit-curve/blob/master/LICENSE)
 
 :warning: :construction: **UNDER DEVELOPMENT** :construction:  :warning:
 
