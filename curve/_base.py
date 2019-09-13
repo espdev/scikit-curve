@@ -15,12 +15,9 @@ import collections.abc as abc
 import typing as ty
 import textwrap
 import enum
-import weakref
-import warnings
 
 import numpy as np
 
-from decorator import decorator
 from cached_property import cached_property
 
 import curve._typing as _ty
@@ -29,8 +26,6 @@ from curve._numeric import allequal
 from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
 
-
-InplaceRetType = ty.Optional['Curve']
 
 DEFAULT_DTYPE = np.float64
 
@@ -50,29 +45,22 @@ class Axis(enum.IntEnum):
 class Point(abc.Sequence):
     """A n-dimensional geometric point representation
 
-    The class represents n-dimensional geometric point.
-
-    Notes
-    -----
-    The data in point object can be mutable but the dimension cannot be changed.
+    The class represents n-dimensional geometric point. `Point` class is immutable.
 
     Parameters
     ----------
     point_data : PointDataType
         The data of n-dimensional point. The data might be represented in the different types:
 
-        * The sequence of numbers ``Sequence[NumberType]``
-        * np.ndarray row 1xN where N is point dimension
-        * Another Point object. It can create the view or the copy of the data of another point
+        * The sequence of numbers ``Sequence[NumericType]``
+        * 1-D np.ndarray 1xN where N is point dimension
+        * Another `Point` or `CurvePoint` object.
+          It creates the copy of the data of another point.
 
-    dtype : numeric type or numeric numpy.dtype
+    dtype : numeric type or numeric `numpy.dtype`
         The type of point data. The type must be numeric type. For example, `float`, `int`, `np.float32`, ...
 
         If dtype is not set, by default dtype has value `np.float64`.
-
-    copy : bool
-        If this flag is True the copy will be created. If it is False the copy will not be created if possible.
-        If it is possible not create a copy, dtype argument will be ignored.
 
     Examples
     --------
@@ -91,17 +79,12 @@ class Point(abc.Sequence):
 
     __slots__ = ('_data', )
 
-    def __init__(self, point_data: _ty.PointData, dtype: _ty.DType = None, copy: bool = True) -> None:
-        """Constructs the point
+    def __init__(self, point_data: _ty.PointData, dtype: _ty.DType = None) -> None:
+        """Constructs the `Point` instance
         """
-
-        is_copy = True
 
         if isinstance(point_data, Point):
             point_data = point_data.data
-
-        if isinstance(point_data, np.ndarray):
-            is_copy = copy
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
@@ -109,15 +92,14 @@ class Point(abc.Sequence):
         if not np.issubdtype(dtype, np.number):
             ValueError('dtype must be a numeric type.')
 
-        if is_copy:
-            data = np.array(point_data, dtype=np.dtype(dtype))
-        else:
-            data = point_data
+        data = np.array(point_data, dtype=np.dtype(dtype))
 
         if data.ndim > 1:
-            raise ValueError('Invalid point data: {}\nThe point data must be a vector'.format(point_data))
+            raise ValueError(
+                'Invalid point data: {}\nThe point data must be 1-D array or sequence.'.format(point_data))
 
         self._data = data
+        self._data.flags.writeable = False
 
     def __repr__(self):
         with np.printoptions(suppress=True, precision=4):
@@ -166,32 +148,6 @@ class Point(abc.Sequence):
             return Point(data)
         else:
             return data
-
-    def __setitem__(self, indexer: _ty.Indexer, value: ty.Union['Point', np.ndarray]) -> None:
-        """Sets point or value for given axis
-
-        Parameters
-        ----------
-        indexer : int, slice, list, np.array, tuple
-            Index (int) or list of indexes or slice or tuple for setting the point or sub-slice
-        value : Point, scalar, np.ndarray
-            Value for setting
-
-        Raises
-        ------
-        TypeError : Invalid index type
-        IndexError : The index out of bounds point dimensions
-
-        """
-
-        if isinstance(value, Point):
-            value = value.data
-
-        self._data[indexer] = value
-
-    def __delitem__(self, key):
-        raise TypeError(
-            "'{}' object doesn't support item deletion".format(type(self).__name__))
 
     def __eq__(self, other: 'Point') -> bool:
         """Returns True if other point is equal to the point
@@ -312,28 +268,13 @@ class Point(abc.Sequence):
         return metric(self._data, other.data)
 
 
-@decorator
-def _potentially_invalid(func, raise_exc=False, *args, **kwargs):
-    obj, *args = args
-    if not obj:
-        message = 'The curve point is not valid because the curve object has been deleted.'
-
-        if raise_exc:
-            raise RuntimeError(message)
-        else:
-            warnings.warn(message, RuntimeWarning, stacklevel=3)
-        return
-
-    return func(obj, *args, **kwargs)
-
-
 class CurvePoint(Point):
     """The class represents nd-point that is a n-dimensional curve point
 
-    This class is the view wrapper for a curve point data. This class should not used directly.
+    This class is the view wrapper for a curve point data. This class should not be used directly.
     It is used in Curve class.
 
-    The class provides additional data and parameters of curve point. For example ``curvature`` value in the point.
+    The class provides additional data and parameters of the curve point.
 
     Parameters
     ----------
@@ -351,9 +292,9 @@ class CurvePoint(Point):
     __slots__ = Point.__slots__ + ('_curve', '_idx')
 
     def __init__(self, point_data: np.ndarray, curve: 'Curve', index):
-        super().__init__(point_data, copy=False)
+        super().__init__(point_data)
 
-        self._curve = weakref.ref(curve)
+        self._curve = curve
         self._idx = index
 
     def __repr__(self):
@@ -363,32 +304,15 @@ class CurvePoint(Point):
         return '{}({}, index={}, valid={})'.format(
             type(self).__name__, data_str, self.idx, bool(self))
 
-    @_potentially_invalid(raise_exc=True)
-    def __setitem__(self, indexer: _ty.Indexer, value: ty.Union['Point', np.ndarray]) -> None:
-        self.curve[self.idx, indexer] = value
-
     def __copy__(self) -> 'CurvePoint':
         return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: ty.Optional[dict] = None) -> 'CurvePoint':
-        if not self:
-            raise RuntimeError('Cannot create the copy of the invalid point')
         return CurvePoint(self.data, self.curve, self.idx)
 
-    def __bool__(self) -> bool:
-        """Returns True if the curve instance has not been deleted
-
-        Returns
-        -------
-        flag : bool
-            True if the point is valid (the curve instance has not been deleted)
-
-        """
-        return self.curve is not None
-
     @property
-    def curve(self) -> ty.Optional['Curve']:
-        """Returns ref to the curve object or None if the curve instance has been deleted
+    def curve(self) -> 'Curve':
+        """Returns the reference to the curve object
 
         Returns
         -------
@@ -401,10 +325,9 @@ class CurvePoint(Point):
 
         """
 
-        return self._curve()
+        return self._curve
 
     @property
-    @_potentially_invalid
     def idx(self) -> ty.Optional[int]:
         """Returns the point index in the curve
 
@@ -418,7 +341,6 @@ class CurvePoint(Point):
         return self._idx
 
     @property
-    @_potentially_invalid
     def firstderiv(self) -> ty.Optional[np.ndarray]:
         """Returns first-order derivative at this curve point
 
@@ -436,7 +358,6 @@ class CurvePoint(Point):
         return self.curve.firstderiv[self.idx]
 
     @property
-    @_potentially_invalid
     def secondderiv(self) -> ty.Optional[np.ndarray]:
         """Returns second-order derivative at this curve point
 
@@ -454,7 +375,6 @@ class CurvePoint(Point):
         return self.curve.secondderiv[self.idx]
 
     @property
-    @_potentially_invalid
     def thirdderiv(self) -> ty.Optional[np.ndarray]:
         """Returns third-order derivative at this curve point
 
@@ -472,7 +392,6 @@ class CurvePoint(Point):
         return self.curve.thirdderiv[self.idx]
 
     @property
-    @_potentially_invalid
     def tangent(self) -> ty.Optional[np.ndarray]:
         """Returns tangent vector for the curve point
 
@@ -496,7 +415,6 @@ class CurvePoint(Point):
         return self.curve.tangent[self.idx]
 
     @property
-    @_potentially_invalid
     def normal(self) -> ty.Optional[np.ndarray]:
         """Returns normal vector at the curve point
 
@@ -516,7 +434,6 @@ class CurvePoint(Point):
         return self.curve.normal[self.idx]
 
     @property
-    @_potentially_invalid
     def binormal(self) -> ty.Optional[np.ndarray]:
         """Returns binormal vector at the curve point
 
@@ -536,7 +453,6 @@ class CurvePoint(Point):
         return self.curve.binormal[self.idx]
 
     @property
-    @_potentially_invalid
     def speed(self) -> ty.Optional[float]:
         """Returns the speed in the point
 
@@ -554,7 +470,6 @@ class CurvePoint(Point):
         return self.curve.speed[self.idx]
 
     @property
-    @_potentially_invalid
     def frenet1(self) -> ty.Optional[np.ndarray]:
         """Returns the first Frenet vector (unit tangent vector) at the point
 
@@ -572,7 +487,6 @@ class CurvePoint(Point):
         return self.curve.frenet1[self.idx]
 
     @property
-    @_potentially_invalid
     def frenet2(self) -> ty.Optional[np.ndarray]:
         """Returns the second Frenet vector (unit normal vector) at the point
 
@@ -590,7 +504,6 @@ class CurvePoint(Point):
         return self.curve.frenet2[self.idx]
 
     @property
-    @_potentially_invalid
     def frenet3(self) -> ty.Optional[np.ndarray]:
         """Returns the third Frenet vector (unit binormal vector) at the point
 
@@ -608,7 +521,6 @@ class CurvePoint(Point):
         return self.curve.frenet3[self.idx]
 
     @property
-    @_potentially_invalid
     def curvature(self) -> ty.Optional[float]:
         """Returns the curvature value at this point of the curve
 
@@ -626,7 +538,6 @@ class CurvePoint(Point):
         return self.curve.curvature[self.idx]
 
     @property
-    @_potentially_invalid
     def torsion(self) -> ty.Optional[float]:
         """Returns the torsion value at this point of the curve
 
@@ -643,16 +554,15 @@ class CurvePoint(Point):
 
         return self.curve.torsion[self.idx]
 
-    @_potentially_invalid(raise_exc=True)
-    def subcurve(self, other_point: 'CurvePoint', inclusive: bool = True) -> np.ndarray:
-        """Returns a sub-curve view from the point to other point in the same curve
+    def subcurve(self, other_point: 'CurvePoint', endpoint: bool = True) -> np.ndarray:
+        """Returns a sub-curve from the point to other point in the same curve
 
         Parameters
         ----------
         other_point : CurvePoint
             Other point in the same curve
-        inclusive : bool
-            If this flag is True, other point will be included to a sub-curve.
+        endpoint : bool
+            If this flag is True, other point will be included to a sub-curve as end point.
 
         Returns
         -------
@@ -661,7 +571,6 @@ class CurvePoint(Point):
 
         Raises
         ------
-        RuntimeError : The points are not valid. The curve instance has been deleted
         TypeError : Other point is not an instance of "CurvePoint" class
         ValueError : Other point belongs to another curve
 
@@ -673,18 +582,19 @@ class CurvePoint(Point):
         if self.curve is not other_point.curve:
             raise ValueError('Other point belongs to another curve')
 
-        inc = 1 if inclusive else 0
+        inc = 1 if endpoint else 0
         return self.curve[self.idx:other_point.idx+inc]
 
 
 class Curve(abc.Sequence):
     """The main class for n-dimensional geometric curve representation
 
-    The class represents n-dimensional geometric curve in the plane or in the Euclidean n-dimensional space
-    given by a finity sequence of points.
+    The class represents n-dimensional geometric curve in the plane
+    or in the Euclidean n-dimensional space given by a finity sequence of points.
 
-    Internal data storage of curve points is NumPy MxN array where M is the number of curve points and N is curve
-    dimension. In other words, n-dimensional curve data is stored in 2-d array::
+    Internal data storage of curve points is NumPy MxN array where M is the number
+    of curve points and N is curve dimension. In other words, n-dimensional curve data
+    is stored in 2-d array::
 
         # 2-d curve representation
         Curve([[x1 y1]
@@ -709,22 +619,18 @@ class Curve(abc.Sequence):
 
     Notes
     -----
-    Curve class implements ``Sequence`` interface but its instances are mutable with the limitations.
-
-    Some methods can change the curve data in-place withous change the data size.
-    However, some methods that can change curve size or dimension always return the copy of the curve.
-    Also deleting data via ``__delitem__`` is not allowed.
+    Curve class implements ``Sequence`` interface and the `Curve` objects are immutable.
 
     Parameters
     ----------
-    curve_data : CurveDataType
+    curve_data : CurveData
         The data of n-dimensional curve (2 or higher). The data might be represented in the different types:
 
         * The sequence of the vectors with coordinates for every dimension:
           ``[X, Y, Z, ..., N]`` where X, Y, ... are 1xM arrays.
         * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension.
           N must be at least 2 (a plane curve).
-        * Another Curve object. It creates the copy of another curve by default (see ``copy`` argument).
+        * Another Curve object. It creates the copy of another curve.
 
         If the data is not set empty curve will be created with ndmin dimensions
         (2 by default, see ``ndmin`` argument).
@@ -733,17 +639,10 @@ class Curve(abc.Sequence):
         The minimum curve dimension. By default it is ``None`` and equal to input data dimension.
         If ``ndmin`` is more than input data dimension, additional dimensions will be added to
         created curve object. All values in additional dimensions are equal to zero.
-        If it is set, ``copy`` argument is ignored.
 
     dtype : numeric type or numeric numpy.dtype
         The type of curve data. The type must be a numeric type. For example, ``float``, ``int``, ``np.float32``, ...
-
         If ``dtype`` argument is not set, by default dtype of curve data is ``np.float64``.
-        If ``dtype`` argument is set, ``copy`` argument is ignored.
-
-    copy : bool
-        If this flag is True the copy of the data or curve will be created. If it is False the copy will not be
-        created if possible.
 
     Raises
     ------
@@ -778,13 +677,11 @@ class Curve(abc.Sequence):
 
     def __init__(self, curve_data: ty.Optional[_ty.CurveData] = None,
                  ndmin: ty.Optional[int] = None,
-                 dtype: _ty.DType = None,
-                 copy: bool = True) -> None:
+                 dtype: _ty.DType = None) -> None:
         """Constructs Curve instance
         """
 
         is_transpose = True
-        is_copy = True
         is_ndmin = False
 
         if ndmin is None:
@@ -795,9 +692,6 @@ class Curve(abc.Sequence):
         if ndmin < 2:
             raise ValueError('ndmin must be at least of 2')
 
-        if is_ndmin or dtype is not None:
-            copy = True
-
         if isinstance(curve_data, Curve):
             curve_data = curve_data.data
 
@@ -806,7 +700,6 @@ class Curve(abc.Sequence):
                 raise ValueError('If the curve data is ndarray it must be two-dimensional.')
             dtype = dtype or curve_data.dtype
             is_transpose = False
-            is_copy = copy
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
@@ -821,10 +714,7 @@ class Curve(abc.Sequence):
             curve_data = empty_data
             is_transpose = False
 
-        if is_copy:
-            data = np.array(curve_data, ndmin=2, dtype=dtype)
-        else:
-            data = curve_data
+        data = np.array(curve_data, ndmin=2, dtype=dtype)
 
         if is_transpose:
             data = data.T
@@ -842,6 +732,7 @@ class Curve(abc.Sequence):
             data = np.hstack([data, np.zeros((m, ndmin - n), dtype=dtype)])
 
         self._data = data  # type: np.ndarray
+        self._data.flags.writeable = False
 
     def __repr__(self) -> str:
         name = type(self).__name__
@@ -907,7 +798,7 @@ class Curve(abc.Sequence):
         if data.ndim > 1:
             if data.shape[1] == 1:
                 return data.ravel()
-            return Curve(data, copy=False)
+            return Curve(data)
         else:
             if is_return_values:
                 return data
@@ -915,33 +806,6 @@ class Curve(abc.Sequence):
                 if indexer < 0:
                     indexer = self.size + indexer
                 return CurvePoint(data, self, index=indexer)
-
-    def __setitem__(self, indexer: _ty.Indexer, value: ty.Union[_ty.PointCurveUnion, np.ndarray]) -> None:
-        """Sets a point or a sub-curve or coord values for given axis
-
-        Parameters
-        ----------
-        indexer : int, slice, list, np.array, tuple
-            Index (int) or list of indexes or slice or tuple for setting the point or sub-slice
-        value : Point, Curve, np.ndarray
-            Value for setting
-
-        Raises
-        ------
-        TypeError : Invalid index type
-        IndexError : The index out of bounds curve size or dimensions
-
-        """
-
-        if isinstance(value, (Point, Curve)):
-            value = value.data
-
-        self._data[indexer] = value
-        self.invalidate()
-
-    def __delitem__(self, key):
-        raise TypeError(
-            "'{}' object doesn't support item deletion".format(type(self).__name__))
 
     def __contains__(self, other: _ty.PointCurveUnion):
         """Returns True if the curve contains given point or sub-curve with the same dimension
@@ -1594,27 +1458,19 @@ class Curve(abc.Sequence):
 
         return _diffgeom.torsion(self)
 
-    def reverse(self, inplace: bool = False) -> InplaceRetType:
+    def reverse(self) -> 'Curve':
         """Reverses the curve
-
-        Parameters
-        ----------
-        inplace : bool
-            If it is True, the method reverses the curve in-place and changed this object.
 
         Returns
         -------
         curve : Curve
-            The reversed copy of the curve or None if ``inplace`` is True
+            The reversed copy of the curve
 
         """
 
-        if inplace:
-            self[:] = np.flipud(self._data)
-        else:
-            return Curve(np.flipud(self._data))
+        return Curve(np.flipud(self._data))
 
-    def coorientplane(self, axis1: int = 0, axis2: int = 1, inplace: bool = False) -> InplaceRetType:
+    def coorientplane(self, axis1: int = 0, axis2: int = 1) -> 'Curve':
         """Co-orients the curve to given plane orientation
 
         Notes
@@ -1627,13 +1483,11 @@ class Curve(abc.Sequence):
             First plane axis
         axis2: int
             Second plane axis
-        inplace : bool
-            If it is True, the method changes this object.
 
         Returns
         -------
         curve : Curve
-            The reversed curve copy or this curve object or None if ``inplace`` is True
+            The co-oriented curve copy
 
         Raises
         ------
@@ -1645,10 +1499,9 @@ class Curve(abc.Sequence):
         is_coorient = _diffgeom.coorientplane(self, axis1=axis1, axis2=axis2)
 
         if not is_coorient:
-            return self.reverse(inplace=inplace)
+            return self.reverse()
         else:
-            if not inplace:
-                return self
+            return Curve(self)
 
     def insert(self, index: _ty.Indexer, other: _ty.PointCurveUnion) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve
@@ -2134,23 +1987,6 @@ class Curve(abc.Sequence):
 
         interp_data = interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
         return Curve(interp_data, ndmin=self.ndim, dtype=self.dtype)
-
-    def invalidate(self):
-        """Invalidates the curve parameters cache
-
-        Notes
-        -----
-        All parameters such as tangent, normal, curvature, etc
-        after call this method will be re-calculated.
-
-        """
-
-        cls = type(self)
-        cached_props = [attr for attr in self.__dict__
-                        if isinstance(getattr(cls, attr, None), cached_property)]
-
-        for prop in cached_props:
-            self.__dict__.pop(prop, None)
 
     def _check_ndim(self, other: _ty.PointCurveUnion):
         if self.ndim != other.ndim:

@@ -42,36 +42,6 @@ def test_construct_ndmin(data, ndmin, size, ndim):
     assert curve.ndim == ndim
 
 
-@pytest.mark.parametrize('data', [
-    np.array([[1, 2, 3, 4], [1, 2, 3, 4]]).T,
-    Curve([[1, 2, 3, 4], [1, 2, 3, 4]]),
-])
-def test_construct_no_copy(data):
-    curve = Curve(data, copy=False)
-
-    if isinstance(data, Curve):
-        data = data.data
-
-    curve[0, 0] = 10
-    curve[-1, -1] = 20
-
-    assert curve.data == pytest.approx(data)
-
-
-@pytest.mark.parametrize('kwargs', [
-    {'dtype': np.int32},
-    {'ndmin': 3},
-])
-def test_construct_no_copy_false(kwargs):
-    curve1 = Curve([[1, 2, 3, 4], [1, 2, 3, 4]])
-    curve2 = Curve(curve1, copy=False, **kwargs)
-
-    curve2[0, 0] = 10
-    curve2[-1, -1] = 20
-
-    assert curve2.data != pytest.approx(curve1.data)
-
-
 def test_from_points():
     """Tests creating the instance of 'Curve' class from points
     """
@@ -123,13 +93,6 @@ def test_ne(curve_data):
 def test_reverse():
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve.reverse() == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
-
-
-def test_reverse_inplace():
-    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    curve.reverse(inplace=True)
-
-    assert curve == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
 
 
 @pytest.mark.parametrize('point_data', [
@@ -231,19 +194,6 @@ def test_get_item_curve_less_dim(indexer, expected_data):
 def test_get_item_values(indexer, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve[indexer] == pytest.approx(expected_data)
-
-
-@pytest.mark.parametrize('index, value, expected_data', [
-    (1, Point([10, 20]), [(1, 10, 3, 4), (5, 20, 7, 8)]),
-    ([1, 2], Point([10, 20]), [(1, 10, 10, 4), (5, 20, 20, 8)]),
-    (slice(0, 2), Curve([[10, 20], [30, 40]]), [(10, 20, 3, 4), (30, 40, 7, 8)]),
-    ((slice(None, None), 0), np.array([10, 20, 30, 40]), [(10, 20, 30, 40), (5, 6, 7, 8)]),
-])
-def test_set_item(index, value, expected_data):
-    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    curve[index] = value
-
-    assert curve == Curve(expected_data)
 
 
 def test_concatenate():
