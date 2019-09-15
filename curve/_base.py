@@ -677,9 +677,11 @@ class Curve(abc.Sequence):
         (2 by default, see ``ndmin`` argument).
 
     tdata : Optional[Union[NumericSequence, np.ndarray]
-        Defines parametrization vector ``t`` that was used for calculaing parametric
-        "curve_data" :math:`\gamma(t) = (x(t), y(t), ..., n(t))`.
-        See also `isparametric` and `t` properties.
+        "tdata" defines parametrization vector ``t`` that was used for calculaing
+        "curve_data" for parametric curve :math:`\gamma(t) = (x(t), y(t), ..., n(t))`.
+        If "curve_data" is a `Curve` object, "tdata" argument will be ignored.
+
+        See also `isparametric` and `t` `Curve` class properties.
 
     axis : Optional[int]
         "axis" will be used to interpret "curve_data".
@@ -755,8 +757,12 @@ class Curve(abc.Sequence):
         if isinstance(curve_data, Curve):
             curve_data = curve_data.data
 
+            if tdata is not None:
+                warnings.warn('Ignoring "tdata" argument because "curve_data" is a "Curve" object.')
             if axis is not None:
-                warnings.warn('"axis" argument is ignored when "curve_data" is a Curve.', RuntimeWarning)
+                warnings.warn('Ignoring "axis" argument because "curve_data" is a "Curve" object.', RuntimeWarning)
+
+            tdata = None
             axis = 0
 
         if axis is None:
@@ -791,7 +797,7 @@ class Curve(abc.Sequence):
             tdata.flags.writeable = False
 
             if tdata.ndim != 1:
-                raise ValueError('"tdata" must be 1-D array')
+                raise ValueError('"tdata" must be numeric 1-D array')
             if tdata.size != data.shape[0]:
                 raise ValueError('"tdata" size must be equal to the number of curve points.')
 
