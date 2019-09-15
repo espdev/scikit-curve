@@ -1589,7 +1589,12 @@ class Curve(abc.Sequence):
 
         """
 
-        return Curve(np.flipud(self._data))
+        if self.isparametric:
+            tdata = np.flip(self._tdata, axis=0)
+        else:
+            tdata = None
+
+        return Curve(np.flipud(self._data), tdata=tdata)
 
     def coorientplane(self, axis1: int = 0, axis2: int = 1) -> 'Curve':
         """Co-orients the curve to given plane orientation

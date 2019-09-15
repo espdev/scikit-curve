@@ -93,6 +93,18 @@ def test_reverse():
     assert curve.reverse() == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
 
 
+def test_reverse_parametric():
+    t = np.linspace(0, np.pi, 10)
+    x = np.cos(t)
+    y = np.sin(t)
+
+    curve = Curve([x, y], tdata=t)
+    reversed_curve = curve.reverse()
+
+    assert reversed_curve == Curve([x[::-1], y[::-1]])
+    assert reversed_curve.t == pytest.approx(np.linspace(np.pi, 0, 10))
+
+
 @pytest.mark.parametrize('point_data', [
     [1, 5],
     [2, 6],
