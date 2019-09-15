@@ -869,13 +869,13 @@ class Curve(abc.Sequence):
 
         return self.size != 0 and self.ndim != 0
 
-    def __getitem__(self, indexer: Indexer) -> ty.Union[PointCurveUnion, np.ndarray]:
+    def __getitem__(self, indexer: Indexer) -> ty.Union[CurvePoint, 'Curve']:
         """Returns the point of curve or sub-curve or all coord values fot given axis
 
         Parameters
         ----------
-        indexer : int, slice, list, np.array, tuple
-            Index (int) or list of indexes or slice or tuple for getting the point or sub-slice
+        indexer : int, slice, sequence, np.array
+            Index (int) or list of indexes or slice for getting the curve point or sub-curve
 
         Raises
         ------
@@ -884,29 +884,41 @@ class Curve(abc.Sequence):
 
         Returns
         -------
-        point : Point
-            Point for given index
+        point : CurvePoint
+            Point for given integer index
         curve : Curve
-            Sub-curve for given slice
-        coord_values : np.ndarray
-            All values for given axis
+            Sub-curve for given slice/indices
 
         """
 
-        is_return_values = isinstance(indexer, tuple) and isinstance(indexer[1], int)
-        data = self._data[indexer]
+        def get_curvepoint(index: int) -> CurvePoint:
+            if index < 0:
+                index = self.size + index
+            return CurvePoint(self._data[index], curve=self, index=index)
 
-        if data.ndim > 1:
-            if data.shape[1] == 1:
-                return data.ravel()
-            return Curve(data)
-        else:
-            if is_return_values:
-                return data
+        def get_subcurve(index: ty.Union[slice, NumericSequence, np.ndarray]) -> Curve:
+            if self.isparametric:
+                tdata = self._tdata[index]
             else:
-                if indexer < 0:
-                    indexer = self.size + indexer
-                return CurvePoint(data, self, index=indexer)
+                tdata = None
+            return Curve(self._data[index], tdata=tdata)
+
+        if isinstance(indexer, int):
+            return get_curvepoint(indexer)
+
+        elif isinstance(indexer, slice):
+            return get_subcurve(indexer)
+
+        elif isinstance(indexer, (np.ndarray, abc.Sequence)):
+            indexer = np.asarray(indexer)
+            if indexer.ndim > 1:
+                raise IndexError('Indexing array must be 1-d')
+            if (not np.issubdtype(indexer.dtype, np.number) and
+                    not np.issubdtype(indexer.dtype, np.bool_)):
+                raise IndexError('Indexing array must be numeric or boolean')
+            return get_subcurve(indexer)
+        else:
+            raise TypeError('Invalid index type {}'.format(type(indexer)))
 
     def __contains__(self, other: PointCurveUnion):
         """Returns True if the curve contains given point or sub-curve with the same dimension

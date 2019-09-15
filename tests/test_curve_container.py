@@ -170,7 +170,7 @@ def test_count(point_data, expected_count):
     (-1, [4, 8]),
     (-2, [3, 7]),
 ])
-def test_get_item_point(index, expected_data):
+def test_getitem_point(index, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve[index] == Point(expected_data)
 
@@ -181,29 +181,37 @@ def test_get_item_point(index, expected_data):
     (slice(-2, -1), [(3,), (7,)]),
     (slice(-2, None), [(3, 4), (7, 8)]),
     (slice(None), [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    ([0, 2, 3], [(1, 3, 4), (5, 7, 8)]),
+    (np.array([0, 2, 3]), [(1, 3, 4), (5, 7, 8)]),
+    ([True] * 4, [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    ([False] * 4, []),
 ])
-def test_get_item_curve(indexer, expected_data):
+def test_getitem_curve(indexer, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve[indexer] == Curve(expected_data)
 
 
-@pytest.mark.parametrize('indexer, expected_data', [
-    ((slice(None), slice(0, 2)), [(1, 2, 3, 4), (5, 6, 7, 8)]),
-    ((slice(None), slice(1, None)), [(5, 6, 7, 8), (9, 10, 11, 12)]),
-])
-def test_get_item_curve_less_dim(indexer, expected_data):
-    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
-    assert curve[indexer] == Curve(expected_data)
+def test_getitem_curve_parametric():
+    tdata = [0, 1, 2, 3]
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)], tdata=tdata)
+    sub_curve = curve[::2]
+    assert sub_curve.t == pytest.approx(np.array(tdata[::2]))
 
 
-@pytest.mark.parametrize('indexer, expected_data', [
-    ((slice(None), 0), np.array([1, 2, 3, 4])),
-    ((slice(None), slice(1)), np.array([1, 2, 3, 4])),
-    ((slice(None, 2), 1), np.array([5, 6])),
+@pytest.mark.parametrize('indexer', [
+    (1, None),
+    (2, slice(None)),
+    (),
+    (slice(None),),
+    (slice(None), None),
+    (slice(None), slice(None)),
+    None,
+    np.zeros((2, 3)),
 ])
-def test_get_item_values(indexer, expected_data):
+def test_getitem_error(indexer):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    assert curve[indexer] == pytest.approx(expected_data)
+    with pytest.raises((TypeError, IndexError)):
+        _ = curve[indexer]
 
 
 def test_concatenate():
