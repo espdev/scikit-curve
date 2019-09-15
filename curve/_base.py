@@ -15,12 +15,14 @@ import collections.abc as abc
 import typing as ty
 import textwrap
 import enum
+import warnings
 
 import numpy as np
 
 from cached_property import cached_property
 
 from curve._distance import MetricType, get_metric
+from curve._utils import as2d
 from curve._numeric import allequal
 from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
@@ -674,7 +676,18 @@ class Curve(abc.Sequence):
         If "curve_data" is empty, the empty curve will be created with ndmin dimensions
         (2 by default, see ``ndmin`` argument).
 
-    ndmin : int
+    axis : Optional[int]
+        "axis" will be used to interpret "curve_data".
+        In other words, "axis" is the axis along which located curve data points.
+        If "axis" is not set, it will be set to 0 if "curve_data" is numpy array
+        or 'Curve' object and 1 in other cases.
+
+        If you set "curve_data" as list of coord-arrays ``[X, Y, ..., N]``
+        or from other `Curve`, you should not set "axis" argument.
+        This parameter may be useful if you want to set "curve_data" as an array
+        with N-dimensional shape.
+
+    ndmin : Optional[int]
         The minimum curve dimension. By default it is ``None`` and equal to input data dimension.
         If ``ndmin`` is more than input data dimension, additional dimensions will be added to
         created curve object. All values in additional dimensions are equal to zero.
@@ -685,7 +698,7 @@ class Curve(abc.Sequence):
 
     Raises
     ------
-    ValueError : If the input data is invalid (1-d array or ndim > 2, for example)
+    ValueError : If the input data is invalid
     ValueError : There is not a numeric ``dtype``
 
     Examples
@@ -699,8 +712,8 @@ class Curve(abc.Sequence):
     .. code-block:: python
 
         # 2-D curve with 4 points from numpy array
-        curve = Curve(np.array([(1, 2, 3, 4), (5, 6, 7, 8)]).T,
-                      dtype=np.float32)
+        curve = Curve(np.array([(1, 2, 3, 4), (5, 6, 7, 8)]),
+                      axis=1, dtype=np.float32)
 
     .. code-block:: python
 
@@ -715,13 +728,14 @@ class Curve(abc.Sequence):
     """
 
     def __init__(self, curve_data: CurveData,
+                 axis: ty.Optional[int] = None,
                  ndmin: ty.Optional[int] = None,
                  dtype: DType = None) -> None:
         """Constructs Curve instance
         """
 
-        is_transpose = True
         is_ndmin = False
+        is_array = isinstance(curve_data, (np.ndarray, Curve))
 
         if ndmin is None:
             ndmin = 2
@@ -734,23 +748,24 @@ class Curve(abc.Sequence):
         if isinstance(curve_data, Curve):
             curve_data = curve_data.data
 
-        if isinstance(curve_data, np.ndarray):
-            if curve_data.size > 0 and curve_data.ndim != 2:
-                raise ValueError('If the curve data is ndarray it must be two-dimensional.')
+            if axis is not None:
+                warnings.warn('"axis" argument is ignored when "curve_data" is a Curve.', RuntimeWarning)
+            axis = 0
+
+        if axis is None:
+            axis = 0 if is_array else 1
+
+        if is_array:
             dtype = dtype or curve_data.dtype
-            is_transpose = False
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
         dtype = np.dtype(dtype)
 
         if not np.issubdtype(dtype, np.number):
-            ValueError('dtype must be a numeric type.')
+            ValueError('"dtype" must be a numeric type not {}.'.format(dtype))
 
-        data = np.array(curve_data, ndmin=2, dtype=dtype)
-
-        if is_transpose:
-            data = data.T
+        data = as2d(curve_data, axis=axis, dtype=dtype)
 
         if data.size == 0:
             data = np.reshape([], (0, ndmin)).astype(dtype)

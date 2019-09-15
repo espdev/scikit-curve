@@ -51,7 +51,7 @@ def test_from_points():
     ]
 
     points_array = np.array(points)
-    curve = Curve(points_array)
+    curve = Curve(points_array, axis=0)
 
     assert curve.size == 4
     assert curve.ndim == 3
