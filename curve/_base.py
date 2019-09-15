@@ -382,7 +382,33 @@ class CurvePoint(Point):
         return self._idx
 
     @property
-    def firstderiv(self) -> ty.Optional[np.ndarray]:
+    def t(self) -> float:
+        """Returns value of ``t`` parametric vector for this point
+
+        Returns
+        -------
+        tval : numeric
+            The value of ``t`` parametric vector for this point
+
+        """
+
+        return self.curve.t[self.idx]
+
+    @property
+    def cumarclen(self) -> float:
+        """Returns value of cumulative arc length for this point
+
+        Returns
+        -------
+        val : float
+            The value of cumulative arc length for this point
+
+        """
+
+        return self.curve.cumarclen[self.idx]
+
+    @property
+    def firstderiv(self) -> np.ndarray:
         """Returns first-order derivative at this curve point
 
         Returns
@@ -399,7 +425,7 @@ class CurvePoint(Point):
         return self.curve.firstderiv[self.idx]
 
     @property
-    def secondderiv(self) -> ty.Optional[np.ndarray]:
+    def secondderiv(self) -> np.ndarray:
         """Returns second-order derivative at this curve point
 
         Returns
@@ -416,7 +442,7 @@ class CurvePoint(Point):
         return self.curve.secondderiv[self.idx]
 
     @property
-    def thirdderiv(self) -> ty.Optional[np.ndarray]:
+    def thirdderiv(self) -> np.ndarray:
         """Returns third-order derivative at this curve point
 
         Returns
@@ -433,7 +459,7 @@ class CurvePoint(Point):
         return self.curve.thirdderiv[self.idx]
 
     @property
-    def tangent(self) -> ty.Optional[np.ndarray]:
+    def tangent(self) -> np.ndarray:
         """Returns tangent vector for the curve point
 
         Notes
@@ -456,7 +482,7 @@ class CurvePoint(Point):
         return self.curve.tangent[self.idx]
 
     @property
-    def normal(self) -> ty.Optional[np.ndarray]:
+    def normal(self) -> np.ndarray:
         """Returns normal vector at the curve point
 
         Returns
@@ -475,7 +501,7 @@ class CurvePoint(Point):
         return self.curve.normal[self.idx]
 
     @property
-    def binormal(self) -> ty.Optional[np.ndarray]:
+    def binormal(self) -> np.ndarray:
         """Returns binormal vector at the curve point
 
         Returns
@@ -494,7 +520,7 @@ class CurvePoint(Point):
         return self.curve.binormal[self.idx]
 
     @property
-    def speed(self) -> ty.Optional[float]:
+    def speed(self) -> float:
         """Returns the speed in the point
 
         Returns
@@ -511,7 +537,7 @@ class CurvePoint(Point):
         return self.curve.speed[self.idx]
 
     @property
-    def frenet1(self) -> ty.Optional[np.ndarray]:
+    def frenet1(self) -> np.ndarray:
         """Returns the first Frenet vector (unit tangent vector) at the point
 
         Returns
@@ -528,7 +554,7 @@ class CurvePoint(Point):
         return self.curve.frenet1[self.idx]
 
     @property
-    def frenet2(self) -> ty.Optional[np.ndarray]:
+    def frenet2(self) -> np.ndarray:
         """Returns the second Frenet vector (unit normal vector) at the point
 
         Returns
@@ -545,7 +571,7 @@ class CurvePoint(Point):
         return self.curve.frenet2[self.idx]
 
     @property
-    def frenet3(self) -> ty.Optional[np.ndarray]:
+    def frenet3(self) -> np.ndarray:
         """Returns the third Frenet vector (unit binormal vector) at the point
 
         Returns
@@ -562,7 +588,7 @@ class CurvePoint(Point):
         return self.curve.frenet3[self.idx]
 
     @property
-    def curvature(self) -> ty.Optional[float]:
+    def curvature(self) -> float:
         """Returns the curvature value at this point of the curve
 
         Returns
@@ -579,7 +605,7 @@ class CurvePoint(Point):
         return self.curve.curvature[self.idx]
 
     @property
-    def torsion(self) -> ty.Optional[float]:
+    def torsion(self) -> float:
         """Returns the torsion value at this point of the curve
 
         Returns
@@ -793,7 +819,7 @@ class Curve(abc.Sequence):
             data = np.hstack([data, np.zeros((m, ndmin - n), dtype=dtype)])
 
         if tdata is not None:
-            tdata = np.array(tdata, dtype=dtype)
+            tdata = np.array(tdata, dtype=DEFAULT_DTYPE)
             tdata.flags.writeable = False
 
             if tdata.ndim != 1:
