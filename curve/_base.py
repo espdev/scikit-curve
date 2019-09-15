@@ -671,7 +671,7 @@ class Curve(abc.Sequence):
           N must be at least 2 (a plane curve).
         * Another Curve object. It creates the copy of another curve.
 
-        If the data is not set empty curve will be created with ndmin dimensions
+        If "curve_data" is empty, the empty curve will be created with ndmin dimensions
         (2 by default, see ``ndmin`` argument).
 
     ndmin : int
@@ -714,7 +714,7 @@ class Curve(abc.Sequence):
 
     """
 
-    def __init__(self, curve_data: ty.Optional[CurveData] = None,
+    def __init__(self, curve_data: CurveData,
                  ndmin: ty.Optional[int] = None,
                  dtype: DType = None) -> None:
         """Constructs Curve instance
@@ -747,19 +747,13 @@ class Curve(abc.Sequence):
         if not np.issubdtype(dtype, np.number):
             ValueError('dtype must be a numeric type.')
 
-        empty_data = np.reshape([], (0, ndmin)).astype(dtype)
-
-        if curve_data is None:
-            curve_data = empty_data
-            is_transpose = False
-
         data = np.array(curve_data, ndmin=2, dtype=dtype)
 
         if is_transpose:
             data = data.T
 
         if data.size == 0:
-            data = empty_data
+            data = np.reshape([], (0, ndmin)).astype(dtype)
 
         m, n = data.shape
 

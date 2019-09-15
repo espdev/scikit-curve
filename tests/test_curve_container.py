@@ -26,8 +26,6 @@ def test_construct(data, size, ndim, dtype):
 
 
 @pytest.mark.parametrize('data, ndmin, size, ndim', [
-    (None, None, 0, 2),
-    (None, 3, 0, 3),
     ([], None, 0, 2),
     ([], 3, 0, 3),
     (np.array([]), 4, 0, 4),
