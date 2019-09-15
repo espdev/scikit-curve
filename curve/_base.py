@@ -1020,7 +1020,7 @@ class Curve(abc.Sequence):
         return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: ty.Optional[dict] = None) -> 'Curve':
-        return Curve(self._data)
+        return Curve(self._data, tdata=self._tdata)
 
     def index(self, point: Point, start: ty.Optional[int] = None, end: ty.Optional[int] = None) -> int:
         """Returns the first index for given point in the curve
