@@ -628,7 +628,7 @@ class CurvePoint(Point):
 
 
 class Curve(abc.Sequence):
-    """The main class for n-dimensional geometric curve representation
+    r"""The main class for n-dimensional geometric curve representation
 
     The class represents n-dimensional geometric curve in the plane
     or in the Euclidean n-dimensional space given by a finity sequence of points.
@@ -675,6 +675,11 @@ class Curve(abc.Sequence):
 
         If "curve_data" is empty, the empty curve will be created with ndmin dimensions
         (2 by default, see ``ndmin`` argument).
+
+    tdata : Optional[Union[NumericSequence, np.ndarray]
+        Defines parametrization vector ``t`` that was used for calculaing parametric
+        "curve_data" :math:`\gamma(t) = (x(t), y(t), ..., n(t))`.
+        See also `isparametric` and `t` properties.
 
     axis : Optional[int]
         "axis" will be used to interpret "curve_data".
@@ -727,7 +732,9 @@ class Curve(abc.Sequence):
 
     """
 
-    def __init__(self, curve_data: CurveData,
+    def __init__(self,
+                 curve_data: CurveData,
+                 tdata: ty.Optional[ty.Union[NumericSequence, np.ndarray]] = None,
                  axis: ty.Optional[int] = None,
                  ndmin: ty.Optional[int] = None,
                  dtype: DType = None) -> None:
@@ -779,8 +786,19 @@ class Curve(abc.Sequence):
             # Change dimension to ndmin
             data = np.hstack([data, np.zeros((m, ndmin - n), dtype=dtype)])
 
+        if tdata is not None:
+            tdata = np.array(tdata, dtype=dtype)
+            tdata.flags.writeable = False
+
+            if tdata.ndim != 1:
+                raise ValueError('"tdata" must be 1-D array')
+            if tdata.size != data.shape[0]:
+                raise ValueError('"tdata" size must be equal to the number of curve points.')
+
         self._data = data  # type: np.ndarray
         self._data.flags.writeable = False
+
+        self._tdata = tdata
 
     def __repr__(self) -> str:
         name = type(self).__name__
@@ -1127,6 +1145,24 @@ class Curve(abc.Sequence):
 
         return self.ndim >= 3
 
+    @property
+    def isparametric(self) -> bool:
+        """Returns True if the curve has "tdata" vector (it is the parametric curve)
+
+        Returns
+        -------
+        flag : bool
+            True if the curve if has "tdata" vector and it is the parametric curve
+
+        See Also
+        --------
+        t
+        cumarclen
+
+        """
+
+        return self._tdata is not None
+
     @cached_property
     def cumarclen(self) -> np.ndarray:
         """Returns the cumulative arc length of the curve (natural parametrization)
@@ -1153,7 +1189,8 @@ class Curve(abc.Sequence):
 
         Notes
         -----
-        This is alias for `cumarclen` for `Curve` class
+        This is "tdata" if the curve is parametric and the alias for
+        `cumarclen` if the curve is not parametric.
 
         Returns
         -------
@@ -1165,10 +1202,14 @@ class Curve(abc.Sequence):
         chordlen
         arclen
         cumarclen
+        isparametric
 
         """
 
-        return self.cumarclen
+        if self.isparametric:
+            return self._tdata
+        else:
+            return self.cumarclen
 
     @cached_property
     def chordlen(self) -> np.ndarray:
