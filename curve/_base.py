@@ -781,14 +781,17 @@ class Curve(abc.Sequence):
             raise ValueError('ndmin must be at least of 2')
 
         if isinstance(curve_data, Curve):
-            curve_data = curve_data.data
-
             if tdata is not None:
                 warnings.warn('Ignoring "tdata" argument because "curve_data" is a "Curve" object.')
             if axis is not None:
                 warnings.warn('Ignoring "axis" argument because "curve_data" is a "Curve" object.', RuntimeWarning)
 
-            tdata = None
+            if curve_data.isparametric:
+                tdata = curve_data.t
+            else:
+                tdata = None
+
+            curve_data = curve_data.data
             axis = 0
 
         if axis is None:
