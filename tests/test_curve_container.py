@@ -225,6 +225,14 @@ def test_concatenate():
     assert left_curve == Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
 
 
+def test_concatenate_parametric():
+    left_curve = Curve([(1, 2), (5, 6)], tdata=[0, 1])
+    right_curve = Curve([(3, 4), (7, 8)], tdata=[2, 3])
+    expected_curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)], tdata=[0, 1, 2, 3])
+
+    assert (left_curve + right_curve).t == pytest.approx(expected_curve.t)
+
+
 def test_insert_point():
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     point = Point([10, 20])

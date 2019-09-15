@@ -826,7 +826,7 @@ class Curve(abc.Sequence):
             tdata.flags.writeable = False
 
             if tdata.ndim != 1:
-                raise ValueError('"tdata" must be numeric 1-D array')
+                raise ValueError('"tdata" must be 1-D array')
             if tdata.size != data.shape[0]:
                 raise ValueError('"tdata" size must be equal to the number of curve points.')
 
@@ -1008,7 +1008,13 @@ class Curve(abc.Sequence):
             return NotImplemented
 
         self._check_ndim(other)
-        return Curve(np.vstack((self._data, other.data)))
+
+        if self.isparametric and other.isparametric:
+            tdata = np.hstack((self.t, other.t))
+        else:
+            tdata = None
+
+        return Curve(np.vstack((self._data, other.data)), tdata=tdata)
 
     def __copy__(self) -> 'Curve':
         return self.__deepcopy__()
