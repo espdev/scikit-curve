@@ -23,6 +23,8 @@ import numpy as np
 import scipy.interpolate as interp
 import csaps
 
+from curve._numeric import linrescale
+
 if ty.TYPE_CHECKING:
     from curve._base import Curve
 
@@ -242,15 +244,15 @@ class PreservedSpeedInterpolationGrid(InterpolationGrid):
         self.interp_kind = interp_kind
 
     def __call__(self, curve: 'Curve') -> np.ndarray:
-        x = np.linspace(0, 1, curve.size-1)
-        xi = np.linspace(0, 1, self.pcount-1)
+        x = np.linspace(0, 1, curve.size)
+        xi = np.linspace(0, 1, self.pcount)
 
-        interpolator = interp.interp1d(x, curve.chordlen, kind=self.interp_kind)
-        chordlen_i = interpolator(xi)
-        cumarclen_i = np.hstack((0.0, np.cumsum(chordlen_i)))
+        interpolator = interp.interp1d(x, curve.cumarclen, kind=self.interp_kind)
+        cumarclen_i = interpolator(xi)
 
-        # Normalize cumulative chord lengths to the curve arclen
-        grid = (cumarclen_i / cumarclen_i[-1]) * curve.arclen
+        # Normalize cumulative chord lengths to the curve parametrization
+        grid = linrescale(cumarclen_i, out_range=(0, curve.arclen))
+        # grid = linrescale(cumarclen_i, out_range=(curve.t[0], curve.t[-1]))
 
         return grid
 
