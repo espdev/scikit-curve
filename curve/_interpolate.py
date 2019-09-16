@@ -131,8 +131,7 @@ class UniformInterpolationGrid(InterpolationGrid):
         else:
             pcount = self.fill
 
-        interp_grid = np.linspace(curve.t[0], curve.t[-1], pcount)
-        return interp_grid
+        return np.linspace(curve.t[0], curve.t[-1], pcount)
 
 
 class UniformExtrapolationGrid(InterpolationGrid):
@@ -189,7 +188,7 @@ class UniformExtrapolationGrid(InterpolationGrid):
             pcount_after = round(self.after / interp_chordlen)
 
         grid_before = np.linspace(
-            -interp_chordlen * pcount_before, -interp_chordlen, pcount_before)
+            -interp_chordlen * pcount_before + grid[0], -interp_chordlen + grid[0], pcount_before)
 
         grid_after = np.linspace(
             grid[-1] + interp_chordlen, grid[-1] + interp_chordlen * pcount_after, pcount_after)
@@ -244,15 +243,18 @@ class PreservedSpeedInterpolationGrid(InterpolationGrid):
         self.interp_kind = interp_kind
 
     def __call__(self, curve: 'Curve') -> np.ndarray:
-        x = np.linspace(0, 1, curve.size)
-        xi = np.linspace(0, 1, self.pcount)
+        if not curve.isparametric:
+            x = np.linspace(0, 1, curve.size)
+            xi = np.linspace(0, 1, self.pcount)
 
-        interpolator = interp.interp1d(x, curve.cumarclen, kind=self.interp_kind)
-        cumarclen_i = interpolator(xi)
+            interpolator = interp.interp1d(x, curve.cumarclen, kind=self.interp_kind)
+            cumarclen_i = interpolator(xi)
 
-        # Normalize cumulative chord lengths to the curve parametrization
-        grid = linrescale(cumarclen_i, out_range=(0, curve.arclen))
-        # grid = linrescale(cumarclen_i, out_range=(curve.t[0], curve.t[-1]))
+            # Normalize cumulative chord lengths to the curve parametrization
+            grid = linrescale(cumarclen_i, out_range=(0, curve.arclen))
+        else:
+            # If the curve is parametric we use uniform interpolation grid that preserves speed automatically
+            grid = UniformInterpolationGrid(self.pcount, kind='point')(curve)
 
         return grid
 
@@ -276,12 +278,29 @@ class InterpolatorBase:
     def __init__(self, curve: 'Curve', **kwargs):
         self._curve = curve
 
-    def __call__(self, grid_spec: InterpGridSpecType) -> np.ndarray:
+    def __call__(self, grid_spec: InterpGridSpecType) -> 'Curve':
+        curve_type = type(self.curve)
+
+        if not self.curve:
+            warnings.warn('The curve is empty. Interpolation is not possible.', InterpolationWarning)
+            return curve_type([], ndmin=self.curve.ndim, dtype=self.curve.dtype)
+
+        if self.curve.size == 1:
+            raise ValueError('Cannot interpolate curve with single point.')
+
         grid = self._get_interpolation_grid(grid_spec)
+
         try:
-            return self._interpolate(grid)
+            inter_data = self._interpolate(grid)
         except Exception as err:
             raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
+
+        if self.curve.isparametric:
+            tdata = grid
+        else:
+            tdata = None
+
+        return curve_type(inter_data, tdata=tdata, dtype=self.curve.dtype)
 
     @property
     def curve(self) -> 'Curve':
@@ -694,7 +713,7 @@ def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
             'Cannot create interpolator "{}": {}'.format(interpolator_cls, err)) from err
 
 
-def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **params) -> np.ndarray:
+def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **params) -> 'Curve':
     """Interpolates a n-dimensional curve data using given method and grid
 
     Parameters
@@ -713,8 +732,8 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **pa
 
     Returns
     -------
-    interp_data : np.ndarray
-        Interpolated MxN data
+    curve : Curve
+        Interpolated curve object
 
     Raises
     ------
@@ -723,14 +742,5 @@ def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **pa
 
     """
 
-    if not curve:
-        warnings.warn('The curve is empty. Interpolation is not possible.', InterpolationWarning)
-        return np.array([])
-
-    if curve.size == 1:
-        raise ValueError('Cannot interpolate curve with single point.')
-
     interpolator = get_interpolator(method, curve, **params)
-    interp_data = interpolator(grid_spec)
-
-    return interp_data
+    return interpolator(grid_spec)

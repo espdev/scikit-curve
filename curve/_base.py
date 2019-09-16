@@ -2148,6 +2148,10 @@ class Curve(abc.Sequence):
         ValueError : invalid data or parameters
         InterpolationError : any computation of interpolation errors
 
+        Notes
+        -----
+        Is the curve is parametric, the interpolated curve will also be parametric.
+
         Examples
         --------
 
@@ -2185,8 +2189,7 @@ class Curve(abc.Sequence):
 
         """
 
-        interp_data = interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
-        return Curve(interp_data, ndmin=self.ndim, dtype=self.dtype)
+        return interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
 
     def _check_ndim(self, other: PointCurveUnion):
         if self.ndim != other.ndim:
