@@ -1608,6 +1608,10 @@ class Curve(abc.Sequence):
         curve : Curve
             The reversed copy of the curve
 
+        Notes
+        -----
+        Is the curve is parametric, reversed curve will also be parametric.
+
         """
 
         if self.isparametric:
@@ -1641,6 +1645,10 @@ class Curve(abc.Sequence):
         ValueError : Curve has the dimension less than 2
         IndexError : Axis out of the curve dimensions
 
+        Notes
+        -----
+        Is the curve is parametric, co-oriented curve will also be parametric.
+
         """
 
         is_coorient = _diffgeom.coorientplane(self, axis1=axis1, axis2=axis2)
@@ -1648,7 +1656,7 @@ class Curve(abc.Sequence):
         if not is_coorient:
             return self.reverse()
         else:
-            return Curve(self)
+            return Curve(self, tdata=self._tdata)
 
     def insert(self, index: Indexer, other: PointCurveUnion) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve
@@ -1669,6 +1677,10 @@ class Curve(abc.Sequence):
         ------
         ValueError : If other dimension is not equal to the curve dimension
         IndexError : If the index is out of bounds
+
+        Notes
+        -----
+        The new curve with inserted data will be not parametric.
 
         Examples
         --------
@@ -1737,6 +1749,10 @@ class Curve(abc.Sequence):
         ------
         ValueError : If other dimension is not equal to the curve dimension
 
+        Notes
+        -----
+        The new curve with appended data will be not parametric.
+
         Examples
         --------
 
@@ -1771,6 +1787,10 @@ class Curve(abc.Sequence):
         ------
         IndexError : If the index is out of bounds
 
+        Notes
+        -----
+        Is the curve is parametric, the new curve with deleted data will also be parametric.
+
         Examples
         --------
 
@@ -1792,9 +1812,14 @@ class Curve(abc.Sequence):
         """
 
         try:
-            return Curve(
-                np.delete(self._data, index, axis=0)
-            )
+            if self.isparametric:
+                tdata = np.delete(self._tdata, index)
+            else:
+                tdata = None
+
+            data = np.delete(self._data, index, axis=0)
+            return Curve(data, tdata=tdata)
+
         except IndexError as err:
             raise IndexError(
                 'Index {} is out of bounds for curve size {}'.format(
@@ -1802,13 +1827,6 @@ class Curve(abc.Sequence):
 
     def values(self, axis: ty.Union[int, Axis, None] = None) -> ty.Union[np.ndarray, abc.Iterator]:
         """Returns the vector with all values for given axis or the iterator along all axes
-
-        Notes
-        -----
-
-        This method is equivalent to use::
-
-            values = curve[:, axis]
 
         Parameters
         ----------
@@ -1867,6 +1885,10 @@ class Curve(abc.Sequence):
         IndexError : if index is out of the curve dimensions
         ValueError : if could not broadcast input array to the curve size
 
+        Notes
+        -----
+        The new curve will be not parametric.
+
         Examples
         --------
 
@@ -1910,6 +1932,10 @@ class Curve(abc.Sequence):
         ------
         ValueError : if could not broadcast input array to the curve size
 
+        Notes
+        -----
+        The new curve will be not parametric.
+
         Examples
         --------
 
@@ -1948,6 +1974,10 @@ class Curve(abc.Sequence):
         ValueError : if the curve is 2-dimensional
         IndexError : indexation error
 
+        Notes
+        -----
+        The new curve will be not parametric.
+
         Examples
         --------
 
@@ -1984,12 +2014,23 @@ class Curve(abc.Sequence):
         curve : Curve
             Curve object with unique points
 
+        Notes
+        -----
+        Is the curve is parametric, the new curve with unique data will also be parametric.
+
         """
 
         # FIXME: unique is slow (O(Nlog(N)). Moreover, we are forced to use
         #  additional sorting indices array to preserve order. This is not good way...
         data, index = np.unique(self._data, axis=0, return_index=True)
-        return Curve(data[np.argsort(index)])
+        s_index = np.sort(index)
+
+        if self.isparametric:
+            tdata = self._tdata[s_index]
+        else:
+            tdata = None
+
+        return Curve(self._data[s_index], tdata=tdata)
 
     def drop(self, isa: ty.Callable) -> 'Curve':
         """Drops points from the curve by given values checker
@@ -2007,6 +2048,16 @@ class Curve(abc.Sequence):
         curve : Curve
             New curve object without dropped points
 
+        Raises
+        ------
+        TypeError : Invalid ``isa`` checker argument
+        ValueError : Invalid ``isa``  checker return type
+        IndexError : Cannot indexing curve data with indices from ``isa`` checker
+
+        Notes
+        -----
+        Is the curve is parametric, the new curve with dropped data will also be parametric.
+
         Examples
         --------
 
@@ -2018,12 +2069,6 @@ class Curve(abc.Sequence):
                    [ 2.  6.]
                    [ 3.  7.]
                    [ 4.  8.]], size=4, ndim=2, dtype=float64)
-
-        Raises
-        ------
-        TypeError : Invalid ``isa`` checker argument
-        ValueError : Invalid ``isa``  checker return type
-        IndexError : Cannot indexing curve data with indices from ``isa`` checker
 
         """
 
@@ -2038,9 +2083,13 @@ class Curve(abc.Sequence):
             indices = np.any(indices, axis=1)
 
         if indices.dtype != np.bool:
-            return Curve(self.delete(indices))
+            return self.delete(indices)
         else:
-            return Curve(self._data[~indices])
+            if self.isparametric:
+                tdata = self._tdata[~indices]
+            else:
+                tdata = None
+            return Curve(self._data[~indices], tdata=tdata)
 
     def nonsingular(self):
         """Removes singularities in the curve
@@ -2054,9 +2103,13 @@ class Curve(abc.Sequence):
         curve : Curve
             The curve without singularities.
 
+        Notes
+        -----
+        Is the curve is parametric, the new curve will also be parametric.
+
         """
 
-        return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
+        return _diffgeom.nonsingular(self)
 
     def interpolate(self, grid_spec: InterpGridSpecType, method: str = 'linear', **kwargs) -> 'Curve':
         """Interpolates the curve data

@@ -35,7 +35,7 @@ class DifferentialGeometryWarning(UserWarning):
     pass
 
 
-def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
+def nonsingular(curve: 'Curve'):
     """Removes singularities in a curve
 
     The function removes NaN, Inf and the close points from curve to avoid segments with zero-closed lengths.
@@ -46,9 +46,6 @@ def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
     ----------
     curve : Curve
         Curve object
-    chord_lengths : np.ndarray
-        An array with lengths for each curve chord (segment).
-        If it is not set it will be computed.
 
     Returns
     -------
@@ -57,8 +54,7 @@ def nonsingular(curve: 'Curve', chord_lengths: t.Optional[np.ndarray] = None):
 
     """
 
-    if chord_lengths is None:
-        chord_lengths = chordlen(curve)
+    chord_lengths = curve.chordlen
 
     def is_singular(curve_data):
         return (np.any(np.isnan(curve_data) | np.isinf(curve_data), axis=1) |
