@@ -412,35 +412,16 @@ class LinearInterpolator(InterpolatorBase):
 
     def __init__(self, curve: 'Curve', *, extrapolate: bool = True):
         super().__init__(curve)
-        self.extrapolate = extrapolate
+
+        if extrapolate:
+            fill_value = 'extrapolate'
+        else:
+            fill_value = None
+
+        self.linear = interp.interp1d(curve.t, curve.data, kind='linear', fill_value=fill_value, axis=0)
 
     def _interpolate(self, grid: np.ndarray) -> np.ndarray:
-        if not self.extrapolate:
-            t_start, t_end = self.curve.t[0], self.curvet[-1]
-
-            if np.min(grid) < t_start or np.max(grid) > t_end:
-                warnings.warn((
-                    '"extrapolate" is disabled but interpolation grid is out-of-bounds curve data. '
-                    'The grid will be cut down to curve data bounds.'
-                ), InterpolationWarning)
-
-                drop_indices = np.flatnonzero((grid < t_start) | (grid > t_end))
-                grid = np.delete(grid, drop_indices)
-
-        tbins = np.digitize(grid, self.curve.t)
-        n = self.curve.size
-
-        tbins[(tbins <= 0)] = 1
-        tbins[(tbins >= n) | np.isclose(grid, 1)] = n - 1
-        tbins -= 1
-
-        s = (grid - self.curve.t[tbins]) / self.curve.chordlen[tbins]
-
-        tbins_data = self.curve.data[tbins, :]
-        tbins1_data = self.curve.data[tbins + 1, :]
-
-        interp_data = (tbins_data + (tbins1_data - tbins_data) * s[:, np.newaxis])
-        return interp_data
+        return self.linear(grid)
 
 
 @register_interpolator(method='cubic')
