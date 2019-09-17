@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def as2d(arr: np.ndarray, axis: int, dtype: np.dtype) -> np.ndarray:
+def as2d(arr: np.ndarray, axis: int) -> np.ndarray:
     """Transforms the shape of N-D array-like to 2-D MxN array
 
     The function transforms N-D array-like to 2-D MxN array along given axis,
@@ -15,8 +15,6 @@ def as2d(arr: np.ndarray, axis: int, dtype: np.dtype) -> np.ndarray:
         N-D array or array-like object
     axis : int
         Axis that will be used for transform array shape
-    dtype : np.dtype
-        Data type
 
     Returns
     -------
@@ -29,7 +27,7 @@ def as2d(arr: np.ndarray, axis: int, dtype: np.dtype) -> np.ndarray:
 
     """
 
-    arr = np.asarray(arr, dtype=dtype)
+    arr = np.asarray(arr)
 
     if arr.size == 0:
         return np.reshape([], (0, 2)).astype(arr.dtype)

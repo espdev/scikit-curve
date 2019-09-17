@@ -807,7 +807,7 @@ class Curve(abc.Sequence):
         if not np.issubdtype(dtype, np.number):
             ValueError('"dtype" must be a numeric type not {}.'.format(dtype))
 
-        data = as2d(curve_data, axis=axis, dtype=dtype)
+        data = as2d(curve_data, axis=axis).astype(dtype)
 
         if data.size == 0:
             data = np.reshape([], (0, ndmin)).astype(dtype)
