@@ -141,3 +141,4 @@ def curveplot(curve: 'Curve',
 
     if return_axes:
         return ax
+    return None
