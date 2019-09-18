@@ -413,10 +413,9 @@ class LinearInterpolator(InterpolatorBase):
     def __init__(self, curve: 'Curve', *, extrapolate: bool = True):
         super().__init__(curve)
 
+        fill_value = None  # type: ty.Optional[str]
         if extrapolate:
             fill_value = 'extrapolate'
-        else:
-            fill_value = None
 
         self.linear = interp.interp1d(curve.t, curve.data, kind='linear', fill_value=fill_value, axis=0)
 
