@@ -62,7 +62,7 @@ def curveplot(curve: 'Curve',
               param_cmap: str = 'plasma',
               show_normals: bool = False,
               ax: ty.Optional[plt.Axes] = None,
-              **kwargs):
+              **kwargs) -> ty.Optional[plt.Axes]:
     """Plots a curve
 
     The function plots 2-d or 3-d curve using matplotlib.
