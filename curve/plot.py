@@ -60,7 +60,7 @@ def curveplot(curve: 'Curve',
               *args,
               param: ty.Optional[str] = None,
               param_cmap: str = 'plasma',
-              normals: bool = False,
+              show_normals: bool = False,
               ax: ty.Optional[plt.Axes] = None,
               **kwargs):
     """Plots a curve
@@ -75,7 +75,7 @@ def curveplot(curve: 'Curve',
         The curve parameter name for show as multicolor line, "curvature", for example
     param_cmap : Optional[str]
         The colormap for show the curve parameter as multicolor line
-    normals : bool
+    show_normals : bool
         Draw normal vectors
     ax : Optional[Axes]
         MPL axes
@@ -111,7 +111,7 @@ def curveplot(curve: 'Curve',
     else:
         ax.plot(*values, *args, **kwargs)
 
-    if normals:
+    if show_normals:
         normals = [curve.frenet2[:, i] for i in range(curve.ndim)]
 
         if curve.is2d:
