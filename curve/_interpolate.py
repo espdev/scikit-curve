@@ -129,7 +129,7 @@ class UniformInterpolationGrid(InterpolationGrid):
         if self.kind == 'length':
             pcount = round(curve.arclen / self.fill) + 1
         else:
-            pcount = self.fill
+            pcount = int(self.fill)
 
         return np.linspace(curve.t[0], curve.t[-1], pcount)
 
