@@ -190,7 +190,7 @@ class Point(abc.Sequence):
         else:
             return data
 
-    def __eq__(self, other: 'Point') -> bool:
+    def __eq__(self, other: object) -> bool:
         """Returns True if other point is equal to the point
 
         Parameters
@@ -960,7 +960,7 @@ class Curve(abc.Sequence):
 
             return False
 
-    def __eq__(self, other: 'Curve') -> bool:
+    def __eq__(self, other: object) -> bool:
         """Returns True if given curve is equal to the curve
 
         Parameters
