@@ -161,7 +161,7 @@ class Point(abc.Sequence):
 
         return self._data.size
 
-    def __getitem__(self, index: int) -> ty.Union['Point', np.number]:
+    def __getitem__(self, index: ty.Union[int, slice]) -> ty.Union['Point', np.number]:
         """Returns coord of the point for given index
 
         Parameters
