@@ -920,7 +920,7 @@ class Curve(abc.Sequence):
         else:
             raise TypeError('Invalid index type {}'.format(type(indexer)))
 
-    def __contains__(self, other: PointCurveUnion):
+    def __contains__(self, other: object):
         """Returns True if the curve contains given point or sub-curve with the same dimension
 
         Parameters
