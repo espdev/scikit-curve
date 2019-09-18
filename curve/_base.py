@@ -13,6 +13,7 @@ The module contains the following basic classes:
 
 import collections.abc as abc
 import typing as ty
+import numbers
 import textwrap
 import enum
 import warnings
@@ -28,7 +29,7 @@ from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
 
 
-Numeric = ty.Union[int, float, np.number]
+Numeric = ty.Union[numbers.Number, np.number]
 NumericSequence = ty.Sequence[Numeric]
 
 PointData = ty.Union[
@@ -142,7 +143,7 @@ class Point(abc.Sequence):
         self._data = data
         self._data.flags.writeable = False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         with np.printoptions(suppress=True, precision=4):
             data_str = '{}'.format(self._data)
 
@@ -213,7 +214,7 @@ class Point(abc.Sequence):
 
         return bool(allequal(self.data, other.data))
 
-    def __matmul__(self, other: 'Point'):
+    def __matmul__(self, other: 'Point') -> Numeric:
         """Dot product of two points
 
         Parameters
@@ -230,7 +231,7 @@ class Point(abc.Sequence):
         if not isinstance(other, Point):
             return NotImplemented
 
-        return np.dot(self._data, other.data)
+        return ty.cast(Numeric, np.dot(self._data, other.data))
 
     def __copy__(self) -> 'Point':
         return self.__deepcopy__()
