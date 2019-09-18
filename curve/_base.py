@@ -240,7 +240,7 @@ class Point(abc.Sequence):
         return Point(self)
 
     @property
-    def data(self) -> np.array:
+    def data(self) -> np.ndarray:
         """Returns the point data as numpy array
 
         Returns
