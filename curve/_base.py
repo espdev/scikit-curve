@@ -369,7 +369,7 @@ class CurvePoint(Point):
         return self._curve
 
     @property
-    def idx(self) -> ty.Optional[int]:
+    def idx(self) -> int:
         """Returns the point index in the curve
 
         Returns
