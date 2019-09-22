@@ -17,6 +17,12 @@ from curve._interpolate import (
     get_interpolator,
     register_interpolator,
 )
+from curve._smooth import (
+    SmoothingError,
+    smooth_methods,
+    get_smooth_filter,
+    register_smooth_filter,
+)
 from curve._numeric import isequal, allequal, dot1d
 
 __all__ = [
@@ -44,6 +50,12 @@ __all__ = [
     'interp_methods',
     'get_interpolator',
     'register_interpolator',
+
+    # smoothing
+    'SmoothingError',
+    'smooth_methods',
+    'get_smooth_filter',
+    'register_smooth_filter',
 
     # numeric
     'isequal',

@@ -27,6 +27,7 @@ from curve._utils import as2d
 from curve._numeric import allequal
 from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
+from curve._smooth import smooth
 
 
 Numeric = ty.Union[numbers.Number, np.number]
@@ -2191,6 +2192,42 @@ class Curve(abc.Sequence):
         """
 
         return interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
+
+    def smooth(self, method: str, **params) -> 'Curve':
+        """Smoothes the curve using the given method and its parameters
+
+        The method smoothes the curve using the given method.
+        Returns the smoothed curve with the same number of points and type `np.float64`.
+
+        Parameters
+        ----------
+        method : str
+            Smoothing method
+        params : mapping
+            The parameters of smoothing method
+
+        Returns
+        -------
+        curve : Curve
+            Smoothed curve with type `numpy.float64`
+
+        Raises
+        ------
+        ValueError : Input data or parameters have invalid values
+        TypeError : Input data or parameters have invalid type
+        SmoothingError : Smoothing has failed
+
+        See Also
+        --------
+        smooth_methods
+
+        Notes
+        -----
+        If the curve is parametric, the smoothed curve will not be parametric.
+
+        """
+
+        return smooth(self, method, **params)
 
     def _check_ndim(self, other: PointCurveUnion):
         if self.ndim != other.ndim:
