@@ -66,7 +66,8 @@ def window_filter(curve: 'Curve',
 
     References
     ----------
-    .. [1] `The windows in scipy <https://docs.scipy.org/doc/scipy/reference/signal.windows.html#module-scipy.signal.windows>`_
+    .. [1] `The windows in scipy
+           <https://docs.scipy.org/doc/scipy/reference/signal.windows.html#module-scipy.signal.windows>`_
 
     """
 
