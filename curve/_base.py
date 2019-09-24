@@ -321,9 +321,6 @@ class CurvePoint(Point):
 
     Parameters
     ----------
-    point_data : np.ndarray
-        Numpy array view for a curve point data
-
     curve : Curve
         Curve object
 
@@ -334,8 +331,8 @@ class CurvePoint(Point):
 
     __slots__ = Point.__slots__ + ('_curve', '_idx')
 
-    def __init__(self, point_data: np.ndarray, curve: 'Curve', index):
-        super().__init__(point_data)
+    def __init__(self, curve: 'Curve', index: int):
+        super().__init__(curve.data[index])
 
         self._curve = curve
         self._idx = index
@@ -351,7 +348,7 @@ class CurvePoint(Point):
         return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: ty.Optional[dict] = None) -> 'CurvePoint':
-        return CurvePoint(self.data, self.curve, self.idx)
+        return CurvePoint(self.curve, self.idx)
 
     @property
     def curve(self) -> 'Curve':
@@ -896,7 +893,7 @@ class Curve(abc.Sequence):
         def get_curvepoint(index: int) -> CurvePoint:
             if index < 0:
                 index = self.size + index
-            return CurvePoint(self._data[index], curve=self, index=index)
+            return CurvePoint(curve=self, index=index)
 
         def get_subcurve(index: ty.Union[slice, NumericSequence, np.ndarray]) -> Curve:
             if self.isparametric:
