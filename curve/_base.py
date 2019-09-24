@@ -633,7 +633,7 @@ class CurvePoint(Point):
         Returns
         -------
         curve : Curve
-            A sub-curve from the point to other curve point. This sub-curve is the view.
+            A sub-curve from the point to other curve point
 
         Raises
         ------
