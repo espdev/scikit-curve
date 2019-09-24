@@ -623,7 +623,7 @@ class CurvePoint(Point):
 
         return self.curve.torsion[self.idx]
 
-    def subcurve(self, other_point: 'CurvePoint', endpoint: bool = True) -> np.ndarray:
+    def subcurve(self, other_point: 'CurvePoint', endpoint: bool = True) -> 'Curve':
         """Returns a sub-curve from the point to other point in the same curve
 
         Parameters
