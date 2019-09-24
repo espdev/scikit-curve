@@ -332,10 +332,13 @@ class CurvePoint(Point):
     __slots__ = Point.__slots__ + ('_curve', '_idx')
 
     def __init__(self, curve: 'Curve', index: int):
-        super().__init__(curve.data[index])
+        if index < 0:
+            index = curve.size + index
 
         self._curve = curve
         self._idx = index
+
+        super().__init__(curve.data[index])
 
     def __repr__(self):
         with np.printoptions(suppress=True, precision=4):
@@ -891,8 +894,6 @@ class Curve(abc.Sequence):
         """
 
         def get_curvepoint(index: int) -> CurvePoint:
-            if index < 0:
-                index = self.size + index
             return CurvePoint(curve=self, index=index)
 
         def get_subcurve(index: ty.Union[slice, NumericSequence, np.ndarray]) -> Curve:
