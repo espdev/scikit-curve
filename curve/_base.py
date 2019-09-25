@@ -71,6 +71,7 @@ PointCurveUnion = ty.Union[
 
 
 DEFAULT_DTYPE = np.float64
+DATA_FORMAT_PRECISION = 4
 
 
 class Axis(enum.IntEnum):
@@ -145,7 +146,7 @@ class Point(abc.Sequence):
         self._data.flags.writeable = False
 
     def __repr__(self) -> str:
-        with np.printoptions(suppress=True, precision=4):
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
             data_str = '{}'.format(self._data)
 
         return '{}({}, ndim={}, dtype={})'.format(
@@ -341,11 +342,11 @@ class CurvePoint(Point):
         super().__init__(curve.data[index])
 
     def __repr__(self):
-        with np.printoptions(suppress=True, precision=4):
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
             data_str = '{}'.format(self._data)
 
-        return '{}({}, index={}, valid={})'.format(
-            type(self).__name__, data_str, self.idx, bool(self))
+        return '{}({}, index={})'.format(
+            type(self).__name__, data_str, self.idx)
 
     def __copy__(self) -> 'CurvePoint':
         return self.__deepcopy__()
@@ -655,6 +656,138 @@ class CurvePoint(Point):
         return self.curve[self.idx:other_point.idx+inc]
 
 
+class CurveSegment:
+    """Represents a curve segment
+
+    Parameters
+    ----------
+    curve : Curve
+        The curve object
+    index : int
+        The segment index in the curve
+
+    """
+
+    __slots__ = ('_curve', '_p1', '_p2', '_idx')
+
+    def __init__(self, curve: 'Curve', index: int) -> None:
+        if index < 0:
+            index = (curve.size - 1) + index
+        if index >= (curve.size - 1):
+            raise ValueError('The index is out of curve size')
+
+        self._curve = curve
+        self._p1 = ty.cast(CurvePoint, curve[index])
+        self._p2 = ty.cast(CurvePoint, curve[index + 1])
+        self._idx = index
+
+    def __repr__(self) -> str:
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
+            p1_data = '{}'.format(self._p1.data)
+            p2_data = '{}'.format(self._p2.data)
+
+        return '{}(p1={}, p2={}, len={:.4f}, index={})'.format(
+            type(self).__name__, p1_data, p2_data, self.chordlen, self._idx)
+
+    @property
+    def curve(self) -> 'Curve':
+        """Returns the curve that contains this segment
+
+        Returns
+        -------
+        curve : Curve
+            The curve that contains this segment
+        """
+
+        return self._curve
+
+    @property
+    def p1(self) -> 'CurvePoint':
+        """Returns beginning point of the segment
+
+        Returns
+        -------
+        point : CurvePoint
+            Beginning point of the segment
+        """
+
+        return self._p1
+
+    @property
+    def p2(self) -> 'CurvePoint':
+        """Returns ending point of the segment
+
+        Returns
+        -------
+        point : CurvePoint
+            Ending point of the segment
+        """
+
+        return self._p2
+
+    @property
+    def data(self) -> np.ndarray:
+        """Returns the segment data as numpy array 2xN
+
+        Returns
+        -------
+        data : np.ndarray
+            The segment data
+        """
+
+        return np.array([self._p1.data, self._p2.data])
+
+    @property
+    def idx(self) -> int:
+        """Returns the segment index in the curve
+
+        Returns
+        -------
+        idx : int
+            The segment index in the curve
+        """
+
+        return self._idx
+
+    @property
+    def chordlen(self) -> float:
+        """Returns the curve chord length for this segment
+
+        This length may be greater or equal to segment length (distance).
+
+        Returns
+        -------
+        length : float
+            The curve chord length for this segment
+        """
+
+        return self._curve.chordlen[self._idx]
+
+    @property
+    def distance(self) -> Numeric:
+        """Returns the segment length
+
+        Returns
+        -------
+        length : float
+            Segment length (Euclidean distance between p1 and p2)
+        """
+
+        return self._p1.distance(self._p2)
+
+    @property
+    def dot(self) -> float:
+        """Returns Dot product of the segment points
+
+        Returns
+        -------
+        dot : float
+            The Dot product of the segment points
+        """
+
+        return self._p1 @ self._p2
+
+
 class Curve(abc.Sequence):
     r"""The main class for n-dimensional geometric curve representation
 
@@ -840,7 +973,8 @@ class Curve(abc.Sequence):
     def __repr__(self) -> str:
         name = type(self).__name__
 
-        with np.printoptions(suppress=True, precision=4, edgeitems=4, threshold=10*self.ndim):
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION,
+                             edgeitems=4, threshold=10*self.ndim):
             arr_repr = '{}'.format(self._data)
             arr_repr = textwrap.indent(arr_repr, ' ' * (len(name) + 1)).strip()
 
@@ -1825,7 +1959,18 @@ class Curve(abc.Sequence):
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
 
-    def values(self, axis: ty.Union[int, Axis, None] = None) -> ty.Union[np.ndarray, abc.Iterator]:
+    def segments(self) -> ty.Iterator['CurveSegment']:
+        """Returns the segments iterator
+
+        Returns
+        -------
+        segments_iter : Iterator
+            The segments iterator
+        """
+
+        return iter(CurveSegment(self, idx) for idx in range(self.size - 1))
+
+    def values(self, axis: ty.Union[int, Axis, None] = None) -> ty.Union[np.ndarray, ty.Iterator[np.ndarray]]:
         """Returns the vector with all values for given axis or the iterator along all axes
 
         Parameters
