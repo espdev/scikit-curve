@@ -38,6 +38,12 @@ from curve import Curve, Point
     # ----------------------
     # 3D
 
+    # no intersections (parallel lines: X and Y are equal, Z different)
+    ([(1, 2), (1, 2), (1, 2)],
+     [(1, 2), (1, 2), (2, 3)], [], [], []),
+    # no intersections
+    ([(1, 2), (1, 2), (1, 2)],
+     [(1.1, 2.1), (1, 2.5), (1, 2)], [], [], []),
     # no intersections
     ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
      [(1, 2, 3, 4), (4, 3, 2, 1), (2, 3, 4, 5)], [], [], []),
