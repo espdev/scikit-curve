@@ -163,17 +163,17 @@ def _solve_segments_intersection(
         seg2 = np.delete(seg2, remove)
 
     n_seg = seg1.size
-    n_rows = ndim * 2
-    n_cols = n_rows - ndim + 2
+    n_equ = ndim * 2
+    n_unknown = n_equ - ndim + 2
 
-    coeffs = np.zeros((n_rows, n_cols))
-    solution = np.zeros((n_rows, n_seg))
+    coeffs = np.zeros((n_equ, n_unknown))
+    solution = np.zeros((n_unknown, n_seg))
 
     # Initialize constant values "-1" for "coeffs" matrix
-    coeffs[np.r_[:n_rows], np.r_[2:n_cols].repeat(2)] = -1
+    coeffs[np.r_[:n_equ], np.r_[2:n_unknown].repeat(2)] = -1
 
     # Define "values" vectors stack for given curves
-    values = np.zeros((n_rows, n_seg))
+    values = np.zeros((n_equ, n_seg))
 
     for i, vals1, vals2 in zip(itertools.count(step=2), curve1.values(), curve2.values()):
         values[i, :] = -vals1[seg1]
@@ -192,8 +192,8 @@ def _solve_segments_intersection(
     feps = np.finfo(np.float64).eps
 
     for i in range(n_seg):
-        coeffs[np.r_[:n_rows:2], 0] = data1_diff[seg1[i], :]
-        coeffs[np.r_[1:n_rows:2], 1] = data2_diff[seg2[i], :]
+        coeffs[np.r_[:n_equ:2], 0] = data1_diff[seg1[i], :]
+        coeffs[np.r_[1:n_equ:2], 1] = data2_diff[seg2[i], :]
 
         try:
             solution[:, i] = solve(coeffs, values[:, i])
