@@ -14,6 +14,7 @@ import typing as ty
 import itertools
 
 import numpy as np
+import scipy.sparse.linalg as spla
 
 if ty.TYPE_CHECKING:
     from curve._base import Curve, CurveSegment, Point
@@ -179,28 +180,17 @@ def _solve_segments_intersection(
         values[i, :] = -vals1[seg1]
         values[i+1, :] = -vals2[seg2]
 
-    if ndim == 2:
-        solve = np.linalg.solve
-    else:
-        # We have non-symmetric "A" matrix for n-dim > 2,
-        # it requires numpy.linalg.lstsq solver
-        def solve(a, b):
-            x, residuals, rank, s = np.linalg.lstsq(a, b, rcond=None)
-            return x
-
-    overlap = np.zeros(n_seg, dtype=np.bool)
     feps = np.finfo(np.float64).eps
 
-    for i in range(n_seg):
-        coeffs[np.r_[:n_equ:2], 0] = data1_diff[seg1[i], :]
-        coeffs[np.r_[1:n_equ:2], 1] = data2_diff[seg2[i], :]
+    def solve_2d(a, b):
+        ovrlp = False
 
         try:
-            solution[:, i] = solve(coeffs, values[:, i])
+            x = np.linalg.solve(a, b)
         except np.linalg.LinAlgError:
             # It seems "coeffs" is a singular matrix
             # We have the parallel, coincident or overlap segments
-            solution[0, i] = -1.0
+            x = -1.0 * np.ones_like(b)
 
             m = np.vstack((
                 data1_diff[seg1[i], :],
@@ -211,9 +201,51 @@ def _solve_segments_intersection(
             try:
                 # Reciprocal condition number
                 rcond = 1.0 / np.linalg.cond(m, 1)
-                overlap[i] = rcond < feps
+                ovrlp = rcond < feps
             except np.linalg.LinAlgError:
                 pass
+
+        return x, ovrlp
+
+    def solve_ge3d(a, b):
+        # FIXME: implement stable and robust intersection algorithm for ndim >= 3
+        raise NotImplementedError('Unstable for ndim={}'.format(ndim))
+        # eps = 1e-8
+        # x, istop, itn, normr, normar, norma, conda, normx = spla.lsmr(a, b)
+
+        # if normr > eps:
+        #     x[:2] = -1
+        #     ovrlp = False
+        # else:
+        #     t, u = x[:2]
+        #     norm = normr < eps and normar < eps
+        #
+        #     if t < 0 and u < 0 and norm:
+        #         ovrlp = True
+        #     elif t > 1 and u > 1 and norm:
+        #         ovrlp = True
+        #     else:
+        #         ovrlp = False
+
+        # tu_out_range = (t < 0 or t > 1) or (u < 0 or t > 1)
+        # ovrlp = tu_out_range and (normr < eps and normar < eps)
+
+        # return x, ovrlp
+
+    if ndim == 2:
+        solve = solve_2d
+    else:
+        # We have non-symmetric "coeffs" matrix for n-dim > 2,
+        # it requires a solver for over-determined system
+        solve = solve_ge3d
+
+    overlap = np.zeros(n_seg, dtype=np.bool)
+
+    for i in range(n_seg):
+        coeffs[np.r_[:n_equ:2], 0] = data1_diff[seg1[i], :]
+        coeffs[np.r_[1:n_equ:2], 1] = data2_diff[seg2[i], :]
+
+        solution[:, i], overlap[i] = solve(coeffs, values[:, i])
 
     return SolveSegmentsIntersectionResult(
         solution=solution,
