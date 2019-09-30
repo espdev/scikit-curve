@@ -204,7 +204,7 @@ def _solve_segments_intersection(
 
             m = np.vstack((
                 data1_diff[seg1[i], :],
-                data2[seg2[i], :] - data2[seg1[i], :]
+                data2[seg2[i], :] - data1[seg1[i], :]
             ))
 
             # Determine if these segments overlap or are just parallel
