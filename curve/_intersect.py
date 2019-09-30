@@ -250,8 +250,8 @@ def _determine_segments_intersection(
     # If t and u parameters in the range [0, 1] we have the intersection point on segments
     tu_in_range = (
         ((t > 0.) | (np.isclose(t, 0.))) &
-        ((u > 0.) | (np.isclose(u, 0.))) &
         ((t < 1.) | (np.isclose(t, 1.))) &
+        ((u > 0.) | (np.isclose(u, 0.))) &
         ((u < 1.) | (np.isclose(u, 1.)))
     )
 
