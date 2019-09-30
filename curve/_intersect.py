@@ -3,6 +3,11 @@
 """
 Curves intersection in n-dimensional Euclidean space
 
+The module provides routines for determining curves intersections in n-dimensional Euclidean space.
+
+The code is inspired by "Fast and Robust Curve Intersections" by Douglas Schwarz
+https://www.mathworks.com/matlabcentral/fileexchange/11837-fast-and-robust-curve-intersections
+
 """
 
 import typing as ty
@@ -105,18 +110,18 @@ def _solve_segments_intersection(
 
     So, the equations for two n-dimensional segments intersection problem are
 
-       (x1[1] - x1[0]) * t1 = x0 - x1[0]
-       (x2[1] - x2[0]) * t2 = x0 - x2[0]
-       (y1[1] - y1[0]) * t1 = y0 - y1[0]
-       (y2[1] - y2[0]) * t2 = y0 - y2[0]
+       (x1[1] - x1[0]) * t = x0 - x1[0]
+       (x2[1] - x2[0]) * u = x0 - x2[0]
+       (y1[1] - y1[0]) * t = y0 - y1[0]
+       (y2[1] - y2[0]) * u = y0 - y2[0]
                      ...
-       (n1[1] - n1[0]) * t1 = n0 - n1[0]
-       (n2[1] - n2[0]) * t2 = n0 - n2[0]
+       (n1[1] - n1[0]) * t = n0 - n1[0]
+       (n2[1] - n2[0]) * u = n0 - n2[0]
 
     Rearranging and writing in matrix form,
                         A                            t         b
-     [x1[1]-x1[0]       0       -1   0 ...  0        [t1      [-x1[0]
-           0       x2[1]-x2[0]  -1   0 ...  0    *    t2   =   -x2[0]
+     [x1[1]-x1[0]       0       -1   0 ...  0        [ t      [-x1[0]
+           0       x2[1]-x2[0]  -1   0 ...  0    *     u   =   -x2[0]
       y1[1]-y1[0]       0        0  -1 ...  0         x0       -y1[0]
            0       y2[1]-y2[0]   0  -1 ...  0         y0       -y2[0]
                        ...                           ...        ...
@@ -128,7 +133,7 @@ def _solve_segments_intersection(
         M is the number of rows: curve.ndim * 2
         N is the number of columns: M - curve.ndim + 2
 
-    Let's call that A*t = b.  We can solve for t
+    Let's call that A*w = b.  We can solve for w
     using linalg numpy.linalg.lstsq or numpy.linalg.solve for square 2-D case.
 
     """
@@ -222,7 +227,7 @@ def _determine_segments_intersection(
         curve1: 'Curve', curve2: 'Curve') -> DetermineSegmentsIntersectionResult:
     """Determines segments intersections and intersection points
 
-    Find where t1 and t2 are between 0 and 1 and return the
+    Find where t and u are between 0 and 1 and return the
     corresponding intersection points values. Anomalous segment pairs can be
     segment pairs that are colinear (overlap) or the result of segments
     that are degenerate (end points the same). The algorithm will return
@@ -239,15 +244,15 @@ def _determine_segments_intersection(
     solution = solve_result.solution
     overlap = solve_result.overlap
 
-    t1 = solution[0, :]
-    t2 = solution[1, :]
+    t = solution[0, :]
+    u = solution[1, :]
 
-    # If t1 and t2 in the range [0, 1] we have intersect point on segments
-    t_in_range = (
-        ((t1 > 0.) | (np.isclose(t1, 0.))) &
-        ((t2 > 0.) | (np.isclose(t2, 0.))) &
-        ((t1 < 1.) | (np.isclose(t1, 1.))) &
-        ((t2 < 1.) | (np.isclose(t2, 1.)))
+    # If t and u parameters in the range [0, 1] we have the intersection point on segments
+    tu_in_range = (
+        ((t > 0.) | (np.isclose(t, 0.))) &
+        ((u > 0.) | (np.isclose(u, 0.))) &
+        ((t < 1.) | (np.isclose(t, 1.))) &
+        ((u < 1.) | (np.isclose(u, 1.)))
     )
 
     intersect_points = solution[2:, :].T
@@ -279,9 +284,9 @@ def _determine_segments_intersection(
         # The middle points of overlapping regions
         intersect_points[overlap, :] = (data_minmax + data_maxmin) / 2.0
 
-        is_intersect = t_in_range | overlap
+        is_intersect = tu_in_range | overlap
     else:
-        is_intersect = t_in_range
+        is_intersect = tu_in_range
 
     return DetermineSegmentsIntersectionResult(
         segments1=seg1[is_intersect],
