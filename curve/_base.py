@@ -1827,6 +1827,19 @@ class Curve(abc.Sequence):
 
         return _diffgeom.torsion(self)
 
+    @cached_property
+    def segments(self) -> np.ndarray:
+        """Returns the numpy array (list) of curve segments
+
+        Returns
+        -------
+        segments : np.array[CurveSegment]
+            The numpy array list of curve segments
+
+        """
+
+        return np.array([CurveSegment(self, idx) for idx in range(self.size - 1)], dtype=np.object)
+
     def reverse(self) -> 'Curve':
         """Reverses the curve
 
@@ -2051,17 +2064,6 @@ class Curve(abc.Sequence):
             raise IndexError(
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
-
-    def segments(self) -> ty.Iterator['CurveSegment']:
-        """Returns the segments iterator
-
-        Returns
-        -------
-        segments_iter : Iterator
-            The segments iterator
-        """
-
-        return iter(CurveSegment(self, idx) for idx in range(self.size - 1))
 
     def values(self, axis: ty.Union[int, Axis, None] = None) -> ty.Union[np.ndarray, ty.Iterator[np.ndarray]]:
         """Returns the vector with all values for given axis or the iterator along all axes
