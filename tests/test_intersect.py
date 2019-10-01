@@ -44,15 +44,16 @@ skip = functools.partial(pytest.param, marks=pytest.mark.skip)
     # 3D
 
     # no intersections (parallel lines: X and Y are equal, Z different)
-    skip([(1, 2), (1, 2), (1, 2)],
-         [(1, 2), (1, 2), (2, 3)], [], [], []),
+    skip([(1, 2), (1, 2), (1, 2)], [(1, 2), (1, 2), (2, 3)], [], [], []),
     # no intersections (parallel lines: X and Y are equal, Z different)
-    skip([(1, 2), (1, 2), (1, 2)],
-         [(0.8, 1), (1, 2), (1, 2)], [], [], []),
+    skip([(1, 2), (1, 2), (1, 2)], [(0.8, 1), (1, 2), (1, 2)], [], [], []),
     # no intersections
-    skip([(1, 2), (1, 2), (1, 2)],
-         [(1.1, 2.1), (1, 2.5), (1, 2)], [], [], []),
-    # no intersections
+    skip([(1, 2), (1, 2), (1, 2)], [(1.1, 2.1), (1, 2.5), (1, 2)], [], [], []),
+    # no intersections (skewness)
+    skip([(1, 2), (1, 2), (1, 2)], [(0.5, 2), (2.5, 1), (1, 2)], [], [], []),
+    # no intersections (no skewness, intersection is out of segments)
+    skip([(1, 2), (1, 2), (1, 2)], [(0.8, 1), (1, 2), (1, 2)], [], [], []),
+    # no intersections (skewness)
     skip([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
          [(1, 2, 3, 4), (4, 3, 2, 1), (2, 3, 4, 5)], [], [], []),
     # 1 pt
