@@ -14,6 +14,7 @@ The module contains the following basic classes:
 import collections.abc as abc
 import typing as ty
 import numbers
+import operator
 import textwrap
 import enum
 import warnings
@@ -217,6 +218,36 @@ class Point(abc.Sequence):
 
         return bool(allequal(self.data, other.data))
 
+    def __add__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.add, other)
+
+    def __radd__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.add, other, right=True)
+
+    def __sub__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.sub, other)
+
+    def __rsub__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.sub, other, right=True)
+
+    def __mul__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.mul, other)
+
+    def __rmul__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.mul, other, right=True)
+
+    def __truediv__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.truediv, other)
+
+    def __rtruediv__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.truediv, other, right=True)
+
+    def __floordiv__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.floordiv, other)
+
+    def __rfloordiv__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.floordiv, other, right=True)
+
     def __matmul__(self, other: 'Point') -> Numeric:
         """Dot product of two points
 
@@ -311,6 +342,25 @@ class Point(abc.Sequence):
             raise TypeError('Metric must be str or callable')
 
         return metric(self._data, other.data)
+
+    def _op(self, op, other: ty.Union['Point', Numeric], right: bool = False) -> ty.Optional['Point']:
+        left_data = self._data
+
+        if isinstance(other, Point):
+            right_data = other.data
+        elif isinstance(other, numbers.Number):
+            right_data = other
+        else:
+            if right:
+                return NotImplemented
+            else:
+                raise TypeError("unsupported operand type(s) for '{}': '{}' and '{}'".format(
+                    op.__name__, type(self).__name__, type(other).__name__))
+
+        if right:
+            right_data, left_data = left_data, right_data
+
+        return Point(op(left_data, right_data))
 
 
 class CurvePoint(Point):

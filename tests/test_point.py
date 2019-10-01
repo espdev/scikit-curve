@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import operator
 import pytest
 import numpy as np
 
@@ -70,3 +71,30 @@ def test_distance():
 
     assert p1.distance(p2) == pytest.approx(5.0)
     assert p1.distance(p2, metric='sqeuclidean', w=1.5) == pytest.approx(37.5)
+
+
+@pytest.mark.parametrize('op, left, right, expected', [
+    (operator.add, Point([1.0, 1.0]), 1, Point([2.0, 2.0])),
+    (operator.add, Point([1.0, 1.0]), np.array([1])[0], Point([2.0, 2.0])),
+    (operator.add, 1, Point([1.0, 1.0]), Point([2.0, 2.0])),
+    (operator.sub, Point([2.0, 2.0]), 1, Point([1.0, 1.0])),
+    (operator.sub, 1, Point([2.0, 2.0]), Point([-1.0, -1.0])),
+    (operator.mul, Point([2.0, 2.0]), 2, Point([4.0, 4.0])),
+    (operator.mul, 2, Point([2.0, 2.0]), Point([4.0, 4.0])),
+    (operator.truediv, Point([2.0, 2.0]), 1, Point([2.0, 2.0])),
+    (operator.truediv, 1, Point([2.0, 2.0]), Point([0.5, 0.5])),
+    (operator.floordiv, Point([2.5, 2.5]), 2, Point([1.0, 1.0])),
+    (operator.floordiv, 2, Point([2.5, 2.5]), Point([0.0, 0.0])),
+])
+def test_op(op, left, right, expected):
+    assert op(left, right) == expected
+
+
+@pytest.mark.parametrize('op, left, right', [
+    (operator.add, Point([1.0, 1.0]), [1]),
+    (operator.add, Point([1.0, 1.0]), np.array([1, 2])),
+    (operator.add, [1], Point([1.0, 1.0])),
+])
+def test_op_unsupported(op, left, right):
+    with pytest.raises(TypeError):
+        _ = op(left, right)
