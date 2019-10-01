@@ -104,6 +104,28 @@ def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') -> Segmen
     )
 
 
+def _test_skewness(segment1: 'CurveSegment', segment2: 'CurveSegment', eps: float = np.finfo(np.float64).eps) -> bool:
+    a, b = segment1.p1, segment1.p2
+    c, d = segment2.p1, segment2.p2
+
+    m = np.array([
+        a - b,
+        b - c,
+        c - d,
+    ])
+
+    return (1 / 6 * np.abs(np.linalg.det(m))) > eps
+
+
+def _exclude_skew_segments(seg1, seg2, curve1, curve2):
+    segments1 = curve1.segments[seg1]
+    segments2 = curve2.segments[seg2]
+
+    skew = np.array([_test_skewness(s1, s2) for s1, s2 in zip(segments1, segments2)], dtype=np.bool_)
+
+    return seg1[~skew], seg2[~skew]
+
+
 def _solve_segments_intersection(
         bbox_intersect: SegmentsBBoxIntersectionResult,
         curve1: 'Curve', curve2: 'Curve') -> SolveSegmentsIntersectionResult:
@@ -146,6 +168,10 @@ def _solve_segments_intersection(
 
     ndim = curve1.ndim
 
+    if ndim == 3:
+        # Exclude all segments that fail skewness test
+        seg1, seg2 = _exclude_skew_segments(seg1, seg2, curve1, curve2)
+
     data1 = curve1.data
     data2 = curve2.data
 
@@ -157,11 +183,10 @@ def _solve_segments_intersection(
         data2_diff = np.diff(data2, axis=0)
 
     is_nan = np.isnan(np.sum(data1_diff[seg1, :] + data2_diff[seg2, :], axis=1))
-    remove = np.flatnonzero(is_nan)
 
-    if remove.size > 0:
-        seg1 = np.delete(seg1, remove)
-        seg2 = np.delete(seg2, remove)
+    if np.any(is_nan):
+        seg1 = seg1[~is_nan]
+        seg2 = seg2[~is_nan]
 
     n_seg = seg1.size
     n_equ = ndim * 2
