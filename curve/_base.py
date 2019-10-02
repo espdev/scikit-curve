@@ -903,6 +903,32 @@ class CurveSegment:
         m = np.vstack((self.data, other.data)).T
         return np.linalg.matrix_rank(m) <= 1
 
+    def angle(self, other: 'CurveSegment') -> float:
+        """Returns the angle between this segment and other segment
+
+        Parameters
+        ----------
+        other : CurveSegment
+            Other segment
+
+        Returns
+        -------
+        phi : float
+            The angle in radians between this segment and other segment
+
+        """
+
+        u1 = self.direction()
+        u2 = other.direction()
+
+        cos_phi = (u1 @ u2) / (u1.norm() * u2.norm())
+
+        # We need to consider floating point errors
+        cos_phi = 1.0 if cos_phi > 1.0 else cos_phi
+        cos_phi = -1.0 if cos_phi < -1.0 else cos_phi
+
+        return np.arccos(cos_phi)
+
     def intersect(self, other: ty.Union['CurveSegment', 'Curve']) \
             -> ty.Union[None, SegmentsIntersection, ty.List[SegmentsIntersection]]:
         """Determines intersection(s) between the segment and other segment or curve
