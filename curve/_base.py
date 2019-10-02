@@ -838,6 +838,29 @@ class CurveSegment:
 
         return self._p1 @ self._p2
 
+    def point(self, t: float) -> 'Point':
+        """Returns the point on the segment for given "t"-parameter value
+
+        The parametric line equation:
+
+        .. math::
+
+            P(t) = P_1 + t (P_2 - P_1)
+
+        Parameters
+        ----------
+        t : float
+            The parameter value in the range [0, 1] to get point on the segment
+
+        Returns
+        -------
+        point : Point
+            The point on the segment for given "t"
+
+        """
+
+        return self.p1 + t * (self.p2 - self.p1)
+
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
 
