@@ -826,7 +826,6 @@ class CurveSegment:
 
         return self._curve.chordlen[self._idx]
 
-    @property
     def distance(self) -> Numeric:
         """Returns the segment length
 
@@ -838,7 +837,6 @@ class CurveSegment:
 
         return self._p1.distance(self._p2)
 
-    @property
     def dot(self) -> float:
         """Returns Dot product of the segment points
 
@@ -850,7 +848,6 @@ class CurveSegment:
 
         return self._p1 @ self._p2
 
-    @property
     def direction(self) -> 'Point':
         """Returns the segment (line) direction vector
 
@@ -884,7 +881,7 @@ class CurveSegment:
 
         """
 
-        return self.p1 + self.direction * t
+        return self.p1 + self.direction() * t
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
