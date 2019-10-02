@@ -883,13 +883,15 @@ class CurveSegment:
 
         return self.p1 + self.direction() * t
 
-    def angle(self, other: 'CurveSegment') -> float:
+    def angle(self, other: 'CurveSegment', ndigits: ty.Optional[int] = None) -> float:
         """Returns the angle between this segment and other segment
 
         Parameters
         ----------
         other : CurveSegment
             Other segment
+        ndigits : int, None
+            The number of significant digits
 
         Returns
         -------
@@ -903,31 +905,72 @@ class CurveSegment:
 
         cos_phi = (u1 @ u2) / (u1.norm() * u2.norm())
 
+        if ndigits is not None:
+            cos_phi = round(cos_phi, ndigits=ndigits)
+
         # We need to consider floating point errors
         cos_phi = 1.0 if cos_phi > 1.0 else cos_phi
         cos_phi = -1.0 if cos_phi < -1.0 else cos_phi
 
         return np.arccos(cos_phi)
 
-    def collinear(self, other: ty.Union['CurveSegment', 'Point']) -> bool:
+    def collinear(self, other: ty.Union['CurveSegment', 'Point'],
+                  tol: ty.Optional[float] = None) -> bool:
         """Returns True if the segment and other segment or point are collinear
 
         Parameters
         ----------
         other : CurveSegment, Point
             The curve segment or point object
+        tol : float, None
+            Threshold below which SVD values are considered zero
 
         Returns
         -------
         flag : bool
             True if the segment and other segment or point are collinear
 
+        See Also
+        --------
+        parallel
+
         """
         if not isinstance(other, (CurveSegment, Point)):
             raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
 
         m = np.vstack((self.data, other.data)).T
-        return np.linalg.matrix_rank(m) <= 1
+        return np.linalg.matrix_rank(m, tol=tol) <= 1
+
+    def parallel(self, other: 'CurveSegment',
+                 ndigits: ty.Optional[int] = 8,
+                 rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+        """Returns True if the segment and other segment are parallel
+
+        Parameters
+        ----------
+        other : CurveSegment
+            Other segment
+        ndigits : int, None
+            The number of significant digits
+        rtol : float
+            Relative tolerance with check angle
+        atol : float
+            Absolute tolerance with check angle
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment are parallel
+
+        See Also
+        --------
+        collinear
+        angle
+
+        """
+
+        phi = self.angle(other, ndigits=ndigits)
+        return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
 
     def intersect(self, other: ty.Union['CurveSegment', 'Curve']) \
             -> ty.Union[None, SegmentsIntersection, ty.List[SegmentsIntersection]]:
