@@ -883,17 +883,6 @@ class CurveSegment:
 
         return self.p1 + self.direction() * t
 
-    def to_curve(self) -> 'Curve':
-        """Returns the copy of segment data as curve object with 2 points
-
-        Returns
-        -------
-        curve : Curve
-            Curve object with 2 points
-        """
-
-        return Curve(self.data)
-
     def collinear(self, other: ty.Union['CurveSegment', 'Point']) -> bool:
         """Returns True if the segment and other segment or point are collinear
 
@@ -944,6 +933,17 @@ class CurveSegment:
             return [intersection.swap_segments() for intersection in other.intersect(self)]
         else:
             raise TypeError('"other" argument must be "CurveSegment" or "Curve" class.')
+
+    def to_curve(self) -> 'Curve':
+        """Returns the copy of segment data as curve object with 2 points
+
+        Returns
+        -------
+        curve : Curve
+            Curve object with 2 points
+        """
+
+        return Curve(self.data)
 
 
 class Curve(abc.Sequence):
