@@ -826,7 +826,7 @@ class CurveSegment:
 
         return self._curve.chordlen[self._idx]
 
-    def distance(self) -> Numeric:
+    def seglen(self) -> Numeric:
         """Returns the segment length
 
         Returns
