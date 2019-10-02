@@ -838,6 +838,19 @@ class CurveSegment:
 
         return self._p1 @ self._p2
 
+    @property
+    def direction(self) -> 'Point':
+        """Returns the segment (line) direction vector
+
+        Returns
+        -------
+        u : Point
+            The point object that represents the segment direction
+
+        """
+
+        return self.p2 - self.p1
+
     def point(self, t: float) -> 'Point':
         """Returns the point on the segment for given "t"-parameter value
 
@@ -859,7 +872,7 @@ class CurveSegment:
 
         """
 
-        return self.p1 + (self.p2 - self.p1) * t
+        return self.p1 + self.direction * t
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
