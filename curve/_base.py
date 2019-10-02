@@ -311,6 +311,18 @@ class Point(abc.Sequence):
         """
         return self._data.size
 
+    def norm(self) -> float:
+        """Returns norm of vector that represented in point object
+
+        Returns
+        -------
+        norm : float
+            Norm of vector
+
+        """
+
+        return np.sqrt(self @ self)
+
     def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> Numeric:
         """Compute distance from this point to other point by given metric
 
