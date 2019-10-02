@@ -872,6 +872,26 @@ class CurveSegment:
 
         return Curve(self.data)
 
+    def collinear(self, other: ty.Union['CurveSegment', 'Point']) -> bool:
+        """Returns True if the segment and other segment or point(s) are collinear
+
+        Parameters
+        ----------
+        other : CurveSegment, Point, Sequence[Union[CurveSegment, Point]]
+            The curve segment(s) or point(s) object(s)
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment or point are collinear
+
+        """
+        if not isinstance(other, (CurveSegment, Point)):
+            raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
+
+        m = np.vstack((self.data, other.data)).T
+        return np.linalg.matrix_rank(m) <= 1
+
     def intersect(self, other: ty.Union['CurveSegment', 'Curve']) \
             -> ty.Union[None, SegmentsIntersection, ty.List[SegmentsIntersection]]:
         """Determines intersection(s) between the segment and other segment or curve
