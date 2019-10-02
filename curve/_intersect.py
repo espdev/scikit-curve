@@ -20,6 +20,9 @@ if ty.TYPE_CHECKING:
     from curve._base import Curve, CurveSegment, Point
 
 
+F_EPS = np.finfo(np.float64).eps
+
+
 SegmentsBBoxIntersectionResult = ty.NamedTuple('SegmentsBBoxIntersectionResult', [
     ('segments1', np.ndarray),
     ('segments2', np.ndarray),
@@ -104,7 +107,7 @@ def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') -> Segmen
     )
 
 
-def _test_skewness(segment1: 'CurveSegment', segment2: 'CurveSegment', eps: float = np.finfo(np.float64).eps) -> bool:
+def _test_skewness(segment1: 'CurveSegment', segment2: 'CurveSegment', eps: float = F_EPS) -> bool:
     a, b = segment1.p1, segment1.p2
     c, d = segment2.p1, segment2.p2
 
@@ -205,8 +208,6 @@ def _solve_segments_intersection(
         values[i, :] = -vals1[seg1]
         values[i+1, :] = -vals2[seg2]
 
-    feps = np.finfo(np.float64).eps
-
     def solve_2d(a, b):
         ovrlp = False
 
@@ -226,7 +227,7 @@ def _solve_segments_intersection(
             try:
                 # Reciprocal condition number
                 rcond = 1.0 / np.linalg.cond(m, 1)
-                ovrlp = rcond < feps
+                ovrlp = rcond < F_EPS
             except np.linalg.LinAlgError:
                 pass
 
