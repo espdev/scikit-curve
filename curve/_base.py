@@ -886,12 +886,12 @@ class CurveSegment:
         return Curve(self.data)
 
     def collinear(self, other: ty.Union['CurveSegment', 'Point']) -> bool:
-        """Returns True if the segment and other segment or point(s) are collinear
+        """Returns True if the segment and other segment or point are collinear
 
         Parameters
         ----------
-        other : CurveSegment, Point, Sequence[Union[CurveSegment, Point]]
-            The curve segment(s) or point(s) object(s)
+        other : CurveSegment, Point
+            The curve segment or point object
 
         Returns
         -------
