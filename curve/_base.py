@@ -859,7 +859,7 @@ class CurveSegment:
 
         """
 
-        return self.p1 + t * (self.p2 - self.p1)
+        return self.p1 + (self.p2 - self.p1) * t
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
