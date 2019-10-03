@@ -893,7 +893,7 @@ class Segment:
                 warnings.warn(
                     "Given point '{}' is not collinear with the segment '{}'".format(point, self), RuntimeWarning)
                 return np.nan
-            b = point - self.p1
+            b = point.data - self.p1.data
             is_collinear = np.asarray([])
         else:
             is_collinear = np.array([self.collinear(p, tol=tol) for p in point], dtype=np.bool_)
