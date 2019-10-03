@@ -754,6 +754,9 @@ class Segment:
 
         return '{}(p1={}, p2={})'.format(type(self).__name__, p1_data, p2_data)
 
+    def __bool__(self) -> bool:
+        return self._p1 != self._p2
+
     @property
     def p1(self) -> 'Point':
         """Returns beginning point of the segment
@@ -993,6 +996,46 @@ class Segment:
             raise TypeError('"other" argument must be type \'Point\' or \'Segment\'')
 
         return np.linalg.matrix_rank(m, tol=tol) <= 2
+
+    def overlap(self, other: 'Segment', tol: ty.Optional[float] = None) -> ty.Optional['Segment']:
+        """Returns overlap segment between the segment and other segment if it exists
+
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        segment : Segment, None
+            Overlap segment if it is exist.
+
+        """
+
+        if not self.collinear(other, tol=tol):
+            return None
+
+        p11_data = self.p1.data
+        p12_data = self.p2.data
+        p21_data = other.p1.data
+        p22_data = other.p2.data
+
+        data_minmax = np.minimum(
+            np.maximum(p11_data, p12_data),
+            np.maximum(p21_data, p22_data),
+        )
+
+        data_maxmin = np.maximum(
+            np.minimum(p11_data, p12_data),
+            np.minimum(p21_data, p22_data),
+        )
+
+        if np.any(data_maxmin > data_minmax):
+            return None
+
+        return Segment(Point(data_maxmin), Point(data_minmax))
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
