@@ -166,6 +166,9 @@ class Point(abc.Sequence):
 
         return self._data.size
 
+    def __bool__(self) -> bool:
+        return self._data.size > 0
+
     def __getitem__(self, index: ty.Union[int, slice]) -> ty.Union['Point', np.number]:
         """Returns coord of the point for given index
 
@@ -719,53 +722,40 @@ class CurvePoint(Point):
         return self.curve[self.idx:other_point.idx+inc]
 
 
-class CurveSegment:
-    """Represents a curve segment
+class Segment:
+    """Represents a segment in n-dimensional Euclidean space
 
     Parameters
     ----------
-    curve : Curve
-        The curve object
-    index : int
-        The segment index in the curve
+    p1 : Point
+        Beginning point of segment
+    p2 : Point
+        Ending point of segment
 
     """
 
-    __slots__ = ('_curve', '_p1', '_p2', '_idx')
+    __slots__ = ('_p1', '_p2')
 
-    def __init__(self, curve: 'Curve', index: int) -> None:
-        if index < 0:
-            index = (curve.size - 1) + index
-        if index >= (curve.size - 1):
-            raise ValueError('The index is out of curve size')
+    def __init__(self, p1: 'Point', p2: 'Point') -> None:
+        if not isinstance(p1, Point) or not isinstance(p2, Point):
+            raise TypeError('Invalid type of "p1" or "p2". It must be points.')
+        if not p1 or not p2:
+            raise ValueError('Points dimension must be greater or equal to 1.')
+        if p1.ndim != p2.ndim:
+            raise ValueError('"p1" and "p2" points must be the same dimension.')
 
-        self._curve = curve
-        self._p1 = ty.cast(CurvePoint, curve[index])
-        self._p2 = ty.cast(CurvePoint, curve[index + 1])
-        self._idx = index
+        self._p1 = p1
+        self._p2 = p2
 
     def __repr__(self) -> str:
         with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
             p1_data = '{}'.format(self._p1.data)
             p2_data = '{}'.format(self._p2.data)
 
-        return '{}(p1={}, p2={}, len={:.4f}, index={})'.format(
-            type(self).__name__, p1_data, p2_data, self.chordlen, self._idx)
+        return '{}(p1={}, p2={})'.format(type(self).__name__, p1_data, p2_data)
 
     @property
-    def curve(self) -> 'Curve':
-        """Returns the curve that contains this segment
-
-        Returns
-        -------
-        curve : Curve
-            The curve that contains this segment
-        """
-
-        return self._curve
-
-    @property
-    def p1(self) -> 'CurvePoint':
+    def p1(self) -> 'Point':
         """Returns beginning point of the segment
 
         Returns
@@ -777,7 +767,7 @@ class CurveSegment:
         return self._p1
 
     @property
-    def p2(self) -> 'CurvePoint':
+    def p2(self) -> 'Point':
         """Returns ending point of the segment
 
         Returns
@@ -795,10 +785,274 @@ class CurveSegment:
         Returns
         -------
         data : np.ndarray
-            The segment data
+            The segment data array 2xN
         """
 
-        return np.array([self._p1.data, self._p2.data])
+        return np.vstack((self._p1.data, self._p2.data))
+
+    @property
+    def ndim(self) -> int:
+        """Returns dimension of the segment
+
+        Returns
+        -------
+        ndim : int
+            Dimension of the segment
+        """
+
+        return self._p1.ndim
+
+    def seglen(self) -> Numeric:
+        """Returns the segment length
+
+        Returns
+        -------
+        length : float
+            Segment length (Euclidean distance between p1 and p2)
+        """
+
+        return self._p1.distance(self._p2)
+
+    def dot(self) -> float:
+        """Returns Dot product of the beginning/ending segment points
+
+        Returns
+        -------
+        dot : float
+            The Dot product of the segment points
+        """
+
+        return self._p1 @ self._p2
+
+    def direction(self) -> 'Point':
+        """Returns the segment (line) direction vector
+
+        Returns
+        -------
+        u : Point
+            The point object that represents the segment direction
+        """
+
+        return self.p2 - self.p1
+
+    def point(self, t: float) -> 'Point':
+        """Returns the point on the segment for given "t"-parameter value
+
+        The parametric line equation:
+
+        .. math::
+
+            P(t) = P_1 + t (P_2 - P_1)
+
+        Parameters
+        ----------
+        t : float
+            The parameter value in the range [0, 1] to get point on the segment
+
+        Returns
+        -------
+        point : Point
+            The point on the segment for given "t"
+        """
+
+        return self.p1 + self.direction() * t
+
+    def angle(self, other: 'Segment', ndigits: ty.Optional[int] = None) -> float:
+        """Returns the angle between this segment and other segment
+
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+        ndigits : int, None
+            The number of significant digits
+
+        Returns
+        -------
+        phi : float
+            The angle in radians between this segment and other segment
+        """
+
+        if not isinstance(other, Segment):
+            raise TypeError('Unsupported type of "other" argument {}. It must be \'Segment\'.'.format(type(other)))
+
+        u1 = self.direction()
+        u2 = other.direction()
+
+        denominator = u1.norm() * u2.norm()
+
+        if np.isclose(denominator, 0.0):
+            warnings.warn(
+                'Cannot compute angle between segments. One or both segments degenerate into a point.',
+                RuntimeWarning)
+            return np.nan
+
+        cos_phi = (u1 @ u2) / denominator
+
+        if ndigits is not None:
+            cos_phi = round(cos_phi, ndigits=ndigits)
+
+        # We need to consider floating point errors
+        cos_phi = 1.0 if cos_phi > 1.0 else cos_phi
+        cos_phi = -1.0 if cos_phi < -1.0 else cos_phi
+
+        return np.arccos(cos_phi)
+
+    def collinear(self, other: ty.Union['Segment', 'Point'],
+                  tol: ty.Optional[float] = None) -> bool:
+        """Returns True if the segment and other segment or point are collinear
+
+        Parameters
+        ----------
+        other : Segment, Point
+            The curve segment or point object
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment or point are collinear
+
+        See Also
+        --------
+        parallel
+        coplanar
+
+        """
+
+        if not isinstance(other, (Segment, Point)):
+            raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
+
+        m = np.vstack((self.data, other.data)).T
+        return np.linalg.matrix_rank(m, tol=tol) <= 1
+
+    def parallel(self, other: 'Segment',
+                 ndigits: ty.Optional[int] = 8,
+                 rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+        """Returns True if the segment and other segment are parallel
+
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+        ndigits : int, None
+            The number of significant digits
+        rtol : float
+            Relative tolerance with check angle
+        atol : float
+            Absolute tolerance with check angle
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment are parallel
+
+        See Also
+        --------
+        collinear
+        angle
+
+        """
+
+        phi = self.angle(other, ndigits=ndigits)
+        if np.isnan(phi):
+            return False
+        return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
+
+    def coplanar(self, other: ty.Union['Segment', 'Point'],
+                 tol: ty.Optional[float] = None) -> bool:
+        """Returns True if the segment and other segment or point are coplanar
+
+        Parameters
+        ----------
+        other : Segment, Point
+            The curve segment or point object
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment or point are coplanar
+
+        See Also
+        --------
+        collinear
+
+        """
+
+        m = self.data.copy()
+
+        if isinstance(other, Point):
+            m -= other.data
+        elif isinstance(other, Segment):
+            m = np.vstack((m, other.p1.data))
+            m -= other.p2.data
+        else:
+            raise TypeError('"other" argument must be type \'Point\' or \'Segment\'')
+
+        return np.linalg.matrix_rank(m, tol=tol) <= 2
+
+    def to_curve(self) -> 'Curve':
+        """Returns the copy of segment data as curve object with 2 points
+
+        Returns
+        -------
+        curve : Curve
+            Curve object with 2 points
+        """
+
+        return Curve(self.data)
+
+
+class CurveSegment(Segment):
+    """Represents a curve segment
+
+    Parameters
+    ----------
+    curve : Curve
+        The curve object
+    index : int
+        The segment index in the curve
+
+    """
+
+    __slots__ = Segment.__slots__ + ('_curve', '_idx')
+
+    def __init__(self, curve: 'Curve', index: int) -> None:
+        if index < 0:
+            index = (curve.size - 1) + index
+        if index >= (curve.size - 1):
+            raise ValueError('The index is out of curve size')
+
+        self._curve = curve
+        self._idx = index
+
+        p1 = ty.cast(CurvePoint, curve[index])
+        p2 = ty.cast(CurvePoint, curve[index + 1])
+
+        super().__init__(p1, p2)
+
+    def __repr__(self) -> str:
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
+            p1_data = '{}'.format(self._p1.data)
+            p2_data = '{}'.format(self._p2.data)
+
+        return '{}(p1={}, p2={}, index={})'.format(
+            type(self).__name__, p1_data, p2_data, self._idx)
+
+    @property
+    def curve(self) -> 'Curve':
+        """Returns the curve that contains this segment
+
+        Returns
+        -------
+        curve : Curve
+            The curve that contains this segment
+        """
+
+        return self._curve
 
     @property
     def idx(self) -> int:
@@ -825,201 +1079,6 @@ class CurveSegment:
         """
 
         return self._curve.chordlen[self._idx]
-
-    def seglen(self) -> Numeric:
-        """Returns the segment length
-
-        Returns
-        -------
-        length : float
-            Segment length (Euclidean distance between p1 and p2)
-        """
-
-        return self._p1.distance(self._p2)
-
-    def dot(self) -> float:
-        """Returns Dot product of the segment points
-
-        Returns
-        -------
-        dot : float
-            The Dot product of the segment points
-        """
-
-        return self._p1 @ self._p2
-
-    def direction(self) -> 'Point':
-        """Returns the segment (line) direction vector
-
-        Returns
-        -------
-        u : Point
-            The point object that represents the segment direction
-
-        """
-
-        return self.p2 - self.p1
-
-    def point(self, t: float) -> 'Point':
-        """Returns the point on the segment for given "t"-parameter value
-
-        The parametric line equation:
-
-        .. math::
-
-            P(t) = P_1 + t (P_2 - P_1)
-
-        Parameters
-        ----------
-        t : float
-            The parameter value in the range [0, 1] to get point on the segment
-
-        Returns
-        -------
-        point : Point
-            The point on the segment for given "t"
-
-        """
-
-        return self.p1 + self.direction() * t
-
-    def angle(self, other: 'CurveSegment', ndigits: ty.Optional[int] = None) -> float:
-        """Returns the angle between this segment and other segment
-
-        Parameters
-        ----------
-        other : CurveSegment
-            Other segment
-        ndigits : int, None
-            The number of significant digits
-
-        Returns
-        -------
-        phi : float
-            The angle in radians between this segment and other segment
-
-        """
-
-        if not isinstance(other, CurveSegment):
-            raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
-
-        u1 = self.direction()
-        u2 = other.direction()
-
-        denominator = u1.norm() * u2.norm()
-
-        if np.isclose(denominator, 0.0):
-            warnings.warn(
-                'Cannot compute angle between segments. One or both segments degenerate into a point.',
-                RuntimeWarning)
-            return np.nan
-
-        cos_phi = (u1 @ u2) / denominator
-
-        if ndigits is not None:
-            cos_phi = round(cos_phi, ndigits=ndigits)
-
-        # We need to consider floating point errors
-        cos_phi = 1.0 if cos_phi > 1.0 else cos_phi
-        cos_phi = -1.0 if cos_phi < -1.0 else cos_phi
-
-        return np.arccos(cos_phi)
-
-    def collinear(self, other: ty.Union['CurveSegment', 'Point'],
-                  tol: ty.Optional[float] = None) -> bool:
-        """Returns True if the segment and other segment or point are collinear
-
-        Parameters
-        ----------
-        other : CurveSegment, Point
-            The curve segment or point object
-        tol : float, None
-            Threshold below which SVD values are considered zero
-
-        Returns
-        -------
-        flag : bool
-            True if the segment and other segment or point are collinear
-
-        See Also
-        --------
-        parallel
-        coplanar
-
-        """
-
-        if not isinstance(other, (CurveSegment, Point)):
-            raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
-
-        m = np.vstack((self.data, other.data)).T
-        return np.linalg.matrix_rank(m, tol=tol) <= 1
-
-    def parallel(self, other: 'CurveSegment',
-                 ndigits: ty.Optional[int] = 8,
-                 rtol: float = 1e-5, atol: float = 1e-8) -> bool:
-        """Returns True if the segment and other segment are parallel
-
-        Parameters
-        ----------
-        other : CurveSegment
-            Other segment
-        ndigits : int, None
-            The number of significant digits
-        rtol : float
-            Relative tolerance with check angle
-        atol : float
-            Absolute tolerance with check angle
-
-        Returns
-        -------
-        flag : bool
-            True if the segment and other segment are parallel
-
-        See Also
-        --------
-        collinear
-        angle
-
-        """
-
-        phi = self.angle(other, ndigits=ndigits)
-        if np.isnan(phi):
-            return False
-        return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
-
-    def coplanar(self, other: ty.Union['CurveSegment', 'Point'],
-                 tol: ty.Optional[float] = None) -> bool:
-        """Returns True if the segment and other segment or point are coplanar
-
-        Parameters
-        ----------
-        other : CurveSegment, Point
-            The curve segment or point object
-        tol : float, None
-            Threshold below which SVD values are considered zero
-
-        Returns
-        -------
-        flag : bool
-            True if the segment and other segment or point are coplanar
-
-        See Also
-        --------
-        collinear
-
-        """
-
-        m = self.data.copy()
-
-        if isinstance(other, Point):
-            m -= other.data
-        elif isinstance(other, CurveSegment):
-            m = np.vstack((m, other.p1.data))
-            m -= other.p2.data
-        else:
-            raise TypeError('"other" argument must be type \'Point\' or \'CurveSegment\'')
-
-        return np.linalg.matrix_rank(m, tol=tol) <= 2
 
     def intersect(self, other: ty.Union['CurveSegment', 'Curve']) \
             -> ty.Union[None, SegmentsIntersection, ty.List[SegmentsIntersection]]:
@@ -1051,17 +1110,6 @@ class CurveSegment:
             return [intersection.swap_segments() for intersection in other.intersect(self)]
         else:
             raise TypeError('"other" argument must be "CurveSegment" or "Curve" class.')
-
-    def to_curve(self) -> 'Curve':
-        """Returns the copy of segment data as curve object with 2 points
-
-        Returns
-        -------
-        curve : Curve
-            Curve object with 2 points
-        """
-
-        return Curve(self.data)
 
 
 class Curve(abc.Sequence):
