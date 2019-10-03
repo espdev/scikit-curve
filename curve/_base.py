@@ -897,7 +897,7 @@ class Segment:
             is_collinear = np.asarray([])
         else:
             is_collinear = np.array([self.collinear(p, tol=tol) for p in point], dtype=np.bool_)
-            b = np.stack([(p - self.p1).data for p in point], axis=1)
+            b = np.stack([p.data - self.p1.data for p in point], axis=1)
 
         a = self.direction().data[np.newaxis].T
 
