@@ -911,6 +911,8 @@ class Segment:
                 warnings.warn(
                     "Some given points are not collinear with the segment", RuntimeWarning)
                 t[~is_collinear] = np.nan
+            if t.size == 1:
+                t = np.array(t, ndmin=1)
             return t
 
     def angle(self, other: 'Segment', ndigits: ty.Optional[int] = None) -> float:
