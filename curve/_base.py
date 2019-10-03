@@ -900,10 +900,21 @@ class CurveSegment:
 
         """
 
+        if not isinstance(other, CurveSegment):
+            raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
+
         u1 = self.direction()
         u2 = other.direction()
 
-        cos_phi = (u1 @ u2) / (u1.norm() * u2.norm())
+        denominator = u1.norm() * u2.norm()
+
+        if np.isclose(denominator, 0.0):
+            warnings.warn(
+                'Cannot compute angle between segments. One or both segments degenerate into a point.',
+                RuntimeWarning)
+            return np.nan
+
+        cos_phi = (u1 @ u2) / denominator
 
         if ndigits is not None:
             cos_phi = round(cos_phi, ndigits=ndigits)
@@ -936,6 +947,7 @@ class CurveSegment:
         coplanar
 
         """
+
         if not isinstance(other, (CurveSegment, Point)):
             raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
 
@@ -971,6 +983,8 @@ class CurveSegment:
         """
 
         phi = self.angle(other, ndigits=ndigits)
+        if np.isnan(phi):
+            return False
         return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
 
     def coplanar(self, other: ty.Union['CurveSegment', 'Point'],
