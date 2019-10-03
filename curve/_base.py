@@ -933,6 +933,7 @@ class CurveSegment:
         See Also
         --------
         parallel
+        coplanar
 
         """
         if not isinstance(other, (CurveSegment, Point)):
@@ -971,6 +972,40 @@ class CurveSegment:
 
         phi = self.angle(other, ndigits=ndigits)
         return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
+
+    def coplanar(self, other: ty.Union['CurveSegment', 'Point'],
+                 tol: ty.Optional[float] = None) -> bool:
+        """Returns True if the segment and other segment or point are coplanar
+
+        Parameters
+        ----------
+        other : CurveSegment, Point
+            The curve segment or point object
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment or point are coplanar
+
+        See Also
+        --------
+        collinear
+
+        """
+
+        m = self.data.copy()
+
+        if isinstance(other, Point):
+            m -= other.data
+        elif isinstance(other, CurveSegment):
+            m = np.vstack((m, other.p1.data))
+            m -= other.p2.data
+        else:
+            raise TypeError('"other" argument must be type \'Point\' or \'CurveSegment\'')
+
+        return np.linalg.matrix_rank(m, tol=tol) <= 2
 
     def intersect(self, other: ty.Union['CurveSegment', 'Curve']) \
             -> ty.Union[None, SegmentsIntersection, ty.List[SegmentsIntersection]]:
