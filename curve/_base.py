@@ -838,8 +838,8 @@ class Segment:
 
         return self.p2 - self.p1
 
-    def point(self, t: float) -> 'Point':
-        """Returns the point on the segment for given "t"-parameter value
+    def point(self, t: ty.Union[float, ty.Sequence[float], np.ndarray]) -> ty.Union['Point', ty.List['Point']]:
+        """Returns the point(s) on the segment for given "t"-parameter value or list of values
 
         The parametric line equation:
 
@@ -854,11 +854,21 @@ class Segment:
 
         Returns
         -------
-        point : Point
-            The point on the segment for given "t"
+        point : Point, List[Points]
+            The point(s) on the segment for given "t"
         """
 
-        return self.p1 + self.direction() * t
+        if isinstance(t, (abc.Sequence, np.ndarray)):
+            t = np.asarray(t)
+            if t.ndim > 1:
+                raise ValueError('"t" must be a sequence or 1-d numpy array')
+
+            dt = self.direction().data * t[np.newaxis].T
+            points_data = self.p1.data + dt
+
+            return [Point(pdata) for pdata in points_data]
+        else:
+            return self.p1 + self.direction() * t
 
     def angle(self, other: 'Segment', ndigits: ty.Optional[int] = None) -> float:
         """Returns the angle between this segment and other segment
