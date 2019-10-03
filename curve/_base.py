@@ -870,6 +870,49 @@ class Segment:
         else:
             return self.p1 + self.direction() * t
 
+    def t(self, point: ty.Union['Point', ty.Sequence['Point']],
+          tol: ty.Optional[float] = None) -> ty.Union[float, np.ndarray]:
+        """Returns "t"-parameter value(s) for given point(s) that collinear with the segment
+
+        Parameters
+        ----------
+        point : Point, Sequence[Point]
+            Point or sequence of points that collinear with the segment
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        t : float, np.ndarray
+            "t"-parameter value(s) for given points or nan if point(s) are not collinear with the segment
+
+        """
+
+        if isinstance(point, Point):
+            if not self.collinear(point, tol=tol):
+                warnings.warn(
+                    "Given point '{}' is not collinear with the segment '{}'".format(point, self), RuntimeWarning)
+                return np.nan
+            b = point - self.p1
+            is_collinear = np.asarray([])
+        else:
+            is_collinear = np.array([self.collinear(p, tol=tol) for p in point], dtype=np.bool_)
+            b = np.stack([(p - self.p1).data for p in point], axis=1)
+
+        a = self.direction().data[np.newaxis].T
+
+        t, *_ = np.linalg.lstsq(a, b, rcond=None)
+        t = t.squeeze()
+
+        if is_collinear.size == 0:
+            return float(t)
+        else:
+            if not np.all(is_collinear):
+                warnings.warn(
+                    "Some given points are not collinear with the segment", RuntimeWarning)
+                t[~is_collinear] = np.nan
+            return t
+
     def angle(self, other: 'Segment', ndigits: ty.Optional[int] = None) -> float:
         """Returns the angle between this segment and other segment
 
