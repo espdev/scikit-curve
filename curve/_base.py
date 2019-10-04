@@ -754,9 +754,6 @@ class Segment:
 
         return '{}(p1={}, p2={})'.format(type(self).__name__, p1_data, p2_data)
 
-    def __bool__(self) -> bool:
-        return self._p1 != self._p2
-
     @property
     def p1(self) -> 'Point':
         """Returns beginning point of the segment
@@ -805,6 +802,19 @@ class Segment:
 
         return self._p1.ndim
 
+    @property
+    def singular(self) -> bool:
+        """Returns True if the segment is singular (has zero lenght)
+
+        Returns
+        -------
+        flag : bool
+            Returns True if the segment is singular (has zero lenght)
+        """
+
+        return self.p1 == self.p2
+
+    @property
     def seglen(self) -> Numeric:
         """Returns the segment length
 
@@ -816,6 +826,7 @@ class Segment:
 
         return self._p1.distance(self._p2)
 
+    @property
     def dot(self) -> float:
         """Returns Dot product of the beginning/ending segment points
 
@@ -827,6 +838,7 @@ class Segment:
 
         return self._p1 @ self._p2
 
+    @property
     def direction(self) -> 'Point':
         """Returns the segment (line) direction vector
 
@@ -863,12 +875,12 @@ class Segment:
             if t.ndim > 1:
                 raise ValueError('"t" must be a sequence or 1-d numpy array')
 
-            dt = self.direction().data * t[np.newaxis].T
+            dt = self.direction.data * t[np.newaxis].T
             points_data = self.p1.data + dt
 
             return [Point(pdata) for pdata in points_data]
         else:
-            return self.p1 + self.direction() * t
+            return self.p1 + self.direction * t
 
     def t(self, point: ty.Union['Point', ty.Sequence['Point']],
           tol: ty.Optional[float] = None) -> ty.Union[float, np.ndarray]:
@@ -899,7 +911,7 @@ class Segment:
             is_collinear = np.array([self.collinear(p, tol=tol) for p in point], dtype=np.bool_)
             b = np.stack([p.data - self.p1.data for p in point], axis=1)
 
-        a = self.direction().data[np.newaxis].T
+        a = self.direction.data[np.newaxis].T
 
         t, *_ = np.linalg.lstsq(a, b, rcond=None)
         t = t.squeeze()
@@ -934,8 +946,8 @@ class Segment:
         if not isinstance(other, Segment):
             raise TypeError('Unsupported type of "other" argument {}. It must be \'Segment\'.'.format(type(other)))
 
-        u1 = self.direction()
-        u2 = other.direction()
+        u1 = self.direction
+        u2 = other.direction
 
         denominator = u1.norm() * u2.norm()
 
