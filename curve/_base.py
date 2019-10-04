@@ -754,6 +754,11 @@ class Segment:
 
         return '{}(p1={}, p2={})'.format(type(self).__name__, p1_data, p2_data)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Segment):
+            return NotImplemented
+        return self.p1 == other.p1 and self.p2 == other.p2
+
     @property
     def p1(self) -> 'Point':
         """Returns beginning point of the segment
@@ -991,10 +996,22 @@ class Segment:
 
         """
 
-        if not isinstance(other, (Segment, Point)):
-            raise TypeError('Unsupported type of "other" argument {}'.format(type(other)))
+        if isinstance(other, Point):
+            if other == self.p1 or other == self.p2:
+                return True
+        elif isinstance(other, Segment):
+            if other == self or other.swap() == self:
+                return True
+        else:
+            raise TypeError('Invalid type {} of "other" argument.'.format(type(other)))
 
-        m = np.vstack((self.data, other.data)).T
+        # In n-dimensional space, a set of three or more distinct points are collinear
+        # if and only if, the matrix of the coordinates of these vectors is of rank 1 or less.
+        m = np.unique(np.vstack((self.data, other.data)).T, axis=1)
+
+        if m.shape[1] < 3:
+            return True
+
         return np.linalg.matrix_rank(m, tol=tol) <= 1
 
     def parallel(self, other: 'Segment',
@@ -1114,6 +1131,17 @@ class Segment:
         """
 
         return Curve(self.data)
+
+    def swap(self) -> 'Segment':
+        """Returns the new segment with swapped ending points
+
+        Returns
+        -------
+        segment : Segment
+            Swapped segment
+        """
+
+        return Segment(self.p2, self.p1)
 
 
 class CurveSegment(Segment):
