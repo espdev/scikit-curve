@@ -2,7 +2,7 @@
 
 from ._version import __version__  # noqa
 
-from curve._base import Axis, Point, CurvePoint, CurveSegment, Curve
+from curve._base import Axis, Point, Segment, CurvePoint, CurveSegment, Curve
 from curve._distance import known_metrics, get_metric
 from curve._diffgeom import DifferentialGeometryWarning
 from curve._interpolate import (
@@ -30,6 +30,7 @@ __all__ = [
     # base
     'Axis',
     'Point',
+    'Segment',
     'CurvePoint',
     'CurveSegment',
     'Curve',
