@@ -12,13 +12,15 @@ https://www.mathworks.com/matlabcentral/fileexchange/11837-fast-and-robust-curve
 
 import typing as ty
 import itertools
+import warnings
 
 import numpy as np
-import scipy.sparse.linalg as spla
 
 if ty.TYPE_CHECKING:
-    from curve._base import Curve, CurveSegment, Point
+    from curve._base import Point, Segment, CurveSegment, Curve
 
+
+NotIntersected = None
 
 F_EPS = np.finfo(np.float64).eps
 
@@ -40,6 +42,73 @@ DetermineSegmentsIntersectionResult = ty.NamedTuple('DetermineSegmentsIntersecti
     ('segments2', np.ndarray),
     ('intersect_points', np.ndarray),
 ])
+
+
+def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
+        -> ty.Union[NotIntersected, 'Point', 'Segment']:
+    """Finds intersection of two n-dimensional segments
+
+    The function finds exact intersection of two n-dimensional segments
+    using linear algebra routines.
+
+    Parameters
+    ----------
+    segment1 : Segment
+        The first segment
+    segment2 : Segment
+        The second segment
+
+    Returns
+    -------
+    res : NotIntersected, Point, Segment
+        The intersection result. It can be:
+            - NotIntersected (None): No any intersection of the segments
+            - Point: The intersection point of the segments
+            - Segment: The overlap segment in the case of overlapping the collinear segments
+
+    """
+
+    # Firstly, we should check all corner cases (overlap, parallel, not coplanar).
+    if segment1.collinear(segment2):
+        # We return overlap segment because we do not know exactly what point the user needs.
+        return segment1.overlap(segment2)
+
+    if segment1.parallel(segment2) or not segment1.coplanar(segment2):
+        # In these cases the segments will never intersect
+        return NotIntersected
+
+    # We should solve the linear system of the following equations:
+    #   x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
+    #   y1 + t1 * (y2 - y1) = y3 + t2 * (y4 - y3)
+    #                      ...
+    #   n1 + t1 * (n2 - n3) = n3 + t2 * (n4 - n3)
+    #
+    # The solution of this system is t1 and t2 parameter values.
+    # If t1 and t2 in the range [0, 1], the segments are intersect.
+    #
+    # If the coefficient matrix is non-symmetric (for n-dim > 2),
+    # it requires a solver for over-determined system.
+
+    a = np.stack((segment1.direction.data,
+                  -segment2.direction.data), axis=1)
+    b = (segment2.p1 - segment1.p1).data
+
+    if segment1.ndim == 2:
+        t = np.linalg.solve(a, b)
+    else:
+        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
+
+        if residuals.size > 0 and residuals[0] > F_EPS:
+            warnings.warn(
+                'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
+                    residuals, F_EPS),
+                RuntimeWarning
+            )
+
+    if np.any((t < 0) | (t > 1)):
+        return NotIntersected
+
+    return segment1.point(t[0])
 
 
 def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') -> SegmentsBBoxIntersectionResult:
