@@ -80,7 +80,7 @@ skip = functools.partial(pytest.param, marks=pytest.mark.skip)
                                         Point([3.25, 3.25, 3.25]),
                                         Point([3.75, 3.75, 3.75])]),
 ])
-def test_curves_intersect(data1, data2, segments1, segments2, intersect_points):
+def test_intersect_curves(data1, data2, segments1, segments2, intersect_points):
     if data2:
         curve1 = Curve(data1)
         curve2 = Curve(data2)
