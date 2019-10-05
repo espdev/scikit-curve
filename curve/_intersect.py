@@ -84,10 +84,8 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
                 RuntimeWarning
             )
 
-    if np.all(
-        ((t > 0) | np.isclose(t, 0)) &
-        ((t < 1) | np.isclose(t, 1))
-    ):
+    if np.all(((t > 0) | np.isclose(t, 0)) &
+              ((t < 1) | np.isclose(t, 1))):
         return segment1.point(t[0])
 
     return None
