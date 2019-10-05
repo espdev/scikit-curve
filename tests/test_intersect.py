@@ -3,10 +3,79 @@
 import functools
 import pytest
 
-from curve import Point, Curve, CurveSegment
+from curve import Point, Segment, Curve, CurveSegment
 
 
 skip = functools.partial(pytest.param, marks=pytest.mark.skip)
+
+
+@pytest.mark.parametrize('segment1, segment2, intersect_point', [
+    # ----------------------
+    # 2D
+
+    # intersected
+    (Segment(Point([1, 1]), Point([2, 2])),
+     Segment(Point([1, 2]), Point([2, 1])), Point([1.5, 1.5])),
+    # intersected perpendicular
+    (Segment(Point([0, 0]), Point([0, 2])),
+     Segment(Point([-1, 1]), Point([1, 1])), Point([0, 1])),
+    # not intersected parallel
+    (Segment(Point([1, 2]), Point([2, 2])),
+     Segment(Point([1, 1]), Point([2, 1])), None),
+    # not intersected collinear
+    (Segment(Point([0, 0]), Point([1, 1])),
+     Segment(Point([1.1, 1.1]), Point([2, 2])), None),
+    # overlapped #1
+    (Segment(Point([1, 1]), Point([2, 2])),
+     Segment(Point([0.5, 0.5]), Point([1.5, 1.5])), Point([1.25, 1.25])),
+    # overlapped #2
+    (Segment(Point([1, 1]), Point([2, 2])),
+     Segment(Point([0.5, 0.5]), Point([2.5, 2.5])), Point([1.5, 1.5])),
+    # not intersected two singular
+    (Segment(Point([2, 2]), Point([2, 2])),
+     Segment(Point([1, 1]), Point([1, 1])), None),
+    # not intersected one singular
+    (Segment(Point([1, 1]), Point([2, 2])),
+     Segment(Point([-1, 1.5]), Point([-1, 1.5])), None),
+    # intersected two singular
+    (Segment(Point([0, 0]), Point([0, 0])),
+     Segment(Point([0, 0]), Point([0, 0])), Point([0, 0])),
+    # intersected one singular
+    (Segment(Point([1, 1]), Point([2, 2])),
+     Segment(Point([1.5, 1.5]), Point([1.5, 1.5])), Point([1.5, 1.5])),
+
+    # ----------------------
+    # 3D
+
+    # intersected
+    (Segment(Point([1, 1, 1]), Point([2, 2, 2])),
+     Segment(Point([1, 2, 1]), Point([2, 1, 2])), Point([1.5, 1.5, 1.5])),
+    # intersected perpendicular
+    (Segment(Point([0, 0, 0]), Point([0, 0, 2])),
+     Segment(Point([-1, 0, 1]), Point([1, 0, 1])), Point([0, 0, 1])),
+    # not intersected two singular
+    (Segment(Point([2, 2, 2]), Point([2, 2, 2])),
+     Segment(Point([1, 1, 1]), Point([1, 1, 1])), None),
+    # not intersected one singular
+    (Segment(Point([1, 1, 1]), Point([2, 2, 2])),
+     Segment(Point([-2, 5, 1.5]), Point([-2, 5, 1.5])), None),
+    # intersected two singular
+    (Segment(Point([1, 1, 1]), Point([1, 1, 1])),
+     Segment(Point([1, 1, 1]), Point([1, 1, 1])), Point([1, 1, 1])),
+    # intersected one singular
+    (Segment(Point([1, 1, 1]), Point([2, 2, 2])),
+     Segment(Point([1.5, 1.5, 1.5]), Point([1.5, 1.5, 1.5])), Point([1.5, 1.5, 1.5])),
+])
+def test_intersect_segments(segment1, segment2, intersect_point):
+    intersection = segment1.intersect(segment2)
+
+    if intersect_point is None:
+        assert intersection is None
+    else:
+        assert intersection is not None
+
+    if intersection:
+        assert intersection.intersect_point == intersect_point
 
 
 @pytest.mark.parametrize('data1, data2, segments1, segments2, intersect_points', [
