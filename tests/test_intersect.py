@@ -3,7 +3,7 @@
 import functools
 import pytest
 
-from curve import Curve, Point
+from curve import Point, Curve, CurveSegment
 
 
 skip = functools.partial(pytest.param, marks=pytest.mark.skip)
@@ -44,35 +44,41 @@ skip = functools.partial(pytest.param, marks=pytest.mark.skip)
     # 3D
 
     # no intersections (parallel lines: X and Y are equal, Z different)
-    skip([(1, 2), (1, 2), (1, 2)], [(1, 2), (1, 2), (2, 3)], [], [], []),
+    ([(1, 2), (1, 2), (1, 2)], [(1, 2), (1, 2), (2, 3)], [], [], []),
     # no intersections (parallel lines: X and Y are equal, Z different)
-    skip([(1, 2), (1, 2), (1, 2)], [(0.8, 1), (1, 2), (1, 2)], [], [], []),
+    ([(1, 2), (1, 2), (1, 2)], [(0.8, 1), (1, 2), (1, 2)], [], [], []),
     # no intersections
-    skip([(1, 2), (1, 2), (1, 2)], [(1.1, 2.1), (1, 2.5), (1, 2)], [], [], []),
+    ([(1, 2), (1, 2), (1, 2)], [(1.1, 2.1), (1, 2.5), (1, 2)], [], [], []),
     # no intersections (skewness)
-    skip([(1, 2), (1, 2), (1, 2)], [(0.5, 2), (2.5, 1), (1, 2)], [], [], []),
+    ([(1, 2), (1, 2), (1, 2)], [(0.5, 2), (2.5, 1), (1, 2)], [], [], []),
     # no intersections (no skewness, intersection is out of segments)
-    skip([(1, 2), (1, 2), (1, 2)], [(0.8, 1), (1, 2), (1, 2)], [], [], []),
+    ([(1, 2), (1, 2), (1, 2)], [(0.8, 1), (1, 2), (1, 2)], [], [], []),
     # no intersections (skewness)
-    skip([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
-         [(1, 2, 3, 4), (4, 3, 2, 1), (2, 3, 4, 5)], [], [], []),
+    ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
+     [(1, 2, 3, 4), (4, 3, 2, 1), (2, 3, 4, 5)], [], [], []),
     # 1 pt
-    skip([(1, 2), (1, 2), (1, 2)],
-         [(0.5, 2), (0.5, 2), (1, 2)], [0], [0], [Point([2.0, 2.0, 2.0])]),
+    ([(1, 2), (1, 2), (1, 2)],
+     [(0.5, 2), (0.5, 2), (1, 2)], [0], [0], [Point([2.0, 2.0, 2.0])]),
     # 1 pt
-    skip([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
-         [(1, 2, 3, 4), (4, 3, 2, 1), (1, 2, 3, 4)], [1], [1], [Point([2.5, 2.5, 2.5])]),
+    ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
+     [(1, 2, 3, 4), (4, 3, 2, 1), (1, 2, 3, 4)], [1], [1], [Point([2.5, 2.5, 2.5])]),
     # overlap 1 pt
-    skip([(1, 2), (1, 2), (1, 2)],
-         [(0.5, 2.5), (0.5, 2.5), (0.5, 2.5)], [0], [0], [Point([1.5, 1.5, 1.5])]),
+    ([(1, 2), (1, 2), (2, 2)],
+     [(1, 2), (1, 2), (2, 2)], [0], [0], [Point([1.5, 1.5, 2.0])]),
+    # overlap 1 pt
+    ([(1, 2), (2, 2), (1, 2)],
+     [(1, 2), (2, 2), (1, 2)], [0], [0], [Point([1.5, 2.0, 1.5])]),
+    # overlap 1 pt
+    ([(1, 2), (1, 2), (1, 2)],
+     [(0.5, 2.5), (0.5, 2.5), (0.5, 2.5)], [0], [0], [Point([1.5, 1.5, 1.5])]),
     # overlap 5 pt
-    skip([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
-         [(0.5, 2.5, 3.5, 4.5), (0.5, 2.5, 3.5, 4.5), (0.5, 2.5, 3.5, 4.5)],
-         [0, 1, 1, 2, 2], [0, 0, 1, 1, 2], [Point([1.5, 1.5, 1.5]),
-                                            Point([2.25, 2.25, 2.25]),
-                                            Point([2.75, 2.75, 2.75]),
-                                            Point([3.25, 3.25, 3.25]),
-                                            Point([3.75, 3.75, 3.75])]),
+    ([(1, 2, 3, 4), (1, 2, 3, 4), (1, 2, 3, 4)],
+     [(0.5, 2.5, 3.5, 4.5), (0.5, 2.5, 3.5, 4.5), (0.5, 2.5, 3.5, 4.5)],
+     [0, 1, 1, 2, 2], [0, 0, 1, 1, 2], [Point([1.5, 1.5, 1.5]),
+                                        Point([2.25, 2.25, 2.25]),
+                                        Point([2.75, 2.75, 2.75]),
+                                        Point([3.25, 3.25, 3.25]),
+                                        Point([3.75, 3.75, 3.75])]),
 ])
 def test_curves_intersect(data1, data2, segments1, segments2, intersect_points):
     if data2:
@@ -81,12 +87,14 @@ def test_curves_intersect(data1, data2, segments1, segments2, intersect_points):
 
         intersections = curve1.intersect(curve2)
     else:
-        curve = Curve(data1)
-        intersections = curve.intersect()
+        curve1 = Curve(data1)
+        curve2 = curve1
+
+        intersections = curve1.intersect()
 
     assert len(intersections) == len(segments1)
 
     for i, intersection in enumerate(intersections):
-        assert segments1[i] == intersection.segment1.idx
-        assert segments2[i] == intersection.segment2.idx
+        assert CurveSegment(curve1, index=segments1[i]) == intersection.segment1
+        assert CurveSegment(curve2, index=segments2[i]) == intersection.segment2
         assert intersect_points[i] == intersection.intersect_point
