@@ -197,7 +197,11 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
     b = (segment2.p1 - segment1.p1).data
 
     if segment1.ndim == 2:
-        t = np.linalg.solve(a, b)
+        try:
+            t = np.linalg.solve(a, b)
+        except np.linalg.LinAlgError as err:
+            warnings.warn('Cannot solve system of equations: {}'.format(err), IntersectionWarning)
+            return NotIntersected
     else:
         t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
 
