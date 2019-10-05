@@ -5,9 +5,11 @@ The module provides data types to manipulate n-dimensional geometric curves
 
 The module contains the following basic classes:
 
-    * `Point`
-    * `CurvePoint`
-    * `Curve`
+    * `Point` -- represents n-dimensional geometric point in Euclidean space
+    * `Segment` -- represents n-dimensional geometric segment in Euclidean space
+    * `Curve` -- represents a n-dimensional geometric curve in Euclidean space
+    * `CurvePoint` -- represents a n-dimensional curve point
+    * `CurveSegment` -- represents a n-dimensional curve segment
 
 """
 
