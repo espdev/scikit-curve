@@ -1138,7 +1138,7 @@ class Segment:
 
         Returns
         -------
-        res : None (NotIntersected), Point, Segment
+        res : None (NotIntersected), SegmentsIntersection
             The intersection result. It can be:
                 - NotIntersected (None): No any intersection of the segments
                 - SegmentsIntersection: The intersection of the segments
