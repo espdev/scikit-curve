@@ -53,9 +53,12 @@ skip = functools.partial(pytest.param, marks=pytest.mark.skip)
     # intersected perpendicular
     (Segment(Point([0, 0, 0]), Point([0, 0, 2])),
      Segment(Point([-1, 0, 1]), Point([1, 0, 1])), Point([0, 0, 1])),
-    # not intersected two singular
+    # not intersected two singular # 1
     (Segment(Point([2, 2, 2]), Point([2, 2, 2])),
      Segment(Point([1, 1, 1]), Point([1, 1, 1])), None),
+    # not intersected two singular # 2
+    (Segment(Point([-5, 1, 2]), Point([-5, 1, 2])),
+     Segment(Point([3, -4, 1]), Point([3, -4, 1])), None),
     # not intersected one singular
     (Segment(Point([1, 1, 1]), Point([2, 2, 2])),
      Segment(Point([-2, 5, 1.5]), Point([-2, 5, 1.5])), None),
