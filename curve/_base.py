@@ -29,7 +29,7 @@ from curve._numeric import allequal
 from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
 from curve._smooth import smooth
-from curve._intersect import intersect_segments, intersect, NotIntersected, SegmentsIntersection
+from curve._intersect import intersect_segments, intersect_curves, NotIntersected, SegmentsIntersection
 
 
 Numeric = ty.Union[numbers.Number, np.number]
@@ -2824,12 +2824,12 @@ class Curve(abc.Sequence):
 
         return smooth(self, method, **params)
 
-    def intersect(self, other: ty.Optional[ty.Union['Curve', CurveSegment]] = None) -> ty.List[SegmentsIntersection]:
+    def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None) -> ty.List[SegmentsIntersection]:
         """Determines the curve intersections with other curve/segment or itself
 
         Parameters
         ----------
-        other : Curve, CurveSegment, None
+        other : Curve, Segment, None
             Other object to determine intersection or None for itself
 
         Returns
@@ -2848,30 +2848,21 @@ class Curve(abc.Sequence):
             curve2 = self
         elif isinstance(other, Curve):
             curve2 = other
-        elif isinstance(other, CurveSegment):
+        elif isinstance(other, Segment):
             curve2 = other.to_curve()
         else:
             raise TypeError('"other" object must be "Curve" or "CurveSegment" class or None')
 
-        intersect_result = intersect(self, curve2)
-        intersections = []
+        intersections = intersect_curves(self, curve2)
 
-        if not intersect_result:
-            return intersections
-
-        for seg1, seg2, point_data in zip(intersect_result.segments1,
-                                          intersect_result.segments2,
-                                          intersect_result.intersect_points):
-            if other is None or isinstance(other, Curve):
-                segment2 = CurveSegment(curve2, seg2)
-            else:
-                segment2 = other
-
-            intersections.append(SegmentsIntersection(
-                segment1=CurveSegment(self, seg1),
-                segment2=segment2,
-                intersect_point=Point(point_data),
-            ))
+        if isinstance(other, Segment):
+            for i, intersection in enumerate(intersections):
+                intersections[i] = SegmentsIntersection(
+                    segment1=intersection.segment1,
+                    segment2=other,
+                    intersection=(intersection.overlap_segment or
+                                  intersection.intersect_point),
+                )
 
         return intersections
 
