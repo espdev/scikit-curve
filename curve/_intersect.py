@@ -146,10 +146,9 @@ def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
 
     if self_intersect:
         # Removing coincident and adjacent segments
-        remove = np.flatnonzero(np.abs(s1 - s2) < 2)
-
-        s1 = np.delete(s1, remove)
-        s2 = np.delete(s2, remove)
+        adjacent = np.abs(s1 - s2) < 2
+        s1 = s1[~adjacent]
+        s2 = s2[~adjacent]
 
     return s1, s2
 
