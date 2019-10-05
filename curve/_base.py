@@ -901,7 +901,8 @@ class Segment:
         Returns
         -------
         t : float, np.ndarray
-            "t"-parameter value(s) for given points or nan if point(s) are not collinear with the segment
+            "t"-parameter value(s) for given points or nan
+            if point(s) are not collinear with the segment
 
         """
 
