@@ -99,6 +99,7 @@ class SegmentsIntersection:
         If the segments are overlapped will be returned
         ``overlap_segment.point(t=0.5)`` as intersection point.
         """
+
         from curve._base import Point
 
         if isinstance(self._intersection, Point):
@@ -115,6 +116,7 @@ class SegmentsIntersection:
         overlap : Segment, None
             Segment object if the segments are overlapped or None
         """
+
         from curve._base import Segment
 
         if isinstance(self._intersection, Segment):
@@ -132,21 +134,6 @@ class SegmentsIntersection:
         """
 
         return self.overlap_segment is not None
-
-    def swap_segments(self) -> 'SegmentsIntersection':
-        """Returns new intersection object with swapped segments
-
-        Returns
-        -------
-        intersection: SegmentsIntersection
-            `SegmentsIntersection` object with swapped segments
-        """
-
-        return SegmentsIntersection(
-            segment1=self._segment2,
-            segment2=self._segment1,
-            intersection=self._intersection,
-        )
 
 
 def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
