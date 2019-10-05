@@ -23,6 +23,11 @@ NotIntersected = None
 F_EPS = np.finfo(np.float64).eps
 
 
+class IntersectionWarning(UserWarning):
+    """All intersection warnings
+    """
+
+
 class SegmentsIntersection:
     """The class represents the intersection of two segments
 
@@ -213,14 +218,17 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
         if residuals.size > 0 and residuals[0] > F_EPS:
             warnings.warn(
                 'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
-                    residuals, F_EPS),
-                RuntimeWarning
-            )
+                    residuals, F_EPS), IntersectionWarning)
 
     if np.all(((t > 0) | np.isclose(t, 0)) &
               ((t < 1) | np.isclose(t, 1))):
-        intersect_point = segment1.point(t[0])
-        return SegmentsIntersection(segment1, segment2, intersect_point)
+        intersect_point1 = segment1.point(t[0])
+        intersect_point2 = segment2.point(t[1])
+
+        if intersect_point1 != intersect_point2:
+            warnings.warn('The points for "t1" and "t2" are different.', IntersectionWarning)
+
+        return SegmentsIntersection(segment1, segment2, intersect_point1)
 
     return NotIntersected
 
