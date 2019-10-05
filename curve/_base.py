@@ -2228,10 +2228,6 @@ class Curve(abc.Sequence):
     def coorientplane(self, axis1: int = 0, axis2: int = 1) -> 'Curve':
         """Co-orients the curve to given plane orientation
 
-        Notes
-        -----
-        By default the curve orients to XY plane orientation.
-
         Parameters
         ----------
         axis1: int
@@ -2251,6 +2247,8 @@ class Curve(abc.Sequence):
 
         Notes
         -----
+        By default the curve orients to XY plane orientation.
+
         Is the curve is parametric, co-oriented curve will also be parametric.
 
         """
@@ -2559,10 +2557,6 @@ class Curve(abc.Sequence):
     def deletedim(self, axis: Indexer) -> 'Curve':
         """Returns a new curve object with deleted dimension(s)
 
-        Notes
-        -----
-        If the curve is 2-dimensional this operation is not allowed and raises ``ValueError``.
-
         Parameters
         ----------
         axis : int, slice, list, np.arrau
@@ -2580,6 +2574,8 @@ class Curve(abc.Sequence):
 
         Notes
         -----
+        If the curve is 2-dimensional this operation is not allowed and raises ``ValueError``.
+
         The new curve will be not parametric.
 
         Examples
