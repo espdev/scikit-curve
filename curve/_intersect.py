@@ -216,7 +216,13 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
         intersect_point2 = segment2.point(t[1])
 
         if intersect_point1 != intersect_point2:
-            warnings.warn('The points for "t1" and "t2" are different.', IntersectionWarning)
+            distance = intersect_point1.distance(intersect_point2)
+
+            if distance > F_EPS:
+                warnings.warn(
+                    'Incorrect result. The points for "t1" and "t2" are different (distance: {}).'.format(
+                        distance), IntersectionWarning)
+                return NotIntersected
 
         return SegmentsIntersection(segment1, segment2, intersect_point1)
 
