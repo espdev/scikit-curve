@@ -164,7 +164,7 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
 
     """
 
-    if segment1.ndim != segment1.ndim:
+    if segment1.ndim != segment2.ndim:
         raise ValueError('The dimension of the segments must be equal.')
 
     # Firstly, we should check all corner cases (overlap, parallel, not coplanar).
