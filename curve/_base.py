@@ -1121,7 +1121,7 @@ class Segment:
 
         return Segment(Point(data_maxmin), Point(data_minmax))
 
-    def intersect(self, other: 'Segment') -> ty.Union[NotIntersected, 'Point', 'Segment']:
+    def intersect(self, other: 'Segment') -> ty.Union[NotIntersected, SegmentsIntersection]:
         """Finds the intersection of the segment and other segment
 
         Parameters
@@ -1134,8 +1134,8 @@ class Segment:
         res : None (NotIntersected), Point, Segment
             The intersection result. It can be:
                 - NotIntersected (None): No any intersection of the segments
-                - Point: The intersection point of the segments
-                - Segment: The overlap segment in the case of overlapping the segments
+                - SegmentsIntersection: The intersection of the segments
+
         """
 
         return intersect_segments(self, other)
