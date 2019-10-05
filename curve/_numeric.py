@@ -9,6 +9,9 @@ import typing as ty
 import numpy as np
 
 
+F_EPS = np.finfo(np.float64).eps
+
+
 def isequal(obj1: np.ndarray, obj2: np.ndarray, **kwargs) -> np.ndarray:
     """Returns a boolean array where two arrays are element-wise equal
 

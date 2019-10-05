@@ -25,7 +25,7 @@ from cached_property import cached_property
 
 from curve._distance import MetricType, get_metric
 from curve._utils import as2d
-from curve._numeric import allequal
+from curve._numeric import allequal, F_EPS
 from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
 from curve._smooth import smooth
@@ -919,7 +919,13 @@ class Segment:
 
         a = self.direction.data[np.newaxis].T
 
-        t, *_ = np.linalg.lstsq(a, b, rcond=None)
+        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
+
+        if residuals.size > 0 and residuals[0] > F_EPS:
+            warnings.warn(
+                'The "lstsq" residuals are {}. "t" value(s) might be wrong.'.format(residuals),
+                RuntimeWarning)
+
         t = t.squeeze()
 
         if is_collinear.size == 0:

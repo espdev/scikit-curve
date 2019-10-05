@@ -15,12 +15,13 @@ import warnings
 
 import numpy as np
 
+from curve._numeric import F_EPS
+
 if ty.TYPE_CHECKING:
     from curve._base import Point, Segment, Curve
 
 
 NotIntersected = None
-F_EPS = np.finfo(np.float64).eps
 
 
 class IntersectionWarning(UserWarning):
