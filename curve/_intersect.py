@@ -180,6 +180,9 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
         # In these cases the segments will never intersect
         return NotIntersected
 
+    if segment1.singular or segment2.singular:
+        return NotIntersected
+
     # We should solve the linear system of the following equations:
     #   x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
     #   y1 + t1 * (y2 - y1) = y3 + t2 * (y4 - y3)
