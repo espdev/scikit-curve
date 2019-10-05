@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Curves intersection in n-dimensional Euclidean space
-
-The module provides routines for determining curves intersections in n-dimensional Euclidean space.
-
-The code is inspired by "Fast and Robust Curve Intersections" by Douglas Schwarz
-https://www.mathworks.com/matlabcentral/fileexchange/11837-fast-and-robust-curve-intersections
+The module provides routines for determining segments and curves intersections
+in n-dimensional Euclidean space.
 
 """
 
