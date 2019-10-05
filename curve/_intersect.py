@@ -95,7 +95,7 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
               ((t < 1) | np.isclose(t, 1))):
         return segment1.point(t[0])
 
-    return None
+    return NotIntersected
 
 
 def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
