@@ -17,7 +17,7 @@ def test_nonsingular():
 def test_chordlen():
     n = 1000
     data = np.arange(n)
-    curve = Curve([data] * 3, copy=False)
+    curve = Curve([data] * 3)
 
     expected = [1.7320508075688772] * (n - 1)
 
@@ -27,7 +27,7 @@ def test_chordlen():
 def test_arclen():
     n = 1000
     data = np.arange(n)
-    curve = Curve([data] * 2, copy=False)
+    curve = Curve([data] * 2)
 
     expected = 1.4142135623730951 * (n - 1)
 
@@ -45,7 +45,7 @@ def test_arclen_2():
 def test_cumarclen():
     n = 5
     data = np.arange(n)
-    curve = Curve([data] * 2, copy=False)
+    curve = Curve([data] * 2)
 
     expected = np.cumsum([0.0] + [1.4142135623730951] * (n - 1))
 

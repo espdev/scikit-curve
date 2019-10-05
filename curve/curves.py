@@ -52,7 +52,7 @@ def arc(t_start: float = 0.0,
     x = np.cos(theta) * r + c
     y = np.sin(theta) * r + c
 
-    return Curve([x, y])
+    return Curve([x, y], tdata=theta)
 
 
 def lemniscate_of_bernoulli(t_start: float = 0.0,
@@ -73,17 +73,17 @@ def lemniscate_of_bernoulli(t_start: float = 0.0,
 
     """
 
-    t = np.linspace(t_start, t_stop, p_count)
+    theta = np.linspace(t_start, t_stop, p_count)
 
     c_sq2 = c * np.sqrt(2)
-    cos_t = np.cos(t)
-    sin_t = np.sin(t)
+    cos_t = np.cos(theta)
+    sin_t = np.sin(theta)
     denominator = sin_t ** 2 + 1
 
     x = (c_sq2 * cos_t) / denominator
     y = (c_sq2 * cos_t * sin_t) / denominator
 
-    return Curve([x, y])
+    return Curve([x, y], tdata=theta)
 
 
 def archimedean_spiral(t_start: float = 0.0,
@@ -106,11 +106,11 @@ def archimedean_spiral(t_start: float = 0.0,
 
     """
 
-    t = np.linspace(t_start, t_stop, p_count)
-    x = (a + b * t) * np.cos(t)
-    y = (a + b * t) * np.sin(t)
+    theta = np.linspace(t_start, t_stop, p_count)
+    x = (a + b * theta) * np.cos(theta)
+    y = (a + b * theta) * np.sin(theta)
 
-    return Curve([x, y])
+    return Curve([x, y], tdata=theta)
 
 
 def euler_spiral(t_start: float = -3 * np.pi / 2,
@@ -132,7 +132,7 @@ def euler_spiral(t_start: float = -3 * np.pi / 2,
     t = np.linspace(t_start, t_stop, p_count)
     ssa, csa = fresnel(t)
 
-    return Curve([csa, ssa])
+    return Curve([csa, ssa], tdata=t)
 
 
 def lissajous(t_start: float = 0.0,
@@ -161,12 +161,12 @@ def lissajous(t_start: float = 0.0,
 
     """
 
-    t = np.linspace(t_start, t_stop, p_count)
+    theta = np.linspace(t_start, t_stop, p_count)
 
-    x = a_ampl * np.sin(a * t + d)
-    y = b_ampl * np.sin(b * t)
+    x = a_ampl * np.sin(a * theta + d)
+    y = b_ampl * np.sin(b * theta)
 
-    return Curve([x, y])
+    return Curve([x, y], tdata=theta)
 
 
 def helix(t_start: float = -3 * np.pi,
@@ -194,7 +194,7 @@ def helix(t_start: float = -3 * np.pi,
     y = np.cos(theta) * a
     z = theta * b
 
-    return Curve([x, y, z])
+    return Curve([x, y, z], tdata=theta)
 
 
 def irregular_helix(t_start: float = -4 * np.pi,
@@ -223,4 +223,4 @@ def irregular_helix(t_start: float = -4 * np.pi,
     x = r * np.sin(theta)
     y = r * np.cos(theta)
 
-    return Curve([x, y, z])
+    return Curve([x, y, z], tdata=theta)

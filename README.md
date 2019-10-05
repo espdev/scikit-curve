@@ -22,7 +22,7 @@ curve = lissajous(p_count=51)
 grid = PreservedSpeedInterpolationGrid(301)
 curve_i = curve.interpolate(grid, method='hermite')
 
-curveplot(curve_i, param='speed', normals=True, marker='.')
+curveplot(curve_i, param='speed', show_normals=True, marker='.')
 
 plt.show()
 ```

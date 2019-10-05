@@ -1,67 +1,79 @@
 # -*- coding: utf-8 -*-
 
 """
-The module provides the base classes and data types Point, CurvePoint and Curve
+The module provides data types to manipulate n-dimensional geometric curves
+
+The module contains the following basic classes:
+
+    * `Point`
+    * `CurvePoint`
+    * `Curve`
 
 """
 
 import collections.abc as abc
 import typing as ty
+import numbers
+import operator
 import textwrap
 import enum
-import weakref
 import warnings
 
 import numpy as np
 
-from decorator import decorator
 from cached_property import cached_property
 
 from curve._distance import MetricType, get_metric
-from curve._numeric import allequal
+from curve._utils import as2d
+from curve._numeric import allequal, F_EPS
 from curve import _diffgeom
 from curve._interpolate import InterpGridSpecType, interpolate
+from curve._smooth import smooth
+from curve._intersect import intersect_segments, intersect_curves, NotIntersected, SegmentsIntersection
 
 
-NumberType = ty.Union[int, float, np.number]
-SequenceNumberType = ty.Sequence[NumberType]
+Numeric = ty.Union[numbers.Number, np.number]
+NumericSequence = ty.Sequence[Numeric]
 
-PointDataType = ty.Union[
-    SequenceNumberType,
+PointData = ty.Union[
+    NumericSequence,
     np.ndarray,
     'Point',
+    'CurvePoint',
 ]
 
-CurveDataType = ty.Union[
-    ty.Sequence[SequenceNumberType],
+CurveData = ty.Union[
+    ty.Sequence[NumericSequence],
     ty.Sequence[np.ndarray],
     ty.Sequence['Point'],
     np.ndarray,
     'Curve',
 ]
 
-DataType = ty.Union[
-    ty.Type[int],
-    ty.Type[float],
-    np.dtype,
+DType = ty.Optional[
+    ty.Union[
+        ty.Type[int],
+        ty.Type[float],
+        np.dtype,
+    ]
 ]
 
-IndexerType = ty.Union[
+Indexer = ty.Union[
     int,
     slice,
     ty.Sequence[int],
     np.array,
 ]
 
-PointCurveUnionType = ty.Union[
+PointCurveUnion = ty.Union[
     'Point',
     'CurvePoint',
     'Curve',
 ]
 
-InplaceRetType = ty.Optional['Curve']
 
 DEFAULT_DTYPE = np.float64
+DATA_FORMAT_PRECISION = 4
 
 
 class Axis(enum.IntEnum):
@@ -79,29 +91,22 @@ class Axis(enum.IntEnum):
 class Point(abc.Sequence):
     """A n-dimensional geometric point representation
 
-    The class represents n-dimensional geometric point.
-
-    Notes
-    -----
-    The data in point object can be mutable but the dimension cannot be changed.
+    The class represents n-dimensional geometric point. `Point` class is immutable.
 
     Parameters
     ----------
     point_data : PointDataType
         The data of n-dimensional point. The data might be represented in the different types:
 
-        * The sequence of numbers ``Sequence[NumberType]``
-        * np.ndarray row 1xN where N is point dimension
-        * Another Point object. It can create the view or the copy of the data of another point
+        * The sequence of numbers ``Sequence[NumericType]``
+        * 1-D np.ndarray 1xN where N is point dimension
+        * Another `Point` or `CurvePoint` object.
+          It creates the copy of the data of another point.
 
-    dtype : numeric type or numeric numpy.dtype
+    dtype : numeric type or numeric `numpy.dtype`
         The type of point data. The type must be numeric type. For example, `float`, `int`, `np.float32`, ...
 
         If dtype is not set, by default dtype has value `np.float64`.
-
-    copy : bool
-        If this flag is True the copy will be created. If it is False the copy will not be created if possible.
-        If it is possible not create a copy, dtype argument will be ignored.
 
     Examples
     --------
@@ -120,17 +125,12 @@ class Point(abc.Sequence):
 
     __slots__ = ('_data', )
 
-    def __init__(self, point_data: PointDataType, dtype: ty.Optional[DataType] = None, copy: bool = True) -> None:
-        """Constructs the point
+    def __init__(self, point_data: PointData, dtype: DType = None) -> None:
+        """Constructs the `Point` instance
         """
-
-        is_copy = True
 
         if isinstance(point_data, Point):
             point_data = point_data.data
-
-        if isinstance(point_data, np.ndarray):
-            is_copy = copy
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
@@ -138,18 +138,17 @@ class Point(abc.Sequence):
         if not np.issubdtype(dtype, np.number):
             ValueError('dtype must be a numeric type.')
 
-        if is_copy:
-            data = np.array(point_data, dtype=np.dtype(dtype))
-        else:
-            data = point_data
+        data = np.array(point_data, dtype=np.dtype(dtype))
 
         if data.ndim > 1:
-            raise ValueError('Invalid point data: {}\nThe point data must be a vector'.format(point_data))
+            raise ValueError(
+                'Invalid point data: {}\nThe point data must be 1-D array or sequence.'.format(point_data))
 
         self._data = data
+        self._data.flags.writeable = False
 
-    def __repr__(self):
-        with np.printoptions(suppress=True, precision=4):
+    def __repr__(self) -> str:
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
             data_str = '{}'.format(self._data)
 
         return '{}({}, ndim={}, dtype={})'.format(
@@ -167,7 +166,10 @@ class Point(abc.Sequence):
 
         return self._data.size
 
-    def __getitem__(self, index: int) -> ty.Union['Point', np.number]:
+    def __bool__(self) -> bool:
+        return self._data.size > 0
+
+    def __getitem__(self, index: ty.Union[int, slice]) -> ty.Union['Point', np.number]:
         """Returns coord of the point for given index
 
         Parameters
@@ -196,33 +198,7 @@ class Point(abc.Sequence):
         else:
             return data
 
-    def __setitem__(self, indexer: IndexerType, value: ty.Union['Point', np.ndarray]) -> None:
-        """Sets point or value for given axis
-
-        Parameters
-        ----------
-        indexer : int, slice, list, np.array, tuple
-            Index (int) or list of indexes or slice or tuple for setting the point or sub-slice
-        value : Point, scalar, np.ndarray
-            Value for setting
-
-        Raises
-        ------
-        TypeError : Invalid index type
-        IndexError : The index out of bounds point dimensions
-
-        """
-
-        if isinstance(value, Point):
-            value = value.data
-
-        self._data[indexer] = value
-
-    def __delitem__(self, key):
-        raise TypeError(
-            "'{}' object doesn't support item deletion".format(type(self).__name__))
-
-    def __eq__(self, other: 'Point') -> bool:
+    def __eq__(self, other: object) -> bool:
         """Returns True if other point is equal to the point
 
         Parameters
@@ -245,7 +221,37 @@ class Point(abc.Sequence):
 
         return bool(allequal(self.data, other.data))
 
-    def __matmul__(self, other: 'Point'):
+    def __add__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.add, other)
+
+    def __radd__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.add, other, right=True)
+
+    def __sub__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.sub, other)
+
+    def __rsub__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.sub, other, right=True)
+
+    def __mul__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.mul, other)
+
+    def __rmul__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.mul, other, right=True)
+
+    def __truediv__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.truediv, other)
+
+    def __rtruediv__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.truediv, other, right=True)
+
+    def __floordiv__(self, other: ty.Union['Point', Numeric]) -> 'Point':
+        return self._op(operator.floordiv, other)
+
+    def __rfloordiv__(self, other: ty.Union['Point', Numeric]) -> ty.Optional['Point']:
+        return self._op(operator.floordiv, other, right=True)
+
+    def __matmul__(self, other: 'Point') -> Numeric:
         """Dot product of two points
 
         Parameters
@@ -262,7 +268,7 @@ class Point(abc.Sequence):
         if not isinstance(other, Point):
             return NotImplemented
 
-        return np.dot(self._data, other.data)
+        return ty.cast(Numeric, np.dot(self._data, other.data))
 
     def __copy__(self) -> 'Point':
         return self.__deepcopy__()
@@ -271,7 +277,7 @@ class Point(abc.Sequence):
         return Point(self)
 
     @property
-    def data(self) -> np.array:
+    def data(self) -> np.ndarray:
         """Returns the point data as numpy array
 
         Returns
@@ -308,7 +314,19 @@ class Point(abc.Sequence):
         """
         return self._data.size
 
-    def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> NumberType:
+    def norm(self) -> float:
+        """Returns norm of vector that represented in point object
+
+        Returns
+        -------
+        norm : float
+            Norm of vector
+
+        """
+
+        return np.sqrt(self @ self)
+
+    def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> Numeric:
         """Compute distance from this point to other point by given metric
 
         Parameters
@@ -340,35 +358,36 @@ class Point(abc.Sequence):
 
         return metric(self._data, other.data)
 
+    def _op(self, op, other: ty.Union['Point', Numeric], right: bool = False) -> ty.Optional['Point']:
+        left_data = self._data
 
-@decorator
-def _potentially_invalid(func, raise_exc=False, *args, **kwargs):
-    obj, *args = args
-    if not obj:
-        message = 'The curve point is not valid because the curve object has been deleted.'
-
-        if raise_exc:
-            raise RuntimeError(message)
+        if isinstance(other, Point):
+            right_data = other.data
+        elif isinstance(other, numbers.Number):
+            right_data = other
         else:
-            warnings.warn(message, RuntimeWarning, stacklevel=3)
-        return
+            if right:
+                return NotImplemented
+            else:
+                raise TypeError("unsupported operand type(s) for '{}': '{}' and '{}'".format(
+                    op.__name__, type(self).__name__, type(other).__name__))
 
-    return func(obj, *args, **kwargs)
+        if right:
+            right_data, left_data = left_data, right_data
+
+        return Point(op(left_data, right_data))
 
 
 class CurvePoint(Point):
     """The class represents nd-point that is a n-dimensional curve point
 
-    This class is the view wrapper for a curve point data. This class should not used directly.
+    This class is the view wrapper for a curve point data. This class should not be used directly.
     It is used in Curve class.
 
-    The class provides additional data and parameters of curve point. For example ``curvature`` value in the point.
+    The class provides additional data and parameters of the curve point.
 
     Parameters
     ----------
-    point_data : np.ndarray
-        Numpy array view for a curve point data
-
     curve : Curve
         Curve object
 
@@ -379,45 +398,31 @@ class CurvePoint(Point):
 
     __slots__ = Point.__slots__ + ('_curve', '_idx')
 
-    def __init__(self, point_data: np.ndarray, curve: 'Curve', index):
-        super().__init__(point_data, copy=False)
+    def __init__(self, curve: 'Curve', index: int):
+        if index < 0:
+            index = curve.size + index
 
-        self._curve = weakref.ref(curve)
+        self._curve = curve
         self._idx = index
 
+        super().__init__(curve.data[index])
+
     def __repr__(self):
-        with np.printoptions(suppress=True, precision=4):
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
             data_str = '{}'.format(self._data)
 
-        return '{}({}, index={}, valid={})'.format(
-            type(self).__name__, data_str, self.idx, bool(self))
-
-    @_potentially_invalid(raise_exc=True)
-    def __setitem__(self, indexer: IndexerType, value: ty.Union['Point', np.ndarray]) -> None:
-        self.curve[self.idx, indexer] = value
+        return '{}({}, index={})'.format(
+            type(self).__name__, data_str, self.idx)
 
     def __copy__(self) -> 'CurvePoint':
         return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: ty.Optional[dict] = None) -> 'CurvePoint':
-        if not self:
-            raise RuntimeError('Cannot create the copy of the invalid point')
-        return CurvePoint(self.data, self.curve, self.idx)
-
-    def __bool__(self) -> bool:
-        """Returns True if the curve instance has not been deleted
-
-        Returns
-        -------
-        flag : bool
-            True if the point is valid (the curve instance has not been deleted)
-
-        """
-        return self.curve is not None
+        return CurvePoint(self.curve, self.idx)
 
     @property
-    def curve(self) -> ty.Optional['Curve']:
-        """Returns ref to the curve object or None if the curve instance has been deleted
+    def curve(self) -> 'Curve':
+        """Returns the reference to the curve object
 
         Returns
         -------
@@ -430,11 +435,10 @@ class CurvePoint(Point):
 
         """
 
-        return self._curve()
+        return self._curve
 
     @property
-    @_potentially_invalid
-    def idx(self) -> ty.Optional[int]:
+    def idx(self) -> int:
         """Returns the point index in the curve
 
         Returns
@@ -447,8 +451,33 @@ class CurvePoint(Point):
         return self._idx
 
     @property
-    @_potentially_invalid
-    def firstderiv(self) -> ty.Optional[np.ndarray]:
+    def t(self) -> float:
+        """Returns value of ``t`` parametric vector for this point
+
+        Returns
+        -------
+        tval : numeric
+            The value of ``t`` parametric vector for this point
+
+        """
+
+        return self.curve.t[self.idx]
+
+    @property
+    def cumarclen(self) -> float:
+        """Returns value of cumulative arc length for this point
+
+        Returns
+        -------
+        val : float
+            The value of cumulative arc length for this point
+
+        """
+
+        return self.curve.cumarclen[self.idx]
+
+    @property
+    def firstderiv(self) -> np.ndarray:
         """Returns first-order derivative at this curve point
 
         Returns
@@ -465,8 +494,7 @@ class CurvePoint(Point):
         return self.curve.firstderiv[self.idx]
 
     @property
-    @_potentially_invalid
-    def secondderiv(self) -> ty.Optional[np.ndarray]:
+    def secondderiv(self) -> np.ndarray:
         """Returns second-order derivative at this curve point
 
         Returns
@@ -483,8 +511,7 @@ class CurvePoint(Point):
         return self.curve.secondderiv[self.idx]
 
     @property
-    @_potentially_invalid
-    def thirdderiv(self) -> ty.Optional[np.ndarray]:
+    def thirdderiv(self) -> np.ndarray:
         """Returns third-order derivative at this curve point
 
         Returns
@@ -501,8 +528,7 @@ class CurvePoint(Point):
         return self.curve.thirdderiv[self.idx]
 
     @property
-    @_potentially_invalid
-    def tangent(self) -> ty.Optional[np.ndarray]:
+    def tangent(self) -> np.ndarray:
         """Returns tangent vector for the curve point
 
         Notes
@@ -525,8 +551,7 @@ class CurvePoint(Point):
         return self.curve.tangent[self.idx]
 
     @property
-    @_potentially_invalid
-    def normal(self) -> ty.Optional[np.ndarray]:
+    def normal(self) -> np.ndarray:
         """Returns normal vector at the curve point
 
         Returns
@@ -545,8 +570,7 @@ class CurvePoint(Point):
         return self.curve.normal[self.idx]
 
     @property
-    @_potentially_invalid
-    def binormal(self) -> ty.Optional[np.ndarray]:
+    def binormal(self) -> np.ndarray:
         """Returns binormal vector at the curve point
 
         Returns
@@ -565,8 +589,7 @@ class CurvePoint(Point):
         return self.curve.binormal[self.idx]
 
     @property
-    @_potentially_invalid
-    def speed(self) -> ty.Optional[float]:
+    def speed(self) -> float:
         """Returns the speed in the point
 
         Returns
@@ -583,8 +606,7 @@ class CurvePoint(Point):
         return self.curve.speed[self.idx]
 
     @property
-    @_potentially_invalid
-    def frenet1(self) -> ty.Optional[np.ndarray]:
+    def frenet1(self) -> np.ndarray:
         """Returns the first Frenet vector (unit tangent vector) at the point
 
         Returns
@@ -601,8 +623,7 @@ class CurvePoint(Point):
         return self.curve.frenet1[self.idx]
 
     @property
-    @_potentially_invalid
-    def frenet2(self) -> ty.Optional[np.ndarray]:
+    def frenet2(self) -> np.ndarray:
         """Returns the second Frenet vector (unit normal vector) at the point
 
         Returns
@@ -619,8 +640,7 @@ class CurvePoint(Point):
         return self.curve.frenet2[self.idx]
 
     @property
-    @_potentially_invalid
-    def frenet3(self) -> ty.Optional[np.ndarray]:
+    def frenet3(self) -> np.ndarray:
         """Returns the third Frenet vector (unit binormal vector) at the point
 
         Returns
@@ -637,8 +657,7 @@ class CurvePoint(Point):
         return self.curve.frenet3[self.idx]
 
     @property
-    @_potentially_invalid
-    def curvature(self) -> ty.Optional[float]:
+    def curvature(self) -> float:
         """Returns the curvature value at this point of the curve
 
         Returns
@@ -655,8 +674,7 @@ class CurvePoint(Point):
         return self.curve.curvature[self.idx]
 
     @property
-    @_potentially_invalid
-    def torsion(self) -> ty.Optional[float]:
+    def torsion(self) -> float:
         """Returns the torsion value at this point of the curve
 
         Returns
@@ -672,25 +690,23 @@ class CurvePoint(Point):
 
         return self.curve.torsion[self.idx]
 
-    @_potentially_invalid(raise_exc=True)
-    def subcurve(self, other_point: 'CurvePoint', inclusive: bool = True) -> np.ndarray:
-        """Returns a sub-curve view from the point to other point in the same curve
+    def subcurve(self, other_point: 'CurvePoint', endpoint: bool = True) -> 'Curve':
+        """Returns a sub-curve from the point to other point in the same curve
 
         Parameters
         ----------
         other_point : CurvePoint
             Other point in the same curve
-        inclusive : bool
-            If this flag is True, other point will be included to a sub-curve.
+        endpoint : bool
+            If this flag is True, other point will be included to a sub-curve as end point.
 
         Returns
         -------
         curve : Curve
-            A sub-curve from the point to other curve point. This sub-curve is the view.
+            A sub-curve from the point to other curve point
 
         Raises
         ------
-        RuntimeError : The points are not valid. The curve instance has been deleted
         TypeError : Other point is not an instance of "CurvePoint" class
         ValueError : Other point belongs to another curve
 
@@ -702,18 +718,542 @@ class CurvePoint(Point):
         if self.curve is not other_point.curve:
             raise ValueError('Other point belongs to another curve')
 
-        inc = 1 if inclusive else 0
+        inc = 1 if endpoint else 0
         return self.curve[self.idx:other_point.idx+inc]
 
 
+class Segment:
+    """Represents a segment in n-dimensional Euclidean space
+
+    Parameters
+    ----------
+    p1 : Point
+        Beginning point of segment
+    p2 : Point
+        Ending point of segment
+
+    """
+
+    __slots__ = ('_p1', '_p2')
+
+    def __init__(self, p1: 'Point', p2: 'Point') -> None:
+        if not isinstance(p1, Point) or not isinstance(p2, Point):
+            raise TypeError('Invalid type of "p1" or "p2". It must be points.')
+        if not p1 or not p2:
+            raise ValueError('Points dimension must be greater or equal to 1.')
+        if p1.ndim != p2.ndim:
+            raise ValueError('"p1" and "p2" points must be the same dimension.')
+
+        self._p1 = p1
+        self._p2 = p2
+
+    def __repr__(self) -> str:
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
+            p1_data = '{}'.format(self._p1.data)
+            p2_data = '{}'.format(self._p2.data)
+
+        return '{}(p1={}, p2={})'.format(type(self).__name__, p1_data, p2_data)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Segment):
+            return NotImplemented
+        return self.p1 == other.p1 and self.p2 == other.p2
+
+    @property
+    def p1(self) -> 'Point':
+        """Returns beginning point of the segment
+
+        Returns
+        -------
+        point : CurvePoint
+            Beginning point of the segment
+        """
+
+        return self._p1
+
+    @property
+    def p2(self) -> 'Point':
+        """Returns ending point of the segment
+
+        Returns
+        -------
+        point : CurvePoint
+            Ending point of the segment
+        """
+
+        return self._p2
+
+    @property
+    def data(self) -> np.ndarray:
+        """Returns the segment data as numpy array 2xN
+
+        Returns
+        -------
+        data : np.ndarray
+            The segment data array 2xN
+        """
+
+        return np.vstack((self._p1.data, self._p2.data))
+
+    @property
+    def ndim(self) -> int:
+        """Returns dimension of the segment
+
+        Returns
+        -------
+        ndim : int
+            Dimension of the segment
+        """
+
+        return self._p1.ndim
+
+    @property
+    def singular(self) -> bool:
+        """Returns True if the segment is singular (has zero lenght)
+
+        Returns
+        -------
+        flag : bool
+            Returns True if the segment is singular (has zero lenght)
+        """
+
+        return self.p1 == self.p2
+
+    @property
+    def seglen(self) -> Numeric:
+        """Returns the segment length
+
+        Returns
+        -------
+        length : float
+            Segment length (Euclidean distance between p1 and p2)
+        """
+
+        return self._p1.distance(self._p2)
+
+    @property
+    def dot(self) -> float:
+        """Returns Dot product of the beginning/ending segment points
+
+        Returns
+        -------
+        dot : float
+            The Dot product of the segment points
+        """
+
+        return self._p1 @ self._p2
+
+    @property
+    def direction(self) -> 'Point':
+        """Returns the segment (line) direction vector
+
+        Returns
+        -------
+        u : Point
+            The point object that represents the segment direction
+        """
+
+        return self.p2 - self.p1
+
+    def point(self, t: ty.Union[float, ty.Sequence[float], np.ndarray]) -> ty.Union['Point', ty.List['Point']]:
+        """Returns the point(s) on the segment for given "t"-parameter value or list of values
+
+        The parametric line equation:
+
+        .. math::
+
+            P(t) = P_1 + t (P_2 - P_1)
+
+        Parameters
+        ----------
+        t : float
+            The parameter value in the range [0, 1] to get point on the segment
+
+        Returns
+        -------
+        point : Point, List[Points]
+            The point(s) on the segment for given "t"
+        """
+
+        if isinstance(t, (abc.Sequence, np.ndarray)):
+            t = np.asarray(t)
+            if t.ndim > 1:
+                raise ValueError('"t" must be a sequence or 1-d numpy array')
+
+            dt = self.direction.data * t[np.newaxis].T
+            points_data = self.p1.data + dt
+
+            return [Point(pdata) for pdata in points_data]
+        else:
+            return self.p1 + self.direction * t
+
+    def t(self, point: ty.Union['Point', ty.Sequence['Point']],
+          tol: ty.Optional[float] = None) -> ty.Union[float, np.ndarray]:
+        """Returns "t"-parameter value(s) for given point(s) that collinear with the segment
+
+        Parameters
+        ----------
+        point : Point, Sequence[Point]
+            Point or sequence of points that collinear with the segment
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        t : float, np.ndarray
+            "t"-parameter value(s) for given points or nan
+            if point(s) are not collinear with the segment
+
+        """
+
+        if isinstance(point, Point):
+            if not self.collinear(point, tol=tol):
+                warnings.warn(
+                    "Given point '{}' is not collinear with the segment '{}'".format(point, self), RuntimeWarning)
+                return np.nan
+            b = point.data - self.p1.data
+            is_collinear = np.asarray([])
+        else:
+            is_collinear = np.array([self.collinear(p, tol=tol) for p in point], dtype=np.bool_)
+            b = np.stack([p.data - self.p1.data for p in point], axis=1)
+
+        a = self.direction.data[np.newaxis].T
+
+        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
+
+        if residuals.size > 0 and residuals[0] > F_EPS:
+            warnings.warn(
+                'The "lstsq" residuals are {}. "t" value(s) might be wrong.'.format(residuals),
+                RuntimeWarning)
+
+        t = t.squeeze()
+
+        if is_collinear.size == 0:
+            return float(t)
+        else:
+            if not np.all(is_collinear):
+                warnings.warn(
+                    "Some given points are not collinear with the segment", RuntimeWarning)
+                t[~is_collinear] = np.nan
+            if t.size == 1:
+                t = np.array(t, ndmin=1)
+            return t
+
+    def angle(self, other: 'Segment', ndigits: ty.Optional[int] = None) -> float:
+        """Returns the angle between this segment and other segment
+
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+        ndigits : int, None
+            The number of significant digits
+
+        Returns
+        -------
+        phi : float
+            The angle in radians between this segment and other segment
+        """
+
+        if not isinstance(other, Segment):
+            raise TypeError('The type of "other" argument must be \'Segment\'.')
+
+        u1 = self.direction
+        u2 = other.direction
+
+        denominator = u1.norm() * u2.norm()
+
+        if np.isclose(denominator, 0.0):
+            warnings.warn(
+                'Cannot compute angle between segments. One or both segments degenerate into a point.',
+                RuntimeWarning)
+            return np.nan
+
+        cos_phi = (u1 @ u2) / denominator
+
+        if ndigits is not None:
+            cos_phi = round(cos_phi, ndigits=ndigits)
+
+        # We need to consider floating point errors
+        cos_phi = 1.0 if cos_phi > 1.0 else cos_phi
+        cos_phi = -1.0 if cos_phi < -1.0 else cos_phi
+
+        return np.arccos(cos_phi)
+
+    def collinear(self, other: ty.Union['Segment', 'Point'],
+                  tol: ty.Optional[float] = None) -> bool:
+        """Returns True if the segment and other segment or point are collinear
+
+        Parameters
+        ----------
+        other : Segment, Point
+            The curve segment or point object
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment or point are collinear
+
+        See Also
+        --------
+        parallel
+        coplanar
+
+        """
+
+        if isinstance(other, Point):
+            if other == self.p1 or other == self.p2:
+                return True
+        elif isinstance(other, Segment):
+            if other == self or other.swap() == self:
+                return True
+        else:
+            raise TypeError('"other" argument must be type \'Segment\'.')
+
+        # In n-dimensional space, a set of three or more distinct points are collinear
+        # if and only if, the matrix of the coordinates of these vectors is of rank 1 or less.
+        m = np.unique(np.vstack((self.data, other.data)).T, axis=1)
+
+        if m.shape[1] < 3:
+            return True
+
+        return np.linalg.matrix_rank(m, tol=tol) <= 1
+
+    def parallel(self, other: 'Segment',
+                 ndigits: ty.Optional[int] = 8,
+                 rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+        """Returns True if the segment and other segment are parallel
+
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+        ndigits : int, None
+            The number of significant digits
+        rtol : float
+            Relative tolerance with check angle
+        atol : float
+            Absolute tolerance with check angle
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment are parallel
+
+        See Also
+        --------
+        collinear
+        angle
+
+        """
+
+        phi = self.angle(other, ndigits=ndigits)
+        if np.isnan(phi):
+            return False
+        return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
+
+    def coplanar(self, other: ty.Union['Segment', 'Point'],
+                 tol: ty.Optional[float] = None) -> bool:
+        """Returns True if the segment and other segment or point are coplanar
+
+        Parameters
+        ----------
+        other : Segment, Point
+            The curve segment or point object
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment or point are coplanar
+
+        See Also
+        --------
+        collinear
+
+        """
+
+        m = self.data.copy()
+
+        if isinstance(other, Point):
+            m -= other.data
+        elif isinstance(other, Segment):
+            m = np.vstack((m, other.p1.data))
+            m -= other.p2.data
+        else:
+            raise TypeError('"other" argument must be type \'Point\' or \'Segment\'')
+
+        return np.linalg.matrix_rank(m, tol=tol) <= 2
+
+    def overlap(self, other: 'Segment', tol: ty.Optional[float] = None) -> ty.Optional['Segment']:
+        """Returns overlap segment between the segment and other segment if it exists
+
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        segment : Segment, None
+            Overlap segment if it is exist.
+
+        """
+
+        if not self.collinear(other, tol=tol):
+            return None
+
+        p11_data = self.p1.data
+        p12_data = self.p2.data
+        p21_data = other.p1.data
+        p22_data = other.p2.data
+
+        data_minmax = np.minimum(
+            np.maximum(p11_data, p12_data),
+            np.maximum(p21_data, p22_data),
+        )
+
+        data_maxmin = np.maximum(
+            np.minimum(p11_data, p12_data),
+            np.minimum(p21_data, p22_data),
+        )
+
+        if np.any(data_maxmin > data_minmax):
+            return None
+
+        return Segment(Point(data_maxmin), Point(data_minmax))
+
+    def intersect(self, other: 'Segment') -> ty.Union[NotIntersected, SegmentsIntersection]:
+        """Finds the intersection of the segment and other segment
+
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+
+        Returns
+        -------
+        res : None (NotIntersected), SegmentsIntersection
+            The intersection result. It can be:
+                - NotIntersected (None): No any intersection of the segments
+                - SegmentsIntersection: The intersection of the segments
+
+        """
+
+        return intersect_segments(self, other)
+
+    def to_curve(self) -> 'Curve':
+        """Returns the copy of segment data as curve object with 2 points
+
+        Returns
+        -------
+        curve : Curve
+            Curve object with 2 points
+        """
+
+        return Curve(self.data)
+
+    def swap(self) -> 'Segment':
+        """Returns the new segment with swapped ending points
+
+        Returns
+        -------
+        segment : Segment
+            Swapped segment
+        """
+
+        return Segment(self.p2, self.p1)
+
+
+class CurveSegment(Segment):
+    """Represents a curve segment
+
+    Parameters
+    ----------
+    curve : Curve
+        The curve object
+    index : int
+        The segment index in the curve
+
+    """
+
+    __slots__ = Segment.__slots__ + ('_curve', '_idx')
+
+    def __init__(self, curve: 'Curve', index: int) -> None:
+        if index < 0:
+            index = (curve.size - 1) + index
+        if index >= (curve.size - 1):
+            raise ValueError('The index is out of curve size')
+
+        self._curve = curve
+        self._idx = index
+
+        p1 = ty.cast(CurvePoint, curve[index])
+        p2 = ty.cast(CurvePoint, curve[index + 1])
+
+        super().__init__(p1, p2)
+
+    def __repr__(self) -> str:
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
+            p1_data = '{}'.format(self._p1.data)
+            p2_data = '{}'.format(self._p2.data)
+
+        return '{}(p1={}, p2={}, index={})'.format(
+            type(self).__name__, p1_data, p2_data, self._idx)
+
+    @property
+    def curve(self) -> 'Curve':
+        """Returns the curve that contains this segment
+
+        Returns
+        -------
+        curve : Curve
+            The curve that contains this segment
+        """
+
+        return self._curve
+
+    @property
+    def idx(self) -> int:
+        """Returns the segment index in the curve
+
+        Returns
+        -------
+        idx : int
+            The segment index in the curve
+        """
+
+        return self._idx
+
+    @property
+    def chordlen(self) -> float:
+        """Returns the curve chord length for this segment
+
+        This length may be greater or equal to segment length (distance).
+
+        Returns
+        -------
+        length : float
+            The curve chord length for this segment
+        """
+
+        return self._curve.chordlen[self._idx]
+
+
 class Curve(abc.Sequence):
-    """The main class for n-dimensional geometric curve representation
+    r"""The main class for n-dimensional geometric curve representation
 
-    The class represents n-dimensional geometric curve in the plane or in the Euclidean n-dimensional space
-    given by a finity sequence of points.
+    The class represents n-dimensional geometric curve in the plane
+    or in the Euclidean n-dimensional space given by a finity sequence of points.
 
-    Internal data storage of curve points is NumPy MxN array where M is the number of curve points and N is curve
-    dimension. In other words, n-dimensional curve data is stored in 2-d array::
+    Internal data storage of curve points is NumPy MxN array where M is the number
+    of curve points and N is curve dimension. In other words, n-dimensional curve data
+    is stored in 2-d array::
 
         # 2-d curve representation
         Curve([[x1 y1]
@@ -738,45 +1278,52 @@ class Curve(abc.Sequence):
 
     Notes
     -----
-    Curve class implements ``Sequence`` interface but its instances are mutable with the limitations.
-
-    Some methods can change the curve data in-place withous change the data size.
-    However, some methods that can change curve size or dimension always return the copy of the curve.
-    Also deleting data via ``__delitem__`` is not allowed.
+    Curve class implements ``Sequence`` interface and the `Curve` objects are immutable.
 
     Parameters
     ----------
-    curve_data : CurveDataType
+    curve_data : CurveData
         The data of n-dimensional curve (2 or higher). The data might be represented in the different types:
 
         * The sequence of the vectors with coordinates for every dimension:
           ``[X, Y, Z, ..., N]`` where X, Y, ... are 1xM arrays.
         * The data is represented as np.ndarray MxN where M is number of points and N is curve dimension.
           N must be at least 2 (a plane curve).
-        * Another Curve object. It creates the copy of another curve by default (see ``copy`` argument).
+        * Another Curve object. It creates the copy of another curve.
 
-        If the data is not set empty curve will be created with ndmin dimensions
+        If "curve_data" is empty, the empty curve will be created with ndmin dimensions
         (2 by default, see ``ndmin`` argument).
 
-    ndmin : int
+    tdata : Optional[Union[NumericSequence, np.ndarray]
+        "tdata" defines parametrization vector ``t`` that was used for calculaing
+        "curve_data" for parametric curve :math:`\gamma(t) = (x(t), y(t), ..., n(t))`.
+        If "curve_data" is a `Curve` object, "tdata" argument will be ignored.
+
+        See also `isparametric` and `t` `Curve` class properties.
+
+    axis : Optional[int]
+        "axis" will be used to interpret "curve_data".
+        In other words, "axis" is the axis along which located curve data points.
+        If "axis" is not set, it will be set to 0 if "curve_data" is numpy array
+        or 'Curve' object and 1 in other cases.
+
+        If you set "curve_data" as list of coord-arrays ``[X, Y, ..., N]``
+        or from other `Curve`, you should not set "axis" argument.
+        This parameter may be useful if you want to set "curve_data" as an array
+        with N-dimensional shape.
+
+    ndmin : Optional[int]
         The minimum curve dimension. By default it is ``None`` and equal to input data dimension.
         If ``ndmin`` is more than input data dimension, additional dimensions will be added to
         created curve object. All values in additional dimensions are equal to zero.
-        If it is set, ``copy`` argument is ignored.
 
     dtype : numeric type or numeric numpy.dtype
         The type of curve data. The type must be a numeric type. For example, ``float``, ``int``, ``np.float32``, ...
-
         If ``dtype`` argument is not set, by default dtype of curve data is ``np.float64``.
-        If ``dtype`` argument is set, ``copy`` argument is ignored.
-
-    copy : bool
-        If this flag is True the copy of the data or curve will be created. If it is False the copy will not be
-        created if possible.
 
     Raises
     ------
-    ValueError : If the input data is invalid (1-d array or ndim > 2, for example)
+    ValueError : If the input data is invalid
     ValueError : There is not a numeric ``dtype``
 
     Examples
@@ -790,8 +1337,8 @@ class Curve(abc.Sequence):
     .. code-block:: python
 
         # 2-D curve with 4 points from numpy array
-        curve = Curve(np.array([(1, 2, 3, 4), (5, 6, 7, 8)]).T,
-                      dtype=np.float32)
+        curve = Curve(np.array([(1, 2, 3, 4), (5, 6, 7, 8)]),
+                      axis=1, dtype=np.float32)
 
     .. code-block:: python
 
@@ -805,16 +1352,17 @@ class Curve(abc.Sequence):
 
     """
 
-    def __init__(self, curve_data: ty.Optional[CurveDataType] = None,
+    def __init__(self,
+                 curve_data: CurveData,
+                 tdata: ty.Optional[ty.Union[NumericSequence, np.ndarray]] = None,
+                 axis: ty.Optional[int] = None,
                  ndmin: ty.Optional[int] = None,
-                 dtype: ty.Optional[DataType] = None,
-                 copy: bool = True) -> None:
+                 dtype: DType = None) -> None:
         """Constructs Curve instance
         """
 
-        is_transpose = True
-        is_copy = True
         is_ndmin = False
+        is_array = isinstance(curve_data, (np.ndarray, Curve))
 
         if ndmin is None:
             ndmin = 2
@@ -824,42 +1372,37 @@ class Curve(abc.Sequence):
         if ndmin < 2:
             raise ValueError('ndmin must be at least of 2')
 
-        if is_ndmin or dtype is not None:
-            copy = True
-
         if isinstance(curve_data, Curve):
-            curve_data = curve_data.data
+            if tdata is not None:
+                warnings.warn('Ignoring "tdata" argument because "curve_data" is a "Curve" object.')
+            if axis is not None:
+                warnings.warn('Ignoring "axis" argument because "curve_data" is a "Curve" object.', RuntimeWarning)
 
-        if isinstance(curve_data, np.ndarray):
-            if curve_data.size > 0 and curve_data.ndim != 2:
-                raise ValueError('If the curve data is ndarray it must be two-dimensional.')
+            if curve_data.isparametric:
+                tdata = curve_data.t
+            else:
+                tdata = None
+
+            curve_data = curve_data.data
+            axis = 0
+
+        if axis is None:
+            axis = 0 if is_array else 1
+
+        if is_array:
             dtype = dtype or curve_data.dtype
-            is_transpose = False
-            is_copy = copy
 
         if dtype is None:
             dtype = DEFAULT_DTYPE
         dtype = np.dtype(dtype)
 
         if not np.issubdtype(dtype, np.number):
-            ValueError('dtype must be a numeric type.')
+            ValueError('"dtype" must be a numeric type not {}.'.format(dtype))
 
-        empty_data = np.reshape([], (0, ndmin)).astype(dtype)
-
-        if curve_data is None:
-            curve_data = empty_data
-            is_transpose = False
-
-        if is_copy:
-            data = np.array(curve_data, ndmin=2, dtype=dtype)
-        else:
-            data = curve_data
-
-        if is_transpose:
-            data = data.T
+        data = as2d(curve_data, axis=axis).astype(dtype)
 
         if data.size == 0:
-            data = empty_data
+            data = np.reshape([], (0, ndmin)).astype(dtype)
 
         m, n = data.shape
 
@@ -870,12 +1413,25 @@ class Curve(abc.Sequence):
             # Change dimension to ndmin
             data = np.hstack([data, np.zeros((m, ndmin - n), dtype=dtype)])
 
+        if tdata is not None:
+            tdata = np.array(tdata, dtype=DEFAULT_DTYPE)
+            tdata.flags.writeable = False
+
+            if tdata.ndim != 1:
+                raise ValueError('"tdata" must be 1-D array')
+            if tdata.size != data.shape[0]:
+                raise ValueError('"tdata" size must be equal to the number of curve points.')
+
         self._data = data  # type: np.ndarray
+        self._data.flags.writeable = False
+
+        self._tdata = tdata
 
     def __repr__(self) -> str:
         name = type(self).__name__
 
-        with np.printoptions(suppress=True, precision=4, edgeitems=4, threshold=10*self.ndim):
+        with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION,
+                             edgeitems=4, threshold=10*self.ndim):
             arr_repr = '{}'.format(self._data)
             arr_repr = textwrap.indent(arr_repr, ' ' * (len(name) + 1)).strip()
 
@@ -906,13 +1462,13 @@ class Curve(abc.Sequence):
 
         return self.size != 0 and self.ndim != 0
 
-    def __getitem__(self, indexer: IndexerType) -> ty.Union[PointCurveUnionType, np.ndarray]:
+    def __getitem__(self, indexer: Indexer) -> ty.Union[CurvePoint, 'Curve']:
         """Returns the point of curve or sub-curve or all coord values fot given axis
 
         Parameters
         ----------
-        indexer : int, slice, list, np.array, tuple
-            Index (int) or list of indexes or slice or tuple for getting the point or sub-slice
+        indexer : int, slice, sequence, np.array
+            Index (int) or list of indexes or slice for getting the curve point or sub-curve
 
         Raises
         ------
@@ -921,58 +1477,41 @@ class Curve(abc.Sequence):
 
         Returns
         -------
-        point : Point
-            Point for given index
+        point : CurvePoint
+            Point for given integer index
         curve : Curve
-            Sub-curve for given slice
-        coord_values : np.ndarray
-            All values for given axis
+            Sub-curve for given slice/indices
 
         """
 
-        is_return_values = isinstance(indexer, tuple) and isinstance(indexer[1], int)
-        data = self._data[indexer]
+        def get_curvepoint(index: int) -> CurvePoint:
+            return CurvePoint(curve=self, index=index)
 
-        if data.ndim > 1:
-            if data.shape[1] == 1:
-                return data.ravel()
-            return Curve(data, copy=False)
-        else:
-            if is_return_values:
-                return data
+        def get_subcurve(index: ty.Union[slice, NumericSequence, np.ndarray]) -> Curve:
+            if self.isparametric:
+                tdata = self._tdata[index]
             else:
-                if indexer < 0:
-                    indexer = self.size + indexer
-                return CurvePoint(data, self, index=indexer)
+                tdata = None
+            return Curve(self._data[index], tdata=tdata)
 
-    def __setitem__(self, indexer: IndexerType, value: ty.Union[PointCurveUnionType, np.ndarray]) -> None:
-        """Sets a point or a sub-curve or coord values for given axis
+        if isinstance(indexer, (int, np.integer)):
+            return get_curvepoint(indexer)
 
-        Parameters
-        ----------
-        indexer : int, slice, list, np.array, tuple
-            Index (int) or list of indexes or slice or tuple for setting the point or sub-slice
-        value : Point, Curve, np.ndarray
-            Value for setting
+        elif isinstance(indexer, slice):
+            return get_subcurve(indexer)
 
-        Raises
-        ------
-        TypeError : Invalid index type
-        IndexError : The index out of bounds curve size or dimensions
+        elif isinstance(indexer, (np.ndarray, abc.Sequence)):
+            indexer = np.asarray(indexer)
+            if indexer.ndim > 1:
+                raise IndexError('Indexing array must be 1-d')
+            if (not np.issubdtype(indexer.dtype, np.number) and
+                    not np.issubdtype(indexer.dtype, np.bool_)):
+                raise IndexError('Indexing array must be numeric or boolean')
+            return get_subcurve(indexer)
+        else:
+            raise TypeError('Invalid index type {}'.format(type(indexer)))
 
-        """
-
-        if isinstance(value, (Point, Curve)):
-            value = value.data
-
-        self._data[indexer] = value
-        self.invalidate()
-
-    def __delitem__(self, key):
-        raise TypeError(
-            "'{}' object doesn't support item deletion".format(type(self).__name__))
-
-    def __contains__(self, other: PointCurveUnionType):
+    def __contains__(self, other: object):
         """Returns True if the curve contains given point or sub-curve with the same dimension
 
         Parameters
@@ -1012,7 +1551,7 @@ class Curve(abc.Sequence):
 
             return False
 
-    def __eq__(self, other: 'Curve') -> bool:
+    def __eq__(self, other: object) -> bool:
         """Returns True if given curve is equal to the curve
 
         Parameters
@@ -1060,13 +1599,19 @@ class Curve(abc.Sequence):
             return NotImplemented
 
         self._check_ndim(other)
-        return Curve(np.vstack((self._data, other.data)))
+
+        if self.isparametric and other.isparametric:
+            tdata = np.hstack((self.t, other.t))
+        else:
+            tdata = None
+
+        return Curve(np.vstack((self._data, other.data)), tdata=tdata)
 
     def __copy__(self) -> 'Curve':
         return self.__deepcopy__()
 
     def __deepcopy__(self, memodict: ty.Optional[dict] = None) -> 'Curve':
-        return Curve(self._data)
+        return Curve(self)
 
     def index(self, point: Point, start: ty.Optional[int] = None, end: ty.Optional[int] = None) -> int:
         """Returns the first index for given point in the curve
@@ -1244,6 +1789,24 @@ class Curve(abc.Sequence):
 
         return self.ndim >= 3
 
+    @property
+    def isparametric(self) -> bool:
+        """Returns True if the curve has "tdata" vector (it is the parametric curve)
+
+        Returns
+        -------
+        flag : bool
+            True if the curve if has "tdata" vector and it is the parametric curve
+
+        See Also
+        --------
+        t
+        cumarclen
+
+        """
+
+        return self._tdata is not None
+
     @cached_property
     def cumarclen(self) -> np.ndarray:
         """Returns the cumulative arc length of the curve (natural parametrization)
@@ -1270,7 +1833,8 @@ class Curve(abc.Sequence):
 
         Notes
         -----
-        This is alias for `cumarclen` for `Curve` class
+        This is "tdata" if the curve is parametric and the alias for
+        `cumarclen` if the curve is not parametric.
 
         Returns
         -------
@@ -1282,10 +1846,14 @@ class Curve(abc.Sequence):
         chordlen
         arclen
         cumarclen
+        isparametric
 
         """
 
-        return self.cumarclen
+        if self.isparametric:
+            return self._tdata
+        else:
+            return self.cumarclen
 
     @cached_property
     def chordlen(self) -> np.ndarray:
@@ -1623,27 +2191,41 @@ class Curve(abc.Sequence):
 
         return _diffgeom.torsion(self)
 
-    def reverse(self, inplace: bool = False) -> InplaceRetType:
-        """Reverses the curve
+    @cached_property
+    def segments(self) -> np.ndarray:
+        """Returns the numpy array (list) of curve segments
 
-        Parameters
-        ----------
-        inplace : bool
-            If it is True, the method reverses the curve in-place and changed this object.
+        Returns
+        -------
+        segments : np.array[CurveSegment]
+            The numpy array list of curve segments
+
+        """
+
+        return np.array([CurveSegment(self, idx) for idx in range(self.size - 1)], dtype=np.object)
+
+    def reverse(self) -> 'Curve':
+        """Reverses the curve
 
         Returns
         -------
         curve : Curve
-            The reversed copy of the curve or None if ``inplace`` is True
+            The reversed copy of the curve
+
+        Notes
+        -----
+        Is the curve is parametric, reversed curve will also be parametric.
 
         """
 
-        if inplace:
-            self[:] = np.flipud(self._data)
+        if self.isparametric:
+            tdata = np.flip(self._tdata, axis=0)
         else:
-            return Curve(np.flipud(self._data))
+            tdata = None
 
-    def coorientplane(self, axis1: int = 0, axis2: int = 1, inplace: bool = False) -> InplaceRetType:
+        return Curve(np.flipud(self._data), tdata=tdata)
+
+    def coorientplane(self, axis1: int = 0, axis2: int = 1) -> 'Curve':
         """Co-orients the curve to given plane orientation
 
         Notes
@@ -1656,30 +2238,31 @@ class Curve(abc.Sequence):
             First plane axis
         axis2: int
             Second plane axis
-        inplace : bool
-            If it is True, the method changes this object.
 
         Returns
         -------
         curve : Curve
-            The reversed curve copy or this curve object or None if ``inplace`` is True
+            The co-oriented curve copy
 
         Raises
         ------
         ValueError : Curve has the dimension less than 2
         IndexError : Axis out of the curve dimensions
 
+        Notes
+        -----
+        Is the curve is parametric, co-oriented curve will also be parametric.
+
         """
 
         is_coorient = _diffgeom.coorientplane(self, axis1=axis1, axis2=axis2)
 
         if not is_coorient:
-            return self.reverse(inplace=inplace)
+            return self.reverse()
         else:
-            if not inplace:
-                return self
+            return Curve(self, tdata=self._tdata)
 
-    def insert(self, index: IndexerType, other: PointCurveUnionType) -> 'Curve':
+    def insert(self, index: Indexer, other: PointCurveUnion) -> 'Curve':
         """Inserts point or sub-curve to the curve and returns new curve
 
         Parameters
@@ -1698,6 +2281,10 @@ class Curve(abc.Sequence):
         ------
         ValueError : If other dimension is not equal to the curve dimension
         IndexError : If the index is out of bounds
+
+        Notes
+        -----
+        The new curve with inserted data will be not parametric.
 
         Examples
         --------
@@ -1749,7 +2336,7 @@ class Curve(abc.Sequence):
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
 
-    def append(self, other: PointCurveUnionType):
+    def append(self, other: PointCurveUnion):
         """Appends point or curve data to the end of the curve and returns new curve
 
         Parameters
@@ -1765,6 +2352,10 @@ class Curve(abc.Sequence):
         Raises
         ------
         ValueError : If other dimension is not equal to the curve dimension
+
+        Notes
+        -----
+        The new curve with appended data will be not parametric.
 
         Examples
         --------
@@ -1783,7 +2374,7 @@ class Curve(abc.Sequence):
 
         return self.insert(self.size, other)
 
-    def delete(self, index: IndexerType) -> 'Curve':
+    def delete(self, index: Indexer) -> 'Curve':
         """Returns a new curve object with deleted point or sub-curve
 
         Parameters
@@ -1799,6 +2390,10 @@ class Curve(abc.Sequence):
         Raises
         ------
         IndexError : If the index is out of bounds
+
+        Notes
+        -----
+        Is the curve is parametric, the new curve with deleted data will also be parametric.
 
         Examples
         --------
@@ -1821,23 +2416,21 @@ class Curve(abc.Sequence):
         """
 
         try:
-            return Curve(
-                np.delete(self._data, index, axis=0)
-            )
+            if self.isparametric:
+                tdata = np.delete(self._tdata, index)
+            else:
+                tdata = None
+
+            data = np.delete(self._data, index, axis=0)
+            return Curve(data, tdata=tdata)
+
         except IndexError as err:
             raise IndexError(
                 'Index {} is out of bounds for curve size {}'.format(
                     index, self.size)) from err
 
-    def values(self, axis: ty.Union[int, Axis, None] = None) -> ty.Union[np.ndarray, abc.Iterator]:
+    def values(self, axis: ty.Union[int, Axis, None] = None) -> ty.Union[np.ndarray, ty.Iterator[np.ndarray]]:
         """Returns the vector with all values for given axis or the iterator along all axes
-
-        Notes
-        -----
-
-        This method is equivalent to use::
-
-            values = curve[:, axis]
 
         Parameters
         ----------
@@ -1863,7 +2456,7 @@ class Curve(abc.Sequence):
 
         """
 
-        if axis is not None and not isinstance(axis, int):
+        if axis is not None and not isinstance(axis, (int, np.integer)):
             raise ValueError('Axis must be an integer')
 
         if axis is not None and axis >= self.ndim:
@@ -1875,7 +2468,7 @@ class Curve(abc.Sequence):
         else:
             return iter(self._data[:, i] for i in range(self.ndim))
 
-    def insertdim(self, axis: int, values: ty.Union[np.ndarray, ty.Sequence[NumberType], None] = None) -> 'Curve':
+    def insertdim(self, axis: int, values: ty.Union[np.ndarray, NumericSequence, None] = None) -> 'Curve':
         """Insert new dimension to the curve and returns new curve
 
         Parameters
@@ -1895,6 +2488,10 @@ class Curve(abc.Sequence):
         ------
         IndexError : if index is out of the curve dimensions
         ValueError : if could not broadcast input array to the curve size
+
+        Notes
+        -----
+        The new curve will be not parametric.
 
         Examples
         --------
@@ -1921,7 +2518,7 @@ class Curve(abc.Sequence):
             raise IndexError(
                 'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
 
-    def appenddim(self, values: ty.Union[np.ndarray, ty.Sequence[NumberType], None] = None) -> 'Curve':
+    def appenddim(self, values: ty.Union[np.ndarray, NumericSequence, None] = None) -> 'Curve':
         """Appends new dimension to the end of curve and returns new curve
 
         Parameters
@@ -1939,6 +2536,10 @@ class Curve(abc.Sequence):
         ------
         ValueError : if could not broadcast input array to the curve size
 
+        Notes
+        -----
+        The new curve will be not parametric.
+
         Examples
         --------
 
@@ -1955,7 +2556,7 @@ class Curve(abc.Sequence):
 
         return self.insertdim(self.ndim, values)
 
-    def deletedim(self, axis: IndexerType) -> 'Curve':
+    def deletedim(self, axis: Indexer) -> 'Curve':
         """Returns a new curve object with deleted dimension(s)
 
         Notes
@@ -1976,6 +2577,10 @@ class Curve(abc.Sequence):
         ------
         ValueError : if the curve is 2-dimensional
         IndexError : indexation error
+
+        Notes
+        -----
+        The new curve will be not parametric.
 
         Examples
         --------
@@ -2013,12 +2618,23 @@ class Curve(abc.Sequence):
         curve : Curve
             Curve object with unique points
 
+        Notes
+        -----
+        Is the curve is parametric, the new curve with unique data will also be parametric.
+
         """
 
         # FIXME: unique is slow (O(Nlog(N)). Moreover, we are forced to use
         #  additional sorting indices array to preserve order. This is not good way...
         data, index = np.unique(self._data, axis=0, return_index=True)
-        return Curve(data[np.argsort(index)])
+        s_index = np.sort(index)
+
+        if self.isparametric:
+            tdata = self._tdata[s_index]
+        else:
+            tdata = None
+
+        return Curve(self._data[s_index], tdata=tdata)
 
     def drop(self, isa: ty.Callable) -> 'Curve':
         """Drops points from the curve by given values checker
@@ -2036,6 +2652,16 @@ class Curve(abc.Sequence):
         curve : Curve
             New curve object without dropped points
 
+        Raises
+        ------
+        TypeError : Invalid ``isa`` checker argument
+        ValueError : Invalid ``isa``  checker return type
+        IndexError : Cannot indexing curve data with indices from ``isa`` checker
+
+        Notes
+        -----
+        Is the curve is parametric, the new curve with dropped data will also be parametric.
+
         Examples
         --------
 
@@ -2047,12 +2673,6 @@ class Curve(abc.Sequence):
                    [ 2.  6.]
                    [ 3.  7.]
                    [ 4.  8.]], size=4, ndim=2, dtype=float64)
-
-        Raises
-        ------
-        TypeError : Invalid ``isa`` checker argument
-        ValueError : Invalid ``isa``  checker return type
-        IndexError : Cannot indexing curve data with indices from ``isa`` checker
 
         """
 
@@ -2067,9 +2687,13 @@ class Curve(abc.Sequence):
             indices = np.any(indices, axis=1)
 
         if indices.dtype != np.bool:
-            return Curve(self.delete(indices))
+            return self.delete(indices)
         else:
-            return Curve(self._data[~indices])
+            if self.isparametric:
+                tdata = self._tdata[~indices]
+            else:
+                tdata = None
+            return Curve(self._data[~indices], tdata=tdata)
 
     def nonsingular(self):
         """Removes singularities in the curve
@@ -2083,9 +2707,13 @@ class Curve(abc.Sequence):
         curve : Curve
             The curve without singularities.
 
+        Notes
+        -----
+        Is the curve is parametric, the new curve will also be parametric.
+
         """
 
-        return _diffgeom.nonsingular(self, chord_lengths=self.chordlen)
+        return _diffgeom.nonsingular(self)
 
     def interpolate(self, grid_spec: InterpGridSpecType, method: str = 'linear', **kwargs) -> 'Curve':
         """Interpolates the curve data
@@ -2124,6 +2752,10 @@ class Curve(abc.Sequence):
         ValueError : invalid data or parameters
         InterpolationError : any computation of interpolation errors
 
+        Notes
+        -----
+        Is the curve is parametric, the interpolated curve will also be parametric.
+
         Examples
         --------
 
@@ -2161,26 +2793,86 @@ class Curve(abc.Sequence):
 
         """
 
-        interp_data = interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
-        return Curve(interp_data, ndmin=self.ndim, dtype=self.dtype)
+        return interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
 
-    def invalidate(self):
-        """Invalidates the curve parameters cache
+    def smooth(self, method: str, **params) -> 'Curve':
+        """Smoothes the curve using the given method and its parameters
+
+        The method smoothes the curve using the given method.
+        Returns the smoothed curve with the same number of points and type `np.float64`.
+
+        Parameters
+        ----------
+        method : str
+            Smoothing method
+        params : mapping
+            The parameters of smoothing method
+
+        Returns
+        -------
+        curve : Curve
+            Smoothed curve with type `numpy.float64`
+
+        Raises
+        ------
+        ValueError : Input data or parameters have invalid values
+        TypeError : Input data or parameters have invalid type
+        SmoothingError : Smoothing has failed
+
+        See Also
+        --------
+        smooth_methods
 
         Notes
         -----
-        All parameters such as tangent, normal, curvature, etc
-        after call this method will be re-calculated.
+        If the curve is parametric, the smoothed curve will not be parametric.
 
         """
 
-        cls = type(self)
-        cached_props = [attr for attr in self.__dict__
-                        if isinstance(getattr(cls, attr, None), cached_property)]
+        return smooth(self, method, **params)
 
-        for prop in cached_props:
-            self.__dict__.pop(prop, None)
+    def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None) -> ty.List[SegmentsIntersection]:
+        """Determines the curve intersections with other curve/segment or itself
 
-    def _check_ndim(self, other: PointCurveUnionType):
+        Parameters
+        ----------
+        other : Curve, Segment, None
+            Other object to determine intersection or None for itself
+
+        Returns
+        -------
+        intersections : List[SegmentsIntersection]
+            The list of intersections which represent as SegmentsIntersection objects
+
+        Raises
+        ------
+        TypeError : incalid type of input args
+        ValueError : invalid data
+
+        """
+
+        if other is None:
+            curve2 = self
+        elif isinstance(other, Curve):
+            curve2 = other
+        elif isinstance(other, Segment):
+            curve2 = other.to_curve()
+        else:
+            raise TypeError('"other" object must be "Curve" or "CurveSegment" class or None')
+
+        intersections = intersect_curves(self, curve2)
+
+        if isinstance(other, Segment):
+            for i, intersection in enumerate(intersections):
+                intersections[i] = SegmentsIntersection(
+                    segment1=intersection.segment1,
+                    segment2=other,
+                    intersection=(intersection.overlap_segment or
+                                  intersection.intersect_point),
+                )
+
+        return intersections
+
+    def _check_ndim(self, other: PointCurveUnion):
         if self.ndim != other.ndim:
             raise ValueError('The dimensions of the curve and other object do not match')

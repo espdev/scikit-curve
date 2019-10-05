@@ -30,7 +30,6 @@ setup(
         'scipy',
         'csaps >= 0.6.0',
         'cached_property',
-        'decorator',
     ],
     packages=find_packages(exclude=['tests', '*.tests', '*.tests.*', 'tests.*']),
     url='https://github.com/espdev/scikit-curve',

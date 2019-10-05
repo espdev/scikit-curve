@@ -37,14 +37,14 @@ def circle_curve_3d():
         ])
 
         curve = Curve([x, y, z])
+        curve_data = np.array(curve.data)
 
         for i, p in enumerate(curve):
             data = rx @ p.data
             data = ry @ data
+            curve_data[i] = data
 
-            curve[i] = data
-
-        return curve
+        return Curve(curve_data)
 
     return _circle_curve_3d
 

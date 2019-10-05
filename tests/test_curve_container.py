@@ -26,8 +26,6 @@ def test_construct(data, size, ndim, dtype):
 
 
 @pytest.mark.parametrize('data, ndmin, size, ndim', [
-    (None, None, 0, 2),
-    (None, 3, 0, 3),
     ([], None, 0, 2),
     ([], 3, 0, 3),
     (np.array([]), 4, 0, 4),
@@ -42,36 +40,6 @@ def test_construct_ndmin(data, ndmin, size, ndim):
     assert curve.ndim == ndim
 
 
-@pytest.mark.parametrize('data', [
-    np.array([[1, 2, 3, 4], [1, 2, 3, 4]]).T,
-    Curve([[1, 2, 3, 4], [1, 2, 3, 4]]),
-])
-def test_construct_no_copy(data):
-    curve = Curve(data, copy=False)
-
-    if isinstance(data, Curve):
-        data = data.data
-
-    curve[0, 0] = 10
-    curve[-1, -1] = 20
-
-    assert curve.data == pytest.approx(data)
-
-
-@pytest.mark.parametrize('kwargs', [
-    {'dtype': np.int32},
-    {'ndmin': 3},
-])
-def test_construct_no_copy_false(kwargs):
-    curve1 = Curve([[1, 2, 3, 4], [1, 2, 3, 4]])
-    curve2 = Curve(curve1, copy=False, **kwargs)
-
-    curve2[0, 0] = 10
-    curve2[-1, -1] = 20
-
-    assert curve2.data != pytest.approx(curve1.data)
-
-
 def test_from_points():
     """Tests creating the instance of 'Curve' class from points
     """
@@ -83,7 +51,7 @@ def test_from_points():
     ]
 
     points_array = np.array(points)
-    curve = Curve(points_array)
+    curve = Curve(points_array, axis=0)
 
     assert curve.size == 4
     assert curve.ndim == 3
@@ -125,11 +93,16 @@ def test_reverse():
     assert curve.reverse() == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
 
 
-def test_reverse_inplace():
-    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    curve.reverse(inplace=True)
+def test_reverse_parametric():
+    t = np.linspace(0, np.pi, 10)
+    x = np.cos(t)
+    y = np.sin(t)
 
-    assert curve == Curve([(4, 3, 2, 1), (8, 7, 6, 5)])
+    curve = Curve([x, y], tdata=t)
+    reversed_curve = curve.reverse()
+
+    assert reversed_curve == Curve([x[::-1], y[::-1]])
+    assert reversed_curve.t == pytest.approx(np.linspace(np.pi, 0, 10))
 
 
 @pytest.mark.parametrize('point_data', [
@@ -197,7 +170,7 @@ def test_count(point_data, expected_count):
     (-1, [4, 8]),
     (-2, [3, 7]),
 ])
-def test_get_item_point(index, expected_data):
+def test_getitem_point(index, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve[index] == Point(expected_data)
 
@@ -208,42 +181,37 @@ def test_get_item_point(index, expected_data):
     (slice(-2, -1), [(3,), (7,)]),
     (slice(-2, None), [(3, 4), (7, 8)]),
     (slice(None), [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    ([0, 2, 3], [(1, 3, 4), (5, 7, 8)]),
+    (np.array([0, 2, 3]), [(1, 3, 4), (5, 7, 8)]),
+    ([True] * 4, [(1, 2, 3, 4), (5, 6, 7, 8)]),
+    ([False] * 4, []),
 ])
-def test_get_item_curve(indexer, expected_data):
+def test_getitem_curve(indexer, expected_data):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
     assert curve[indexer] == Curve(expected_data)
 
 
-@pytest.mark.parametrize('indexer, expected_data', [
-    ((slice(None), slice(0, 2)), [(1, 2, 3, 4), (5, 6, 7, 8)]),
-    ((slice(None), slice(1, None)), [(5, 6, 7, 8), (9, 10, 11, 12)]),
-])
-def test_get_item_curve_less_dim(indexer, expected_data):
-    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12)])
-    assert curve[indexer] == Curve(expected_data)
+def test_getitem_curve_parametric():
+    tdata = [0, 1, 2, 3]
+    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)], tdata=tdata)
+    sub_curve = curve[::2]
+    assert sub_curve.t == pytest.approx(np.array(tdata[::2]))
 
 
-@pytest.mark.parametrize('indexer, expected_data', [
-    ((slice(None), 0), np.array([1, 2, 3, 4])),
-    ((slice(None), slice(1)), np.array([1, 2, 3, 4])),
-    ((slice(None, 2), 1), np.array([5, 6])),
+@pytest.mark.parametrize('indexer', [
+    (1, None),
+    (2, slice(None)),
+    (),
+    (slice(None),),
+    (slice(None), None),
+    (slice(None), slice(None)),
+    None,
+    np.zeros((2, 3)),
 ])
-def test_get_item_values(indexer, expected_data):
+def test_getitem_error(indexer):
     curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    assert curve[indexer] == pytest.approx(expected_data)
-
-
-@pytest.mark.parametrize('index, value, expected_data', [
-    (1, Point([10, 20]), [(1, 10, 3, 4), (5, 20, 7, 8)]),
-    ([1, 2], Point([10, 20]), [(1, 10, 10, 4), (5, 20, 20, 8)]),
-    (slice(0, 2), Curve([[10, 20], [30, 40]]), [(10, 20, 3, 4), (30, 40, 7, 8)]),
-    ((slice(None, None), 0), np.array([10, 20, 30, 40]), [(10, 20, 30, 40), (5, 6, 7, 8)]),
-])
-def test_set_item(index, value, expected_data):
-    curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
-    curve[index] = value
-
-    assert curve == Curve(expected_data)
+    with pytest.raises((TypeError, IndexError)):
+        _ = curve[indexer]
 
 
 def test_concatenate():
@@ -255,6 +223,14 @@ def test_concatenate():
 
     left_curve += right_curve
     assert left_curve == Curve([(1, 2, 3, 4), (5, 6, 7, 8)])
+
+
+def test_concatenate_parametric():
+    left_curve = Curve([(1, 2), (5, 6)], tdata=[0, 1])
+    right_curve = Curve([(3, 4), (7, 8)], tdata=[2, 3])
+    expected_curve = Curve([(1, 2, 3, 4), (5, 6, 7, 8)], tdata=[0, 1, 2, 3])
+
+    assert (left_curve + right_curve).t == pytest.approx(expected_curve.t)
 
 
 def test_insert_point():
