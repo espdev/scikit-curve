@@ -45,9 +45,7 @@ class SegmentsIntersection:
 
     __slots__ = ('_segment1', '_segment2', '_intersection')
 
-    def __init__(self,
-                 segment1: 'Segment',
-                 segment2: 'Segment',
+    def __init__(self, segment1: 'Segment', segment2: 'Segment',
                  intersection: ty.Union['Point', 'Segment']) -> None:
         self._segment1 = segment1
         self._segment2 = segment2
