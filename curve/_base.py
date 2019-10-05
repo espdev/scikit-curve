@@ -1003,7 +1003,7 @@ class Segment:
             if other == self or other.swap() == self:
                 return True
         else:
-            raise TypeError('Invalid type {} of "other" argument.'.format(type(other)))
+            raise TypeError('"other" argument must be type \'Segment\'.')
 
         # In n-dimensional space, a set of three or more distinct points are collinear
         # if and only if, the matrix of the coordinates of these vectors is of rank 1 or less.
@@ -1122,7 +1122,7 @@ class Segment:
         return Segment(Point(data_maxmin), Point(data_minmax))
 
     def intersect(self, other: 'Segment') -> ty.Union[NotIntersected, 'Point', 'Segment']:
-        """
+        """Finds the intersection of the segment and other segment
 
         Parameters
         ----------

@@ -45,7 +45,14 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
             - Point: The intersection point of the segments
             - Segment: The overlap segment in the case of overlapping the collinear segments
 
+    Raises
+    ------
+    ValueError : dimensions of the segments are different
+
     """
+
+    if segment1.ndim != segment1.ndim:
+        raise ValueError('The dimension of the segments must be equal.')
 
     # Firstly, we should check all corner cases (overlap, parallel, not coplanar).
     if segment1.collinear(segment2):
@@ -155,6 +162,17 @@ def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
 
 class SegmentsIntersection:
     """The class represents the intersection of two segments
+
+    Parameters
+    ----------
+    segment1 : Segment
+        The first segment object
+    segment2 : Segment
+        The second segment object
+    intersection : Point, Segment
+        The intersection object:
+            - Point if the segments are not overlapped
+            - Segment if the segments are overlapped
     """
 
     __slots__ = ('_segment1', '_segment2', '_intersection')
@@ -281,10 +299,14 @@ def intersect_curves(curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsInters
     intersections : List[SegmentsIntersection]
         The list of intersections of curves segments
 
+    Raises
+    ------
+    ValueError : dimensions of the curves are different
+
     """
 
     if curve1.ndim != curve2.ndim:
-        raise ValueError('The dimension of both curves must be equal.')
+        raise ValueError('The dimension the curves must be equal.')
 
     if curve1.size == 0 or curve2.size == 0:
         return []
