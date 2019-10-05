@@ -956,7 +956,7 @@ class Segment:
         """
 
         if not isinstance(other, Segment):
-            raise TypeError('Unsupported type of "other" argument {}. It must be \'Segment\'.'.format(type(other)))
+            raise TypeError('The type of "other" argument must be \'Segment\'.')
 
         u1 = self.direction
         u2 = other.direction
