@@ -23,7 +23,7 @@ from curve._smooth import (
     get_smooth_filter,
     register_smooth_filter,
 )
-from curve._intersect import SegmentsIntersection
+from curve._intersect import SegmentsIntersection, NotIntersected
 from curve._numeric import isequal, allequal, dot1d
 
 __all__ = [
@@ -62,6 +62,7 @@ __all__ = [
 
     # intersection
     'SegmentsIntersection',
+    'NotIntersected',
 
     # numeric
     'isequal',
