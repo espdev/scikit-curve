@@ -220,7 +220,7 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
 
             if distance > F_EPS:
                 warnings.warn(
-                    'Incorrect result. The points for "t1" and "t2" are different (distance: {}).'.format(
+                    'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
                         distance), IntersectionWarning)
                 return NotIntersected
 
