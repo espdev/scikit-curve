@@ -163,13 +163,14 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
     if segment1.ndim != segment2.ndim:
         raise ValueError('The dimension of the segments must be equal.')
 
-    # Firstly, we should check all corner cases (overlap, parallel, not coplanar).
+    # Firstly, we should check all corner cases (overlap, parallel, not coplanar, singular...).
     if segment1.collinear(segment2):
-        # We return overlap segment because we do not know exactly what point the user needs.
+        # We return overlap segment because we do not know exactly what point needed in this case.
         overlap_segment = segment1.overlap(segment2)
 
         if overlap_segment is None:
             return NotIntersected
+
         return SegmentsIntersection(segment1, segment2, overlap_segment)
 
     if segment1.parallel(segment2):
@@ -180,6 +181,9 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
 
     if segment1.singular or segment2.singular:
         return NotIntersected
+
+    # After checking all corner cases we are sure that
+    # two segments (or lines) should intersect.
 
     # We should solve the linear system of the following equations:
     #   x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
