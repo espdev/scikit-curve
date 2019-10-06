@@ -172,8 +172,10 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
             return NotIntersected
         return SegmentsIntersection(segment1, segment2, overlap_segment)
 
-    if segment1.parallel(segment2) or not segment1.coplanar(segment2):
-        # In these cases the segments will never intersect
+    if segment1.parallel(segment2):
+        return NotIntersected
+
+    if not segment1.coplanar(segment2):
         return NotIntersected
 
     if segment1.singular or segment2.singular:
