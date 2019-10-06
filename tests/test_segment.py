@@ -180,25 +180,27 @@ def test_overlap(points1, points2, expected_points):
         assert segment1.overlap(segment2) == Segment(*expected_points)
 
 
-@pytest.mark.parametrize('points1, points2, expected_intersect_point', [
+@pytest.mark.parametrize('points1, points2, expected_intersect_point, isoverlap', [
     # 2d
-    ((Point([1, 1]), Point([2, 2])), (Point([1, 2]), Point([2, 1])), Point([1.5, 1.5])),
-    ((Point([1, 1]), Point([2, 2])), (Point([3, 3]), Point([0, 0])), Point([1.5, 1.5])),
-    ((Point([1, 1]), Point([2, 2])), (Point([-5, 2]), Point([2, 10])), None),
+    ((Point([1, 1]), Point([2, 2])), (Point([1, 2]), Point([2, 1])), Point([1.5, 1.5]), False),
+    ((Point([1, 1]), Point([2, 2])), (Point([3, 3]), Point([0, 0])), Point([1.5, 1.5]), True),
+    ((Point([1, 1]), Point([2, 2])), (Point([-5, 2]), Point([2, 10])), None, None),
 
     # 3d
-    ((Point([1, 1, 1]), Point([2, 2, 2])), (Point([1, 2, 1]), Point([2, 1, 2])), Point([1.5, 1.5, 1.5])),
-    ((Point([1, 1, 1]), Point([2, 2, 2])), (Point([0, 0, 0]), Point([3, 3, 3])), Point([1.5, 1.5, 1.5])),
-    ((Point([1, 1, 2]), Point([1, 2, 3])), (Point([0, 0, 0]), Point([2, 3, 1])), None),
+    ((Point([1, 1, 1]), Point([2, 2, 2])), (Point([1, 2, 1]), Point([2, 1, 2])), Point([1.5, 1.5, 1.5]), False),
+    ((Point([1, 1, 1]), Point([2, 2, 2])), (Point([0, 0, 0]), Point([3, 3, 3])), Point([1.5, 1.5, 1.5]), True),
+    ((Point([1, 1, 2]), Point([1, 2, 3])), (Point([0, 0, 0]), Point([2, 3, 1])), None, None),
 ])
-def test_intersect(points1, points2, expected_intersect_point):
+def test_intersect(points1, points2, expected_intersect_point, isoverlap):
     segment1 = Segment(*points1)
     segment2 = Segment(*points2)
 
     if expected_intersect_point is None:
         assert segment1.intersect(segment2) == expected_intersect_point
     else:
-        assert segment1.intersect(segment2).intersect_point == expected_intersect_point
+        intersection = segment1.intersect(segment2)
+        assert intersection.intersect_point == expected_intersect_point
+        assert intersection.isoverlap == isoverlap
 
 
 def test_to_curve():
