@@ -60,7 +60,7 @@ def segment_point(segment: 'Segment',
         return segment.p1 + segment.direction * t
 
 
-def segment_t(segment : 'Segment', point: ty.Union['Point', ty.Sequence['Point']],
+def segment_t(segment: 'Segment', point: ty.Union['Point', ty.Sequence['Point']],
               tol: ty.Optional[float] = None) -> ty.Union[float, np.ndarray]:
     """Returns "t"-parameter value(s) for given point(s) that collinear with the segment
 
