@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from curve import Point, Segment, Curve
+from curve import Point, Segment, Curve, GeometryAlgorithmsWarning
 
 
 @pytest.mark.parametrize('p1, p2, ndim', [
@@ -90,7 +90,7 @@ def test_angle_nan():
     segment1 = Segment(Point([1, 1]), Point([1, 2]))
     segment2 = Segment(Point([0, 0]), Point([0, 0]))
 
-    with pytest.warns(RuntimeWarning):
+    with pytest.warns(GeometryAlgorithmsWarning):
         assert np.isnan(segment1.angle(segment2))
 
 

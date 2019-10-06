@@ -27,8 +27,9 @@ from cached_property import cached_property
 
 from curve._distance import MetricType, get_metric
 from curve._utils import as2d
-from curve._numeric import allequal, F_EPS
+from curve._numeric import allequal
 from curve import _diffgeom
+from curve import _geomalg
 from curve._interpolate import InterpGridSpecType, interpolate
 from curve._smooth import smooth
 from curve._intersect import intersect_segments, intersect_curves, NotIntersected, SegmentsIntersection
@@ -877,17 +878,7 @@ class Segment:
             The point(s) on the segment for given "t"
         """
 
-        if isinstance(t, (abc.Sequence, np.ndarray)):
-            t = np.asarray(t)
-            if t.ndim > 1:
-                raise ValueError('"t" must be a sequence or 1-d numpy array')
-
-            dt = self.direction.data * t[np.newaxis].T
-            points_data = self.p1.data + dt
-
-            return [Point(pdata) for pdata in points_data]
-        else:
-            return self.p1 + self.direction * t
+        return _geomalg.segment_point(self, t)
 
     def t(self, point: ty.Union['Point', ty.Sequence['Point']],
           tol: ty.Optional[float] = None) -> ty.Union[float, np.ndarray]:
@@ -908,38 +899,7 @@ class Segment:
 
         """
 
-        if isinstance(point, Point):
-            if not self.collinear(point, tol=tol):
-                warnings.warn(
-                    "Given point '{}' is not collinear with the segment '{}'".format(point, self), RuntimeWarning)
-                return np.nan
-            b = point.data - self.p1.data
-            is_collinear = np.asarray([])
-        else:
-            is_collinear = np.array([self.collinear(p, tol=tol) for p in point], dtype=np.bool_)
-            b = np.stack([p.data - self.p1.data for p in point], axis=1)
-
-        a = self.direction.data[np.newaxis].T
-
-        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
-
-        if residuals.size > 0 and residuals[0] > F_EPS:
-            warnings.warn(
-                'The "lstsq" residuals are {}. "t" value(s) might be wrong.'.format(residuals),
-                RuntimeWarning)
-
-        t = t.squeeze()
-
-        if is_collinear.size == 0:
-            return float(t)
-        else:
-            if not np.all(is_collinear):
-                warnings.warn(
-                    "Some given points are not collinear with the segment", RuntimeWarning)
-                t[~is_collinear] = np.nan
-            if t.size == 1:
-                t = np.array(t, ndmin=1)
-            return t
+        return _geomalg.segment_t(self, point, tol=tol)
 
     def angle(self, other: 'Segment', ndigits: ty.Optional[int] = None) -> float:
         """Returns the angle between this segment and other segment
@@ -960,68 +920,7 @@ class Segment:
         if not isinstance(other, Segment):
             raise TypeError('The type of "other" argument must be \'Segment\'.')
 
-        u1 = self.direction
-        u2 = other.direction
-
-        denominator = u1.norm() * u2.norm()
-
-        if np.isclose(denominator, 0.0):
-            warnings.warn(
-                'Cannot compute angle between segments. One or both segments degenerate into a point.',
-                RuntimeWarning)
-            return np.nan
-
-        cos_phi = (u1 @ u2) / denominator
-
-        if ndigits is not None:
-            cos_phi = round(cos_phi, ndigits=ndigits)
-
-        # We need to consider floating point errors
-        cos_phi = 1.0 if cos_phi > 1.0 else cos_phi
-        cos_phi = -1.0 if cos_phi < -1.0 else cos_phi
-
-        return np.arccos(cos_phi)
-
-    def collinear(self, other: ty.Union['Segment', 'Point'],
-                  tol: ty.Optional[float] = None) -> bool:
-        """Returns True if the segment and other segment or point are collinear
-
-        Parameters
-        ----------
-        other : Segment, Point
-            The curve segment or point object
-        tol : float, None
-            Threshold below which SVD values are considered zero
-
-        Returns
-        -------
-        flag : bool
-            True if the segment and other segment or point are collinear
-
-        See Also
-        --------
-        parallel
-        coplanar
-
-        """
-
-        if isinstance(other, Point):
-            if other == self.p1 or other == self.p2:
-                return True
-        elif isinstance(other, Segment):
-            if other == self or other.swap() == self:
-                return True
-        else:
-            raise TypeError('"other" argument must be type \'Segment\'.')
-
-        # In n-dimensional space, a set of three or more distinct points are collinear
-        # if and only if, the matrix of the coordinates of these vectors is of rank 1 or less.
-        m = np.unique(np.vstack((self.data, other.data)).T, axis=1)
-
-        if m.shape[1] < 3:
-            return True
-
-        return np.linalg.matrix_rank(m, tol=tol) <= 1
+        return _geomalg.segments_angle(self, other, ndigits=ndigits)
 
     def parallel(self, other: 'Segment',
                  ndigits: ty.Optional[int] = 8,
@@ -1051,10 +950,45 @@ class Segment:
 
         """
 
-        phi = self.angle(other, ndigits=ndigits)
-        if np.isnan(phi):
-            return False
-        return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
+        return _geomalg.parallel_segments(self, other, ndigits=ndigits, rtol=rtol, atol=atol)
+
+    def collinear(self, other: ty.Union['Segment', 'Point'],
+                  tol: ty.Optional[float] = None) -> bool:
+        """Returns True if the segment and other segment or point are collinear
+
+        Parameters
+        ----------
+        other : Segment, Point
+            The curve segment or point object
+        tol : float, None
+            Threshold below which SVD values are considered zero
+
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment or point are collinear
+
+        See Also
+        --------
+        parallel
+        coplanar
+
+        """
+
+        points = [self.p1, self.p2]
+
+        if isinstance(other, Point):
+            if other == self.p1 or other == self.p2:
+                return True
+            points.append(other)
+        elif isinstance(other, Segment):
+            if other == self or other.swap() == self:
+                return True
+            points.extend([other.p1, other.p2])
+        else:
+            raise TypeError('"other" argument must be type \'Point\' or \'Segment\'.')
+
+        return _geomalg.collinear_points(points, tol=tol)
 
     def coplanar(self, other: ty.Union['Segment', 'Point'],
                  tol: ty.Optional[float] = None) -> bool:
@@ -1078,17 +1012,16 @@ class Segment:
 
         """
 
-        m = self.data.copy()
+        points = [self.p1, self.p2]
 
         if isinstance(other, Point):
-            m -= other.data
+            points.append(other)
         elif isinstance(other, Segment):
-            m = np.vstack((m, other.p1.data))
-            m -= other.p2.data
+            points.extend([other.p1, other.p2])
         else:
             raise TypeError('"other" argument must be type \'Point\' or \'Segment\'')
 
-        return np.linalg.matrix_rank(m, tol=tol) <= 2
+        return _geomalg.coplanar_points(points, tol=tol)
 
     def overlap(self, other: 'Segment', tol: ty.Optional[float] = None) -> ty.Optional['Segment']:
         """Returns overlap segment between the segment and other segment if it exists
@@ -1107,28 +1040,7 @@ class Segment:
 
         """
 
-        if not self.collinear(other, tol=tol):
-            return None
-
-        p11_data = self.p1.data
-        p12_data = self.p2.data
-        p21_data = other.p1.data
-        p22_data = other.p2.data
-
-        data_minmax = np.minimum(
-            np.maximum(p11_data, p12_data),
-            np.maximum(p21_data, p22_data),
-        )
-
-        data_maxmin = np.maximum(
-            np.minimum(p11_data, p12_data),
-            np.minimum(p21_data, p22_data),
-        )
-
-        if np.any(data_maxmin > data_minmax):
-            return None
-
-        return Segment(Point(data_maxmin), Point(data_minmax))
+        return _geomalg.overlap_segments(self, other, tol=tol)
 
     def intersect(self, other: 'Segment') -> ty.Union[NotIntersected, SegmentsIntersection]:
         """Finds the intersection of the segment and other segment

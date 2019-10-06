@@ -23,6 +23,7 @@ from curve._smooth import (
     get_smooth_filter,
     register_smooth_filter,
 )
+from curve._geomalg import GeometryAlgorithmsWarning
 from curve._intersect import SegmentsIntersection, NotIntersected
 from curve._numeric import isequal, allequal, dot1d
 
@@ -59,6 +60,9 @@ __all__ = [
     'smooth_methods',
     'get_smooth_filter',
     'register_smooth_filter',
+
+    # geomalgo
+    'GeometryAlgorithmsWarning',
 
     # intersection
     'SegmentsIntersection',
