@@ -121,7 +121,7 @@ class SegmentsIntersection:
         return None
 
     @property
-    def overlap(self) -> bool:
+    def isoverlap(self) -> bool:
         """Returns True if the segments are overlapped
 
         Returns
