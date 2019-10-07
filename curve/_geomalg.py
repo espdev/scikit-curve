@@ -363,6 +363,11 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: f
     shortest_segment : Segment
         The shortest segment between two segments
 
+    References
+    ----------
+    .. [1] `Distance between lines and segments
+            <http://geomalgorithms.com/a07-_distance.html>`_
+
     """
 
     from curve._base import Segment
