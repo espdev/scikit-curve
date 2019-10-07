@@ -121,6 +121,9 @@ def test_collinear(points1, points2, expected_flag):
     ((Point([1, 1]), Point([2, 2])), (Point([0, 0]), Point([3, 3])), True),
     ((Point([1, 0]), Point([2, 0])), (Point([2, 1]), Point([1, 1])), True),
     ((Point([0, 1]), Point([1, 1])), (Point([1, 2]), Point([2, 1])), False),
+    ((Point([0, 0]), Point([2, 0])), (Point([1, 2]), Point([2, 2])), True),
+    ((Point([0, 0]), Point([2, 0])), (Point([3, 3]), Point([3, 3])), True),  # singular
+    ((Point([0, 0]), Point([0, 0])), (Point([3, 3]), Point([3, 3])), True),  # singular
 
     # 3d
     ((Point([1, 1, 0]), Point([1, 2, 0])), (Point([1, 2, 0]), Point([1, 1, 0])), True),

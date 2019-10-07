@@ -27,7 +27,7 @@ from cached_property import cached_property
 
 from curve._distance import MetricType, get_metric
 from curve._utils import as2d
-from curve._numeric import allequal
+from curve._numeric import allequal, F_EPS
 from curve import _diffgeom
 from curve import _geomalg
 from curve._interpolate import InterpGridSpecType, interpolate
@@ -922,21 +922,15 @@ class Segment:
 
         return _geomalg.segments_angle(self, other, ndigits=ndigits)
 
-    def parallel(self, other: 'Segment',
-                 ndigits: ty.Optional[int] = 8,
-                 rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+    def parallel(self, other: 'Segment', tol: float = F_EPS) -> bool:
         """Returns True if the segment and other segment are parallel
 
         Parameters
         ----------
         other : Segment
             Other segment
-        ndigits : int, None
-            The number of significant digits
-        rtol : float
-            Relative tolerance with check angle
-        atol : float
-            Absolute tolerance with check angle
+        tol : float
+            Epsilon. It is a small float number. By default float64 eps
 
         Returns
         -------
@@ -950,7 +944,7 @@ class Segment:
 
         """
 
-        return _geomalg.parallel_segments(self, other, ndigits=ndigits, rtol=rtol, atol=atol)
+        return _geomalg.parallel_segments(self, other, tol=tol)
 
     def collinear(self, other: ty.Union['Segment', 'Point'],
                   tol: ty.Optional[float] = None) -> bool:

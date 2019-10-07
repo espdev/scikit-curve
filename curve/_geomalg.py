@@ -161,9 +161,7 @@ def segments_angle(segment1: 'Segment', segment2: 'Segment',
     return np.arccos(cos_phi)
 
 
-def parallel_segments(segment1: 'Segment', segment2: 'Segment',
-                      ndigits: ty.Optional[int] = 8,
-                      rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+def parallel_segments(segment1: 'Segment', segment2: 'Segment', tol: float = F_EPS) -> bool:
     """Returns True if two segments are parallel
 
     Parameters
@@ -172,12 +170,8 @@ def parallel_segments(segment1: 'Segment', segment2: 'Segment',
         The first segment
     segment2 : Segment
         The second segment
-    ndigits : int, None
-        The number of significant digits (precision)
-    rtol : float
-        Relative tolerance with check angle
-    atol : float
-        Absolute tolerance with check angle
+    tol : float
+        Epsilon. It is a small float number. By default float64 eps
 
     Returns
     -------
@@ -186,12 +180,16 @@ def parallel_segments(segment1: 'Segment', segment2: 'Segment',
 
     """
 
-    phi = segment1.angle(segment2, ndigits=ndigits)
+    u = segment1.direction
+    v = segment2.direction
 
-    if np.isnan(phi):
-        return False
+    a = u @ u
+    b = u @ v
+    c = v @ v
 
-    return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
+    d = a * c - b * b
+
+    return d < tol
 
 
 def collinear_points(points: ty.Union[ty.List['Point'], np.ndarray],
