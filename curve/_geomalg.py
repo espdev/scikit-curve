@@ -307,3 +307,39 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
         return None
 
     return Segment(Point(data_maxmin), Point(data_minmax))
+
+
+def distance_point_to_segment(point: 'Point', segment: 'Segment') -> float:
+    """Computes the shortest distance from the point to the segment
+
+    Parameters
+    ----------
+    point : Point
+        The point object
+    segment : Segment
+        The segment object
+
+    Returns
+    -------
+    dist : float
+        The shortest distance from the point to the segment
+
+    """
+
+    segment_direction = segment.direction
+    to_point_direction = point - segment.p1
+
+    c1 = to_point_direction @ segment_direction
+
+    if c1 < 0 or np.isclose(c1, 0):
+        return point.distance(segment.p1)
+
+    c2 = segment_direction @ segment_direction
+
+    if c2 < c1 or np.isclose(c2, c1):
+        return point.distance(segment.p2)
+
+    b = c1 / c2
+    pp = segment.p1 + segment_direction * b
+
+    return point.distance(pp)

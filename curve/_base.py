@@ -1061,6 +1061,28 @@ class Segment:
 
         return intersect_segments(self, other)
 
+    def distance(self, other: ty.Union['Point', 'Segment']) -> float:
+        """Computes the shortest distance between the segment and given point or segment
+
+        Parameters
+        ----------
+        other : Point, Segment
+            The point or segment object
+
+        Returns
+        -------
+        dist : float
+            The shortest distance
+
+        """
+
+        if isinstance(other, Point):
+            return _geomalg.distance_point_to_segment(other, self)
+        elif isinstance(other, Segment):
+            raise NotImplementedError
+        else:
+            raise TypeError('"other" argument must be \'Point\' or \'Segment\' type.')
+
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
 

@@ -203,6 +203,32 @@ def test_intersect(points1, points2, expected_intersect_point, isoverlap):
         assert intersection.isoverlap == isoverlap
 
 
+@pytest.mark.parametrize('segment_points, point, expected_distance', [
+    # 2d
+    ((Point([0, 0]), Point([2, 0])), Point([1, 1]), 1.0),
+    ((Point([0, 0]), Point([2, 0])), Point([-1, -1]), np.sqrt(2)),
+    ((Point([0, 0]), Point([2, 0])), Point([3, 1]), np.sqrt(2)),
+    ((Point([0, 0]), Point([2, 2])), Point([0, 2]), np.sqrt(2)),
+    ((Point([0, 0]), Point([2, 2])), Point([-2, 0]), 2.0),
+    ((Point([0, 0]), Point([2, 2])), Point([-1, -1]), np.sqrt(2)),
+    ((Point([0, 0]), Point([2, 2])), Point([1, 0]), np.sqrt(2)/2),
+    ((Point([0, 0]), Point([2, 2])), Point([3, 3]), np.sqrt(2)),
+    ((Point([0, 0]), Point([2, 2])), Point([3, 2]), 1.0),
+    ((Point([0, 0]), Point([2, 2])), Point([3, 1]), np.sqrt(2)),
+    ((Point([0, 0]), Point([2, 2])), Point([1, 1]), 0.0),
+
+    # 3d
+    ((Point([0, 0, 0]), Point([2, 0, 0])), Point([1, 1, 0]), 1.0),
+    ((Point([0, 0, 0]), Point([2, 2, 2])), Point([1, 1, 1]), 0.0),
+    ((Point([0, 0, 0]), Point([2, 2, 2])), Point([3, 3, 1]), np.sqrt(3)),
+    ((Point([0, 0, 0]), Point([2, 2, 2])), Point([3, 3, 3]), np.sqrt(3)),
+    ((Point([0, 0, 0]), Point([2, 2, 2])), Point([-1, -1, -1]), np.sqrt(3)),
+])
+def test_distance_point(segment_points, point, expected_distance):
+    segment = Segment(*segment_points)
+    assert segment.distance(point) == pytest.approx(expected_distance)
+
+
 def test_to_curve():
     segment = Segment(Point([1, 1]), Point([2, 2]))
     assert segment.to_curve() == Curve([(1, 2), (1, 2)])
