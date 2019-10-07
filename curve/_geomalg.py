@@ -343,7 +343,8 @@ def distance_point_to_segment(point: 'Point', segment: 'Segment') -> float:
     return point.distance(pp)
 
 
-def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> ty.Tuple[float, 'Segment']:
+def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_EPS) \
+        -> ty.Tuple[float, 'Segment']:
     """Computes the shortest distance between two segments
 
     Parameters
@@ -352,6 +353,8 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> ty.
         The first segment object
     segment2 : Segment
         The second segment object
+    tol : float
+        Epsilon. It is a small float number. By default float64 eps
 
     Returns
     -------
@@ -378,7 +381,7 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> ty.
     sd = td = dd
 
     # Compute the line parameters of the two closest points
-    if dd < F_EPS:
+    if dd < tol:
         # the lines are almost parallel
         sn, sd = 0.0, 1.0
         tn, td = e, c
@@ -420,8 +423,8 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> ty.
             sd = a
 
     # finally do the division to get sc and tc
-    sc = 0.0 if np.abs(sn) < F_EPS else sn / sd
-    tc = 0.0 if np.abs(tn) < F_EPS else tn / td
+    sc = 0.0 if np.abs(sn) < tol else sn / sd
+    tc = 0.0 if np.abs(tn) < tol else tn / td
 
     # get the difference of the two closest points: S1(sc) - S2(tc)
     dp = w + (u * sc) - (v * tc)
