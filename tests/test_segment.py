@@ -238,6 +238,8 @@ def test_distance_point(segment_points, point, expected_distance):
     ((Point([0, 0]), Point([2, 0])), (Point([-1, 0]), Point([3, 0])), 0.0),
     ((Point([1, 1]), Point([2, 2])), (Point([1, 2]), Point([2, 1])), 0.0),
     ((Point([2, 0]), Point([2, 2])), (Point([1, 1]), Point([3, 1])), 0.0),
+    ((Point([0, 0]), Point([1, 0])), (Point([2, 1]), Point([3, 1])), np.sqrt(2)),
+    ((Point([0, 0]), Point([1, 0])), (Point([-2, -1]), Point([-1, -1])), np.sqrt(2)),
 
     # 3d
     ((Point([2, 2, 0]), Point([2, 2, 2])), (Point([1, 3, 1]), Point([3, 3, 1])), 1.0),
