@@ -341,3 +341,86 @@ def distance_point_to_segment(point: 'Point', segment: 'Segment') -> float:
     pp = segment.p1 + segment_direction * b
 
     return point.distance(pp)
+
+
+def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> float:
+    """Computes the shortest distance between two segments
+
+    Parameters
+    ----------
+    segment1 : Segment
+        The first segment object
+    segment2 : Segment
+        The second segment object
+
+    Returns
+    -------
+    dist : float
+        The shortest distance between two segments
+
+    """
+
+    u = segment1.direction
+    v = segment2.direction
+    w = segment1.p1 - segment2.p1
+
+    a = u @ u
+    b = u @ v
+    c = v @ v
+    d = u @ w
+    e = v @ w
+
+    dd = a * c - b * b
+    sd = td = dd
+
+    # Compute the line parameters of the two closest points
+    if dd < F_EPS:
+        # the lines are almost parallel
+        sn, sd = 0.0, 1.0
+        tn, td = e, c
+    else:
+        sn = b * e - c * d
+        tn = a * e - b * d
+
+        if sn < 0.0:
+            # sc < 0 => the s=0 edge is visible
+            sn = 0.0
+            tn, td = e, c
+        elif sn > sd:
+            # sc > 1  => the s=1 edge is visible
+            sn = sd
+            tn = e + b
+            td = c
+
+    if tn < 0.0:
+        # tc < 0 => the t=0 edge is visible
+        tn = 0.0
+        # recompute sc for this edge
+        if -d < 0.0:
+            sn = 0.0
+        elif -d > a:
+            sn = sd
+        else:
+            sn = -d
+            sd = a
+    elif tn > td:
+        # tc > 1  => the t=1 edge is visible
+        tn = td
+        # recompute sc for this edge
+        if (-d + b) < 0.0:
+            sn = 0
+        elif (-d + b) > a:
+            sn = sd
+        else:
+            sn = -d + b
+            sd = a
+
+    # finally do the division to get sc and tc
+    sc = 0.0 if np.abs(sn) < F_EPS else sn / sd
+    tc = 0.0 if np.abs(tn) < F_EPS else tn / td
+
+    # get the difference of the two closest points (S1(sc) - S2(tc))
+    dp = w + (u * sc) - (v * tc)
+
+    # return the closest distance
+    return dp.norm()

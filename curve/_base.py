@@ -1073,7 +1073,7 @@ class Segment:
         if isinstance(other, Point):
             return _geomalg.distance_point_to_segment(other, self)
         elif isinstance(other, Segment):
-            raise NotImplementedError
+            return _geomalg.distance_segment_to_segment(self, other)
         else:
             raise TypeError('"other" argument must be \'Point\' or \'Segment\' type.')
 

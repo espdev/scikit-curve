@@ -232,6 +232,24 @@ def test_distance_point(segment_points, point, expected_distance):
     assert segment.distance(point) == pytest.approx(expected_distance)
 
 
+@pytest.mark.parametrize('points1, points2, expected_distance', [
+    # 2d
+    ((Point([0, 0]), Point([2, 0])), (Point([1, 1]), Point([3, 1])), 1.0),
+    ((Point([0, 0]), Point([2, 0])), (Point([-1, 0]), Point([3, 0])), 0.0),
+    ((Point([1, 1]), Point([2, 2])), (Point([1, 2]), Point([2, 1])), 0.0),
+    ((Point([2, 0]), Point([2, 2])), (Point([1, 1]), Point([3, 1])), 0.0),
+
+    # 3d
+    ((Point([2, 2, 0]), Point([2, 2, 2])), (Point([1, 3, 1]), Point([3, 3, 1])), 1.0),
+    ((Point([2, 2, 0]), Point([2, 2, 2])), (Point([1, 2, 1]), Point([3, 2, 1])), 0.0),
+    ((Point([0, 0, 0]), Point([1, 1, 1])), (Point([2, 2, 1]), Point([3, 3, 2])), np.sqrt(2)),
+])
+def test_distance_segment(points1, points2, expected_distance):
+    segment1 = Segment(*points1)
+    segment2 = Segment(*points2)
+    assert segment1.distance(segment2) == pytest.approx(expected_distance)
+
+
 def test_to_curve():
     segment = Segment(Point([1, 1]), Point([2, 2]))
     assert segment.to_curve() == Curve([(1, 2), (1, 2)])
