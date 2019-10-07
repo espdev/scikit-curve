@@ -234,6 +234,7 @@ def test_distance_point(segment_points, point, expected_distance):
 
 @pytest.mark.parametrize('points1, points2, expected_distance', [
     # 2d
+    ((Point([0, 0]), Point([2, 0])), (Point([0, 2]), Point([2, 2])), 2.0),
     ((Point([0, 0]), Point([2, 0])), (Point([1, 1]), Point([3, 1])), 1.0),
     ((Point([0, 0]), Point([2, 0])), (Point([-1, 0]), Point([3, 0])), 0.0),
     ((Point([1, 1]), Point([2, 2])), (Point([1, 2]), Point([2, 1])), 0.0),

@@ -343,7 +343,7 @@ def distance_point_to_segment(point: 'Point', segment: 'Segment') -> float:
     return point.distance(pp)
 
 
-def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> float:
+def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> ty.Tuple[float, 'Segment']:
     """Computes the shortest distance between two segments
 
     Parameters
@@ -357,8 +357,12 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> flo
     -------
     dist : float
         The shortest distance between two segments
+    shortest_segment : Segment
+        The shortest segment between two segments
 
     """
+
+    from curve._base import Segment
 
     u = segment1.direction
     v = segment2.direction
@@ -419,8 +423,10 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment') -> flo
     sc = 0.0 if np.abs(sn) < F_EPS else sn / sd
     tc = 0.0 if np.abs(tn) < F_EPS else tn / td
 
-    # get the difference of the two closest points (S1(sc) - S2(tc))
+    # get the difference of the two closest points: S1(sc) - S2(tc)
     dp = w + (u * sc) - (v * tc)
 
-    # return the closest distance
-    return dp.norm()
+    shortest_segment = Segment(segment1.point(sc), segment2.point(tc))
+
+    # return the shortest distance and shortest connecting segment
+    return dp.norm(), shortest_segment
