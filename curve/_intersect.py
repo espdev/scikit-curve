@@ -6,6 +6,7 @@ in n-dimensional Euclidean space.
 
 """
 
+import collections.abc as abc
 import typing as ty
 import warnings
 import enum
@@ -18,12 +19,19 @@ if ty.TYPE_CHECKING:
     from curve._base import Point, Segment, Curve
 
 
+_INTERSECT_METHODS = {}
+_DEFAULT_INTERSECT_METHOD = None  # type: ty.Optional[str]
+
 NotIntersected = None
-DEFAULT_ALMOST_TOL = 1e-5
 
 
 class IntersectionWarning(UserWarning):
     """All intersection warnings
+    """
+
+
+class IntersectionError(Exception):
+    """All intersection errors
     """
 
 
@@ -171,8 +179,222 @@ class SegmentsIntersection:
             return self._intersect_info.data
 
 
+def intersect_methods() -> ty.List[str]:
+    """Returns the list of available intersect methods
+
+    Returns
+    -------
+    methods : List[str]
+        The list of available intersect methods
+
+    See Also
+    --------
+    get_intersect_method
+    register_intersect_method
+
+    """
+
+    return list(_INTERSECT_METHODS.keys())
+
+
+def get_intersect_method(method: str) -> abc.Callable:
+    """Returns the intersection method callable for the given method name
+
+    Parameters
+    ----------
+    method : str
+        Intersection method name
+
+    Returns
+    -------
+    intersect : Callable
+        Intersection method callable
+
+    See Also
+    --------
+    intersect_methods
+    register_intersect_method
+
+    Raises
+    ------
+    NameError : If intersect method is unknown
+
+    """
+
+    if method not in _INTERSECT_METHODS:
+        raise NameError(
+            'Unknown method "{}". The following methods are available: {}'.format(
+                method, intersect_methods()))
+
+    return _INTERSECT_METHODS[method]
+
+
+def default_intersect_method() -> str:
+    """Returns default intersect method
+
+    Returns
+    -------
+    method : str
+        Default intersect method
+    """
+    global _DEFAULT_INTERSECT_METHOD
+    return _DEFAULT_INTERSECT_METHOD
+
+
+def set_default_intersect_method(method: str) -> None:
+    """Sets the given intersect method as default
+
+    Parameters
+    ----------
+    method : str
+        Method name
+
+    See Also
+    --------
+    default_intersect_method
+    register_intersect_method
+    """
+
+    global _DEFAULT_INTERSECT_METHOD
+
+    if method not in _INTERSECT_METHODS:
+        raise NameError(
+            'Unknown method "{}". The following methods are available: {}'.format(
+                method, intersect_methods()))
+
+    _DEFAULT_INTERSECT_METHOD = method
+
+
+def register_intersect_method(method: str, default: bool = False):
+    """Decorator for registering segment intersection methods
+
+    Parameters
+    ----------
+    method : str
+        Method name
+    default : bool
+        Makes given method as default
+
+    See Also
+    --------
+    intersect_methods
+    get_intersect_method
+
+    """
+
+    def decorator(method_callable):
+        if method in _INTERSECT_METHODS:
+            raise ValueError('"{}" intersect method already registered for {}'.format(
+                method, _INTERSECT_METHODS[method]))
+        _INTERSECT_METHODS[method] = method_callable
+
+        if default:
+            set_default_intersect_method(method)
+
+    return decorator
+
+
+@register_intersect_method('exact', default=True)
+def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> ty.Optional[IntersectionInfo]:
+    """Determines the segments intersection exactly
+
+    We should solve the linear system of the following equations:
+        x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
+        y1 + t1 * (y2 - y1) = y3 + t2 * (y4 - y3)
+                         ...
+        n1 + t1 * (n2 - n3) = n3 + t2 * (n4 - n3)
+
+    The solution of this system is t1 and t2 parameter values.
+    If t1 and t2 in the range [0, 1], the segments are intersect.
+
+    If the coefficient matrix is non-symmetric (for n-dim > 2),
+    it requires a solver for over-determined system.
+
+    Parameters
+    ----------
+    segment1 : Segment
+        The first segment
+    segment2 : Segment
+        The second segment
+
+    Returns
+    -------
+    intersect_info : IntersectionInfo, NotIntersected
+        Intersection info or NotIntersected
+    """
+
+    a = np.stack((segment1.direction.data,
+                  -segment2.direction.data), axis=1)
+    b = (segment2.p1 - segment1.p1).data
+
+    if segment1.ndim == 2:
+        try:
+            t = np.linalg.solve(a, b)
+        except np.linalg.LinAlgError as err:
+            warnings.warn(
+                'Cannot solve system of equations: {}'.format(err), IntersectionWarning)
+            return NotIntersected
+    else:
+        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
+
+        if residuals.size > 0 and residuals[0] > F_EPS:
+            warnings.warn(
+                'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
+                    residuals, F_EPS), IntersectionWarning)
+
+    if np.all(((t > 0) | np.isclose(t, 0)) &
+              ((t < 1) | np.isclose(t, 1))):
+        intersect_point1 = segment1.point(t[0])
+        intersect_point2 = segment2.point(t[1])
+
+        if intersect_point1 != intersect_point2:
+            distance = intersect_point1.distance(intersect_point2)
+
+            if distance > F_EPS:
+                warnings.warn(
+                    'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
+                        distance), IntersectionWarning)
+                return NotIntersected
+
+        return IntersectionType.EXACT(intersect_point1)
+
+    return NotIntersected
+
+
+@register_intersect_method('almost')
+def almost_intersect(segment1: 'Segment', segment2: 'Segment',
+                     almost_tol: float = 1e-5) -> ty.Optional[IntersectionInfo]:
+    """Determines the almost intersection of two skewnes segments
+
+    We should compute the shortest connecting segment between the segments in this case.
+    We check the length of the shortest segment. If it is smaller a tolerance value we
+    consider it as the intersection of the segments.
+
+    Parameters
+    ----------
+    segment1 : Segment
+        The first segment
+    segment2 : Segment
+        The second segment
+    almost_tol : float
+        The almost intersection tolerance value for. By default 1e-5.
+
+    Returns
+    -------
+    intersect_info : IntersectionInfo, NotIntersected
+        Intersection info or NotIntersected
+    """
+
+    shortest_segment = segment1.shortest_segment(segment2)
+
+    if shortest_segment.seglen < almost_tol:
+        return IntersectionType.ALMOST(shortest_segment)
+
+    return NotIntersected
+
+
 def intersect_segments(segment1: 'Segment', segment2: 'Segment',
-                       method: str = 'exact', almost_tol: float = DEFAULT_ALMOST_TOL) \
+                       method: ty.Optional[str] = None, **params) \
         -> ty.Union[NotIntersected, SegmentsIntersection]:
     """Finds exact intersection of two n-dimensional segments
 
@@ -185,13 +407,15 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
         The first segment
     segment2 : Segment
         The second segment
-    method : str
-        The method to determine intersection:
-            - ``exact`` -- the exact intersection solving the system of equations
+    method : str, None
+        The method to determine intersection. By default the following methods are available:
+            - ``exact`` -- (default) the exact intersection solving the system of equations
             - ``almost`` -- the almost intersection using the shortest connecting segment.
               This is usually actual for dimension >= 3.
-    almost_tol : float
-        The almost intersection tolerance value for ``almost`` method. By default 1e-5.
+
+            The default method is ``exact``.
+    params : mapping
+        The intersection method parameters
 
     Returns
     -------
@@ -206,6 +430,11 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
     ValueError : Invalid input data or parameters
 
     """
+
+    global _DEFAULT_INTERSECT_METHOD
+
+    if method is None:
+        method = _DEFAULT_INTERSECT_METHOD
 
     if segment1.ndim != segment2.ndim:
         raise ValueError('The dimension of the segments must be equal.')
@@ -236,75 +465,22 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
     # After checking all corner cases we are sure that
     # two segments (or lines) should intersected.
 
-    if method == 'exact':
-        # We should solve the linear system of the following equations:
-        #   x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
-        #   y1 + t1 * (y2 - y1) = y3 + t2 * (y4 - y3)
-        #                      ...
-        #   n1 + t1 * (n2 - n3) = n3 + t2 * (n4 - n3)
-        #
-        # The solution of this system is t1 and t2 parameter values.
-        # If t1 and t2 in the range [0, 1], the segments are intersect.
-        #
-        # If the coefficient matrix is non-symmetric (for n-dim > 2),
-        # it requires a solver for over-determined system.
+    intersect_method = get_intersect_method(method)
 
-        a = np.stack((segment1.direction.data,
-                      -segment2.direction.data), axis=1)
-        b = (segment2.p1 - segment1.p1).data
+    try:
+        intersect_info = intersect_method(segment1, segment2, **params)
+    except Exception as err:
+        raise IntersectionError("'{}': finding intersection has failed: {}".format(
+            method, err)) from err
 
-        if segment1.ndim == 2:
-            try:
-                t = np.linalg.solve(a, b)
-            except np.linalg.LinAlgError as err:
-                warnings.warn('Cannot solve system of equations: {}'.format(err), IntersectionWarning)
-                return NotIntersected
-        else:
-            t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
+    if intersect_info:
+        return SegmentsIntersection(
+            segment1=segment1,
+            segment2=segment2,
+            intersect_info=intersect_info,
+        )
 
-            if residuals.size > 0 and residuals[0] > F_EPS:
-                warnings.warn(
-                    'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
-                        residuals, F_EPS), IntersectionWarning)
-
-        if np.all(((t > 0) | np.isclose(t, 0)) &
-                  ((t < 1) | np.isclose(t, 1))):
-            intersect_point1 = segment1.point(t[0])
-            intersect_point2 = segment2.point(t[1])
-
-            if intersect_point1 != intersect_point2:
-                distance = intersect_point1.distance(intersect_point2)
-
-                if distance > F_EPS:
-                    warnings.warn(
-                        'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
-                            distance), IntersectionWarning)
-                    return NotIntersected
-
-            return SegmentsIntersection(
-                segment1=segment1,
-                segment2=segment2,
-                intersect_info=IntersectionType.EXACT(intersect_point1),
-            )
-
-        return NotIntersected
-
-    elif method == 'almost':
-        # We should compute the shortest connecting segment between the segments in this case.
-        # We check the length of the shortest segment. If it is smaller a tolerance value we
-        # consider it as the intersection of the segments.
-        shortest_segment = segment1.shortest_segment(segment2)
-
-        if shortest_segment.seglen < almost_tol:
-            return SegmentsIntersection(
-                segment1=segment1,
-                segment2=segment2,
-                intersect_info=IntersectionType.ALMOST(shortest_segment),
-            )
-
-        return NotIntersected
-    else:
-        raise ValueError('Invalid method "{}"'.format(method))
+    return NotIntersected
 
 
 def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
@@ -370,7 +546,7 @@ def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
 
 
 def intersect_curves(curve1: 'Curve', curve2: 'Curve',
-                     method: str = 'exact', almost_tol: float = DEFAULT_ALMOST_TOL) -> ty.List[SegmentsIntersection]:
+                     method: ty.Optional[str] = None, **params) -> ty.List[SegmentsIntersection]:
     """Finds the intersections between two n-dimensional curves or a curve self intersections
 
     Parameters
@@ -380,13 +556,15 @@ def intersect_curves(curve1: 'Curve', curve2: 'Curve',
     curve2 : Curve
         The second curve object. If it is equal to curve1,
         self intersection will be determined.
-    method : str
-        The method to determine intersection:
-            - ``exact`` -- the exact intersection solving the system of equations
+    method : str, None
+        The method to determine intersection. By default the following methods are available:
+            - ``exact`` -- (default) the exact intersection solving the system of equations
             - ``almost`` -- the almost intersection using the shortest connecting segment.
               This is usually actual for dimension >= 3.
-    almost_tol : float
-        The almost intersection tolerance value for ``almost`` method. By default 1e-5.
+
+            The default method is ``exact``.
+    params : mapping
+        The intersection method parameters
 
     Returns
     -------
@@ -413,7 +591,7 @@ def intersect_curves(curve1: 'Curve', curve2: 'Curve',
     intersections = []
 
     for segment1, segment2 in zip(curve1.segments[s1], curve2.segments[s2]):
-        intersection = segment1.intersect(segment2, method=method, almost_tol=almost_tol)
+        intersection = intersect_segments(segment1, segment2, method=method, **params)
 
         if intersection is NotIntersected:
             continue

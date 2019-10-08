@@ -29,6 +29,11 @@ from curve._intersect import (
     IntersectionType,
     SegmentsIntersection,
     NotIntersected,
+    intersect_methods,
+    get_intersect_method,
+    default_intersect_method,
+    set_default_intersect_method,
+    register_intersect_method,
 )
 from curve._numeric import isequal, allequal, dot1d
 
@@ -74,6 +79,11 @@ __all__ = [
     'IntersectionType',
     'SegmentsIntersection',
     'NotIntersected',
+    'intersect_methods',
+    'get_intersect_method',
+    'default_intersect_method',
+    'set_default_intersect_method',
+    'register_intersect_method',
 
     # numeric
     'isequal',

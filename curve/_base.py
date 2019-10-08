@@ -37,7 +37,6 @@ from curve._intersect import (
     intersect_curves,
     NotIntersected,
     SegmentsIntersection,
-    DEFAULT_ALMOST_TOL,
 )
 
 
@@ -1043,21 +1042,22 @@ class Segment:
         return _geomalg.overlap_segments(self, other, tol=tol)
 
     def intersect(self, other: 'Segment',
-                  method: str = 'exact',
-                  almost_tol: float = DEFAULT_ALMOST_TOL) -> ty.Union[NotIntersected, SegmentsIntersection]:
+                  method: ty.Optional[str] = None, **params) -> ty.Union[NotIntersected, SegmentsIntersection]:
         """Finds the intersection of the segment and other segment
 
         Parameters
         ----------
         other : Segment
             Other segment
-        method : str
-            The method to determine intersection:
-                - ``exact`` -- the exact intersection solving the system of equations
+        method : str, None
+            The method to determine intersection. By default the following methods are available:
+                - ``exact`` -- (default) the exact intersection solving the system of equations
                 - ``almost`` -- the almost intersection using the shortest connecting segment.
                   This is usually actual for dimension >= 3.
-        almost_tol : float
-            The almost intersection tolerance value for ``almost`` method. By default 1e-5.
+
+                The default method is ``exact``.
+        params : mapping
+            The intersection method parameters
 
         Returns
         -------
@@ -1068,7 +1068,7 @@ class Segment:
 
         """
 
-        return intersect_segments(self, other, method=method, almost_tol=almost_tol)
+        return intersect_segments(self, other, method=method, **params)
 
     def distance(self, other: ty.Union['Point', 'Segment']) -> float:
         """Computes the shortest distance between the segment and given point or segment
@@ -2800,21 +2800,22 @@ class Curve(abc.Sequence):
         return smooth(self, method, **params)
 
     def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None,
-                  method: str = 'exact',
-                  almost_tol: float = DEFAULT_ALMOST_TOL) -> ty.List[SegmentsIntersection]:
-        """Determines the curve intersections with other curve/segment or itself
+                  method: ty.Optional[str] = None, **params) -> ty.List[SegmentsIntersection]:
+        """Determines the curve intersections with other curve or segment or itself
 
         Parameters
         ----------
         other : Curve, Segment, None
             Other object to determine intersection or None for itself
-        method : str
-            The method to determine intersection:
-                - ``exact`` -- the exact intersection solving the system of equations
+        method : str, None
+            The method to determine intersection. By default the following methods are available:
+                - ``exact`` -- (default) the exact intersection solving the system of equations
                 - ``almost`` -- the almost intersection using the shortest connecting segment.
                   This is usually actual for dimension >= 3.
-        almost_tol : float
-            The almost intersection tolerance value for ``almost`` method. By default 1e-5.
+
+                The default method is ``exact``.
+        params : mapping
+            The intersection method parameters
 
         Returns
         -------
@@ -2835,9 +2836,9 @@ class Curve(abc.Sequence):
         elif isinstance(other, Segment):
             curve2 = other.to_curve()
         else:
-            raise TypeError('"other" object must be "Curve" or "CurveSegment" class or None')
+            raise TypeError("'other' argument must be 'Curve' or 'Segment' or None.")
 
-        intersections = intersect_curves(self, curve2, method=method, almost_tol=almost_tol)
+        intersections = intersect_curves(self, curve2, method=method, **params)
 
         if isinstance(other, Segment):
             for i, intersection in enumerate(intersections):
@@ -2851,4 +2852,4 @@ class Curve(abc.Sequence):
 
     def _check_ndim(self, other: PointCurveUnion):
         if self.ndim != other.ndim:
-            raise ValueError('The dimensions of the curve and other object do not match')
+            raise ValueError('The dimensions of the curve and other object do not match.')
