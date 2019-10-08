@@ -19,6 +19,7 @@ if ty.TYPE_CHECKING:
 
 
 NotIntersected = None
+DEFAULT_ALMOST_TOL = 1e-5
 
 
 class IntersectionWarning(UserWarning):
@@ -170,7 +171,8 @@ class SegmentsIntersection:
             return self._intersect_info.data
 
 
-def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
+def intersect_segments(segment1: 'Segment', segment2: 'Segment',
+                       method: str = 'exact', almost_tol: float = DEFAULT_ALMOST_TOL) \
         -> ty.Union[NotIntersected, SegmentsIntersection]:
     """Finds exact intersection of two n-dimensional segments
 
@@ -183,6 +185,13 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
         The first segment
     segment2 : Segment
         The second segment
+    method : str
+        The method to determine intersection:
+            - ``exact`` -- the exact intersection solving the system of equations
+            - ``almost`` -- the almost intersection using the shortest connecting segment.
+              This is usually actual for dimension >= 3.
+    almost_tol : float
+        The almost intersection tolerance value for ``almost`` method. By default 1e-5.
 
     Returns
     -------
@@ -194,6 +203,7 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
     Raises
     ------
     ValueError : dimensions of the segments are different
+    ValueError : Invalid input data or parameters
 
     """
 
@@ -217,66 +227,84 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
     if segment1.parallel(segment2):
         return NotIntersected
 
-    if not segment1.coplanar(segment2):
+    if method == 'exact' and not segment1.coplanar(segment2):
         return NotIntersected
 
     if segment1.singular or segment2.singular:
         return NotIntersected
 
     # After checking all corner cases we are sure that
-    # two segments (or lines) should intersect.
+    # two segments (or lines) should intersected.
 
-    # We should solve the linear system of the following equations:
-    #   x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
-    #   y1 + t1 * (y2 - y1) = y3 + t2 * (y4 - y3)
-    #                      ...
-    #   n1 + t1 * (n2 - n3) = n3 + t2 * (n4 - n3)
-    #
-    # The solution of this system is t1 and t2 parameter values.
-    # If t1 and t2 in the range [0, 1], the segments are intersect.
-    #
-    # If the coefficient matrix is non-symmetric (for n-dim > 2),
-    # it requires a solver for over-determined system.
+    if method == 'exact':
+        # We should solve the linear system of the following equations:
+        #   x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
+        #   y1 + t1 * (y2 - y1) = y3 + t2 * (y4 - y3)
+        #                      ...
+        #   n1 + t1 * (n2 - n3) = n3 + t2 * (n4 - n3)
+        #
+        # The solution of this system is t1 and t2 parameter values.
+        # If t1 and t2 in the range [0, 1], the segments are intersect.
+        #
+        # If the coefficient matrix is non-symmetric (for n-dim > 2),
+        # it requires a solver for over-determined system.
 
-    a = np.stack((segment1.direction.data,
-                  -segment2.direction.data), axis=1)
-    b = (segment2.p1 - segment1.p1).data
+        a = np.stack((segment1.direction.data,
+                      -segment2.direction.data), axis=1)
+        b = (segment2.p1 - segment1.p1).data
 
-    if segment1.ndim == 2:
-        try:
-            t = np.linalg.solve(a, b)
-        except np.linalg.LinAlgError as err:
-            warnings.warn('Cannot solve system of equations: {}'.format(err), IntersectionWarning)
-            return NotIntersected
-    else:
-        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
-
-        if residuals.size > 0 and residuals[0] > F_EPS:
-            warnings.warn(
-                'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
-                    residuals, F_EPS), IntersectionWarning)
-
-    if np.all(((t > 0) | np.isclose(t, 0)) &
-              ((t < 1) | np.isclose(t, 1))):
-        intersect_point1 = segment1.point(t[0])
-        intersect_point2 = segment2.point(t[1])
-
-        if intersect_point1 != intersect_point2:
-            distance = intersect_point1.distance(intersect_point2)
-
-            if distance > F_EPS:
-                warnings.warn(
-                    'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
-                        distance), IntersectionWarning)
+        if segment1.ndim == 2:
+            try:
+                t = np.linalg.solve(a, b)
+            except np.linalg.LinAlgError as err:
+                warnings.warn('Cannot solve system of equations: {}'.format(err), IntersectionWarning)
                 return NotIntersected
+        else:
+            t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
 
-        return SegmentsIntersection(
-            segment1=segment1,
-            segment2=segment2,
-            intersect_info=IntersectionType.EXACT(intersect_point1),
-        )
+            if residuals.size > 0 and residuals[0] > F_EPS:
+                warnings.warn(
+                    'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
+                        residuals, F_EPS), IntersectionWarning)
 
-    return NotIntersected
+        if np.all(((t > 0) | np.isclose(t, 0)) &
+                  ((t < 1) | np.isclose(t, 1))):
+            intersect_point1 = segment1.point(t[0])
+            intersect_point2 = segment2.point(t[1])
+
+            if intersect_point1 != intersect_point2:
+                distance = intersect_point1.distance(intersect_point2)
+
+                if distance > F_EPS:
+                    warnings.warn(
+                        'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
+                            distance), IntersectionWarning)
+                    return NotIntersected
+
+            return SegmentsIntersection(
+                segment1=segment1,
+                segment2=segment2,
+                intersect_info=IntersectionType.EXACT(intersect_point1),
+            )
+
+        return NotIntersected
+
+    elif method == 'almost':
+        # We should compute the shortest connecting segment between the segments in this case.
+        # We check the length of the shortest segment. If it is smaller a tolerance value we
+        # consider it as the intersection of the segments.
+        shortest_segment = segment1.shortest_segment(segment2)
+
+        if shortest_segment.seglen < almost_tol:
+            return SegmentsIntersection(
+                segment1=segment1,
+                segment2=segment2,
+                intersect_info=IntersectionType.ALMOST(shortest_segment),
+            )
+
+        return NotIntersected
+    else:
+        raise ValueError('Invalid method "{}"'.format(method))
 
 
 def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
@@ -341,7 +369,8 @@ def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
     return s1, s2
 
 
-def intersect_curves(curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
+def intersect_curves(curve1: 'Curve', curve2: 'Curve',
+                     method: str = 'exact', almost_tol: float = DEFAULT_ALMOST_TOL) -> ty.List[SegmentsIntersection]:
     """Finds the intersections between two n-dimensional curves or a curve self intersections
 
     Parameters
@@ -351,6 +380,13 @@ def intersect_curves(curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsInters
     curve2 : Curve
         The second curve object. If it is equal to curve1,
         self intersection will be determined.
+    method : str
+        The method to determine intersection:
+            - ``exact`` -- the exact intersection solving the system of equations
+            - ``almost`` -- the almost intersection using the shortest connecting segment.
+              This is usually actual for dimension >= 3.
+    almost_tol : float
+        The almost intersection tolerance value for ``almost`` method. By default 1e-5.
 
     Returns
     -------
@@ -377,7 +413,7 @@ def intersect_curves(curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsInters
     intersections = []
 
     for segment1, segment2 in zip(curve1.segments[s1], curve2.segments[s2]):
-        intersection = segment1.intersect(segment2)
+        intersection = segment1.intersect(segment2, method=method, almost_tol=almost_tol)
 
         if intersection is NotIntersected:
             continue
