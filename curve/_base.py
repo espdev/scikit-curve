@@ -37,6 +37,7 @@ from curve._intersect import (
     intersect_curves,
     NotIntersected,
     SegmentsIntersection,
+    DEFAULT_ALMOST_TOL,
 )
 
 
@@ -1042,7 +1043,8 @@ class Segment:
         return _geomalg.overlap_segments(self, other, tol=tol)
 
     def intersect(self, other: 'Segment',
-                  method: str = 'exact', almost_tol: float = 1e-5) -> ty.Union[NotIntersected, SegmentsIntersection]:
+                  method: str = 'exact',
+                  almost_tol: float = DEFAULT_ALMOST_TOL) -> ty.Union[NotIntersected, SegmentsIntersection]:
         """Finds the intersection of the segment and other segment
 
         Parameters
@@ -2798,7 +2800,8 @@ class Curve(abc.Sequence):
         return smooth(self, method, **params)
 
     def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None,
-                  method: str = 'exact', almost_tol: float = 1e-5) -> ty.List[SegmentsIntersection]:
+                  method: str = 'exact',
+                  almost_tol: float = DEFAULT_ALMOST_TOL) -> ty.List[SegmentsIntersection]:
         """Determines the curve intersections with other curve/segment or itself
 
         Parameters
