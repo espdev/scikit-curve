@@ -307,22 +307,24 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
     return Segment(Point(data_maxmin), Point(data_minmax))
 
 
-def distance_point_to_segment(point: 'Point', segment: 'Segment') -> float:
-    """Computes the shortest distance from the point to the segment
+def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
+    """Computes the shortest segment from the segment to the point
 
     Parameters
     ----------
-    point : Point
-        The point object
     segment : Segment
         The segment object
+    point : Point
+        The point object
 
     Returns
     -------
-    dist : float
-        The shortest distance from the point to the segment
+    shortest_segment : Segment
+        The shortest segment between the point and the segment
 
     """
+
+    from curve._base import Segment
 
     segment_direction = segment.direction
     to_point_direction = point - segment.p1
@@ -330,22 +332,22 @@ def distance_point_to_segment(point: 'Point', segment: 'Segment') -> float:
     c1 = to_point_direction @ segment_direction
 
     if c1 < 0 or np.isclose(c1, 0):
-        return point.distance(segment.p1)
+        return Segment(point, segment.p1)
 
     c2 = segment_direction @ segment_direction
 
     if c2 < c1 or np.isclose(c2, c1):
-        return point.distance(segment.p2)
+        return Segment(point, segment.p2)
 
     b = c1 / c2
     pp = segment.p1 + segment_direction * b
+    shortest_segment = Segment(point, pp)
 
-    return point.distance(pp)
+    return shortest_segment
 
 
-def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_EPS) \
-        -> ty.Tuple[float, 'Segment']:
-    """Computes the shortest distance between two segments
+def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_EPS) -> 'Segment':
+    """Computes the shortest segment between two segments
 
     Parameters
     ----------
@@ -358,8 +360,6 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: f
 
     Returns
     -------
-    dist : float
-        The shortest distance between two segments
     shortest_segment : Segment
         The shortest segment between two segments
 
@@ -431,10 +431,7 @@ def distance_segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: f
     sc = 0.0 if np.abs(sn) < tol else sn / sd
     tc = 0.0 if np.abs(tn) < tol else tn / td
 
-    # get the difference of the two closest points: S1(sc) - S2(tc)
-    dp = w + (u * sc) - (v * tc)
-
     shortest_segment = Segment(segment1.point(sc), segment2.point(tc))
 
-    # return the shortest distance and shortest connecting segment
-    return dp.norm(), shortest_segment
+    # return the shortest shortest connecting segment
+    return shortest_segment

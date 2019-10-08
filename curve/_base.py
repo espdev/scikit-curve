@@ -1068,15 +1068,41 @@ class Segment:
         dist : float
             The shortest distance
 
+        See Also
+        --------
+        shortest_segment
+
+        """
+
+        return self.shortest_segment(other).seglen
+
+    def shortest_segment(self, other: ty.Union['Point', 'Segment']) -> 'Segment':
+        """Returns the shortest segment between the segment and given point or segment
+
+        Parameters
+        ----------
+        other : Point, Segment
+            The point or segment object
+
+        Returns
+        -------
+        segment : Segment
+            Shortest segment
+
+        See Also
+        --------
+        distance
+
         """
 
         if isinstance(other, Point):
-            return _geomalg.distance_point_to_segment(other, self)
+            shortest_to = _geomalg.segment_to_point
         elif isinstance(other, Segment):
-            dist, seg = _geomalg.distance_segment_to_segment(self, other)
-            return dist
+            shortest_to = _geomalg.segment_to_segment
         else:
             raise TypeError('"other" argument must be \'Point\' or \'Segment\' type.')
+
+        return shortest_to(self, other)
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
