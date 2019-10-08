@@ -54,7 +54,7 @@ class SegmentsIntersection:
             self.segment1,
             self.segment2,
             self.intersect_point,
-            self.overlap,
+            self.isoverlap,
         )
 
     @property
