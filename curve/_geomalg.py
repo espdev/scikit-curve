@@ -432,6 +432,4 @@ def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_
     tc = 0.0 if np.abs(tn) < tol else tn / td
 
     shortest_segment = Segment(segment1.point(sc), segment2.point(tc))
-
-    # return the shortest shortest connecting segment
     return shortest_segment
