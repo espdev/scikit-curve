@@ -36,7 +36,6 @@ from curve._intersect import (
     intersect_segments,
     intersect_curves,
     NotIntersected,
-    IntersectionType,
     SegmentsIntersection,
 )
 
