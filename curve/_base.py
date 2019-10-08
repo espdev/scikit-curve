@@ -32,7 +32,13 @@ from curve import _diffgeom
 from curve import _geomalg
 from curve._interpolate import InterpGridSpecType, interpolate
 from curve._smooth import smooth
-from curve._intersect import intersect_segments, intersect_curves, NotIntersected, SegmentsIntersection
+from curve._intersect import (
+    intersect_segments,
+    intersect_curves,
+    NotIntersected,
+    IntersectionType,
+    SegmentsIntersection,
+)
 
 
 Numeric = ty.Union[numbers.Number, np.number]
@@ -2820,8 +2826,7 @@ class Curve(abc.Sequence):
                 intersections[i] = SegmentsIntersection(
                     segment1=intersection.segment1,
                     segment2=other,
-                    intersection=(intersection.overlap_segment or
-                                  intersection.intersect_point),
+                    intersect_info=intersection.intersect_info,
                 )
 
         return intersections

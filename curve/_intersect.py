@@ -8,6 +8,7 @@ in n-dimensional Euclidean space.
 
 import typing as ty
 import warnings
+import enum
 
 import numpy as np
 
@@ -25,6 +26,31 @@ class IntersectionWarning(UserWarning):
     """
 
 
+class IntersectionType(enum.Enum):
+    """The types of intersection cases
+    """
+
+    EXACT = enum.auto()
+    OVERLAP = enum.auto()
+    ALMOST = enum.auto()
+
+    def __call__(self, intersect_data: ty.Union['Point', 'Segment']) -> 'IntersectionInfo':
+        from curve._base import Point, Segment
+
+        if ((isinstance(intersect_data, Point) and self != IntersectionType.EXACT) or
+                (isinstance(intersect_data, Segment) and self == IntersectionType.EXACT)):
+            raise ValueError('Invalid "intersect_data" {} for type {}'.format(
+                type(intersect_data), self))
+
+        return IntersectionInfo(intersect_data, self)
+
+
+IntersectionInfo = ty.NamedTuple('IntersectionInfo', [
+    ('data', ty.Union['Point', 'Segment']),
+    ('type', IntersectionType),
+])
+
+
 class SegmentsIntersection:
     """The class represents the intersection of two segments
 
@@ -34,27 +60,26 @@ class SegmentsIntersection:
         The first segment object
     segment2 : Segment
         The second segment object
-    intersection : Point, Segment
-        The intersection object:
-            - Point if the segments are not overlapped
-            - Segment if the segments are overlapped
+    intersect_info : IntersectionInfo
+        The intersection info object
+
     """
 
-    __slots__ = ('_segment1', '_segment2', '_intersection')
+    __slots__ = ('_segment1', '_segment2', '_intersect_info')
 
     def __init__(self, segment1: 'Segment', segment2: 'Segment',
-                 intersection: ty.Union['Point', 'Segment']) -> None:
+                 intersect_info: IntersectionInfo) -> None:
         self._segment1 = segment1
         self._segment2 = segment2
-        self._intersection = intersection
+        self._intersect_info = intersect_info
 
     def __repr__(self) -> str:
-        return '{}({}, {}, {}, overlap={})'.format(
+        return '{}({}, {}, {}, type={})'.format(
             type(self).__name__,
             self.segment1,
             self.segment2,
             self.intersect_point,
-            self.isoverlap,
+            self.intersect_type.name,
         )
 
     @property
@@ -82,6 +107,30 @@ class SegmentsIntersection:
         return self._segment2
 
     @property
+    def intersect_info(self) -> IntersectionInfo:
+        """Returns the type of intersection info
+
+        Returns
+        -------
+        info : IntersectionInfo
+            Intersection info named tuple
+        """
+
+        return self._intersect_info
+
+    @property
+    def intersect_type(self) -> IntersectionType:
+        """Returns the type of intersection
+
+        Returns
+        -------
+        type : IntersectionType
+            Intersection type enum item
+        """
+
+        return self._intersect_info.type
+
+    @property
     def intersect_point(self) -> 'Point':
         """Returns the intersection point
 
@@ -97,40 +146,28 @@ class SegmentsIntersection:
         ``overlap_segment.point(t=0.5)`` as intersection point.
         """
 
-        from curve._base import Point
-
-        if isinstance(self._intersection, Point):
-            return self._intersection
+        if self.intersect_type == IntersectionType.EXACT:
+            return self._intersect_info.data
         else:
-            return self.overlap_segment.point(0.5)
+            return self._intersect_info.data.point(0.5)
 
     @property
-    def overlap_segment(self) -> ty.Optional['Segment']:
-        """Returns overlap segment if the segments are overlapped
+    def intersect_segment(self) -> 'Segment':
+        """Returns the segment if the segments are overlapped or almost intersected
 
         Returns
         -------
-        overlap : Segment, None
-            Segment object if the segments are overlapped or None
+        segment : Segment
+            Overlapping or connecting segment if the segments are overlapped or
+            almost intersected. If the intersection is exact a singular segment will be returned.
         """
 
         from curve._base import Segment
 
-        if isinstance(self._intersection, Segment):
-            return self._intersection
-        return None
-
-    @property
-    def isoverlap(self) -> bool:
-        """Returns True if the segments are overlapped
-
-        Returns
-        -------
-        flag : bool
-            True if the segments overlapped
-        """
-
-        return self.overlap_segment is not None
+        if self.intersect_type == IntersectionType.EXACT:
+            return Segment(self._intersect_info.data, self._intersect_info.data)
+        else:
+            return self._intersect_info.data
 
 
 def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
@@ -171,7 +208,11 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
         if overlap_segment is None:
             return NotIntersected
 
-        return SegmentsIntersection(segment1, segment2, overlap_segment)
+        return SegmentsIntersection(
+            segment1=segment1,
+            segment2=segment2,
+            intersect_info=IntersectionType.OVERLAP(overlap_segment),
+        )
 
     if segment1.parallel(segment2):
         return NotIntersected
@@ -229,7 +270,11 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment') \
                         distance), IntersectionWarning)
                 return NotIntersected
 
-        return SegmentsIntersection(segment1, segment2, intersect_point1)
+        return SegmentsIntersection(
+            segment1=segment1,
+            segment2=segment2,
+            intersect_info=IntersectionType.EXACT(intersect_point1),
+        )
 
     return NotIntersected
 
