@@ -251,10 +251,8 @@ def test_distance_segment(points1, points2, expected_distance):
     segment1 = Segment(*points1)
     segment2 = Segment(*points2)
 
-    dist = segment1.distance(segment2)
     seg = segment1.shortest_segment(segment2)
 
-    assert dist == pytest.approx(expected_distance)
     assert seg.seglen == pytest.approx(expected_distance)
 
 
