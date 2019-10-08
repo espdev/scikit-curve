@@ -339,8 +339,8 @@ def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
     if c2 < c1 or np.isclose(c2, c1):
         return Segment(point, segment.p2)
 
-    b = c1 / c2
-    pp = segment.p1 + segment_direction * b
+    t = c1 / c2
+    pp = segment.p1 + segment_direction * t
     shortest_segment = Segment(point, pp)
 
     return shortest_segment
