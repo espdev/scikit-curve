@@ -31,9 +31,9 @@ class IntersectionType(enum.Enum):
     """The types of intersection cases
     """
 
-    EXACT = enum.auto()
-    OVERLAP = enum.auto()
-    ALMOST = enum.auto()
+    EXACT = 0
+    OVERLAP = 1
+    ALMOST = 2
 
     def __call__(self, intersect_data: ty.Union['Point', 'Segment']) -> 'IntersectionInfo':
         from curve._base import Point, Segment
