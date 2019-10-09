@@ -22,15 +22,15 @@ class SmoothingError(Exception):
     """
 
 
-_SMOOTHING_FILTERS = {}
+_smoothing_filters = {}
 
 
 def register_smooth_filter(method: str):
     def decorator(filter_callable):
-        if method in _SMOOTHING_FILTERS:
+        if method in _smoothing_filters:
             raise ValueError('"{}" smoothing method already registered for {}'.format(
-                method, _SMOOTHING_FILTERS[method]))
-        _SMOOTHING_FILTERS[method] = filter_callable
+                method, _smoothing_filters[method]))
+        _smoothing_filters[method] = filter_callable
     return decorator
 
 
@@ -101,7 +101,7 @@ def smooth_methods() -> ty.List[str]:
 
     """
 
-    return list(_SMOOTHING_FILTERS.keys())
+    return list(_smoothing_filters.keys())
 
 
 def get_smooth_filter(method: str) -> abc.Callable:
@@ -127,10 +127,10 @@ def get_smooth_filter(method: str) -> abc.Callable:
 
     """
 
-    if method not in _SMOOTHING_FILTERS:
+    if method not in _smoothing_filters:
         raise NameError('Cannot find the smoothing filter for given method "{}"'.format(method))
 
-    return _SMOOTHING_FILTERS[method]
+    return _smoothing_filters[method]
 
 
 def smooth(curve: 'Curve', method: str, **params) -> 'Curve':
