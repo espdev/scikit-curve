@@ -2683,7 +2683,7 @@ class Curve(abc.Sequence):
 
         return _diffgeom.nonsingular(self)
 
-    def interpolate(self, grid_spec: InterpGridSpecType, method: str = 'linear', **kwargs) -> 'Curve':
+    def interpolate(self, grid_spec: InterpGridSpecType, method: str, **kwargs) -> 'Curve':
         """Interpolates the curve data
 
         The method interpolates the curve data by given grid or
@@ -2706,6 +2706,7 @@ class Curve(abc.Sequence):
                 * ``akima`` -- Akima interpolation
                 * ``pchip`` -- PCHIP 1-d monotonic cubic interpolation
                 * ``spline`` -- General k-order weighted spline interpolation
+                * ``csaps`` -- Smoothing weighted natural cubic spline interpolation/approximation
 
         **kwargs : mapping
             Additional interpolator parameters dependent on interpolation method

@@ -29,14 +29,15 @@ if ty.TYPE_CHECKING:
     from curve._base import Curve
 
 
+_interpolators = {}  # type: ty.Dict[str, ty.Type['InterpolatorBase']]
+
+
 InterpGridSpecType = ty.Union[
     int,
     np.ndarray,
     ty.Sequence[float],
     'InterpolationGrid',
 ]
-
-_INTERPOLATORS = {}  # type: ty.Dict[str, ty.Type['InterpolatorBase']]
 
 
 class InterpolationError(Exception):
@@ -388,12 +389,12 @@ def register_interpolator(method: str):
     """
 
     def decorator(cls):
-        if method in _INTERPOLATORS:
+        if method in _interpolators:
             raise ValueError('"{}" interpolation method already registered for {}'.format(
-                method, _INTERPOLATORS[method]))
+                method, _interpolators[method]))
         if not issubclass(cls, InterpolatorBase):
             raise TypeError('{} is not a subclass of InterpolatorBase'.format(cls))
-        _INTERPOLATORS[method] = cls
+        _interpolators[method] = cls
     return decorator
 
 
@@ -648,7 +649,7 @@ def interp_methods() -> ty.List[str]:
 
     """
 
-    return list(_INTERPOLATORS.keys())
+    return list(_interpolators.keys())
 
 
 def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
@@ -681,10 +682,10 @@ def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
 
     """
 
-    if method not in _INTERPOLATORS:
+    if method not in _interpolators:
         raise NameError('Cannot find the interpolator for given method "{}"'.format(method))
 
-    interpolator_cls = _INTERPOLATORS[method]
+    interpolator_cls = _interpolators[method]
 
     try:
         return interpolator_cls(curve, **params)
