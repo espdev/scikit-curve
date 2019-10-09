@@ -323,6 +323,12 @@ def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> ty.Optional[Int
         Intersection info or NotIntersected
     """
 
+    if not segment1.coplanar(segment2):
+        return NotIntersected
+
+    if segment1.singular or segment2.singular:
+        return NotIntersected
+
     a = np.stack((segment1.direction.data,
                   -segment2.direction.data), axis=1)
     b = (segment2.p1 - segment1.p1).data
@@ -454,12 +460,6 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
         )
 
     if segment1.parallel(segment2):
-        return NotIntersected
-
-    if method == 'exact' and not segment1.coplanar(segment2):
-        return NotIntersected
-
-    if segment1.singular or segment2.singular:
         return NotIntersected
 
     # After checking all corner cases we are sure that
