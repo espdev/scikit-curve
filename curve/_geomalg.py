@@ -47,6 +47,8 @@ def segment_point(segment: 'Segment',
 
     """
 
+    from curve._base import Point
+
     if isinstance(t, (abc.Sequence, np.ndarray)):
         t = np.asarray(t)
         if t.ndim > 1:
