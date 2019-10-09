@@ -20,8 +20,8 @@ from curve._interpolate import (
 from curve._smooth import (
     SmoothingError,
     smooth_methods,
-    get_smooth_filter,
-    register_smooth_filter,
+    get_smooth_method,
+    register_smooth_method,
 )
 from curve._geomalg import GeometryAlgorithmsWarning
 from curve._intersect import (
@@ -68,8 +68,8 @@ __all__ = [
     # smoothing
     'SmoothingError',
     'smooth_methods',
-    'get_smooth_filter',
-    'register_smooth_filter',
+    'get_smooth_method',
+    'register_smooth_method',
 
     # geomalgo
     'GeometryAlgorithmsWarning',

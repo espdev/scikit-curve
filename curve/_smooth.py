@@ -17,24 +17,75 @@ if ty.TYPE_CHECKING:
     from curve._base import Curve
 
 
+_smooth_methods = {}
+
+
 class SmoothingError(Exception):
     """Any smoothing errors
     """
 
 
-_smoothing_filters = {}
+def register_smooth_method(method: str):
+    """Registers new smoothing method
 
+    Parameters
+    ----------
+    method : str
+        The smoothing method name
+    """
 
-def register_smooth_filter(method: str):
     def decorator(filter_callable):
-        if method in _smoothing_filters:
+        if method in _smooth_methods:
             raise ValueError('"{}" smoothing method already registered for {}'.format(
-                method, _smoothing_filters[method]))
-        _smoothing_filters[method] = filter_callable
+                method, _smooth_methods[method]))
+        _smooth_methods[method] = filter_callable
+
     return decorator
 
 
-@register_smooth_filter('savgol')
+def smooth_methods() -> ty.List[str]:
+    """Returns the list of available smoothing methods
+
+    Returns
+    -------
+    methods : List[str]
+        The list of available smoothing methods
+
+    """
+
+    return list(_smooth_methods.keys())
+
+
+def get_smooth_method(method: str) -> abc.Callable:
+    """Creates and returns the smoothing filter for the given method
+
+    Parameters
+    ----------
+    method : str
+        Smoothing method
+
+    Returns
+    -------
+    smooth_filter : Callable
+        Smoothing filter callable
+
+    See Also
+    --------
+    smooth_methods
+
+    Raises
+    ------
+    NameError : If smooth method is unknown
+
+    """
+
+    if method not in _smooth_methods:
+        raise NameError('Cannot find the smoothing method "{}"'.format(method))
+
+    return _smooth_methods[method]
+
+
+@register_smooth_method('savgol')
 def savgol_filter(curve: 'Curve', window_length: int, polyorder: int, *,
                   deriv: int = 0, delta: float = 1.0,
                   mode: str = 'interp', cval: float = 0.0) -> np.ndarray:
@@ -58,7 +109,7 @@ def savgol_filter(curve: 'Curve', window_length: int, polyorder: int, *,
     )
 
 
-@register_smooth_filter('window')
+@register_smooth_method('window')
 def window_filter(curve: 'Curve',
                   window_size: int, window_type: ty.Union[str, abc.Callable] = 'hann',
                   mode: str = 'reflect', cval: float = 0.0) -> np.ndarray:
@@ -91,48 +142,6 @@ def window_filter(curve: 'Curve',
     )
 
 
-def smooth_methods() -> ty.List[str]:
-    """Returns the list of available smoothing methods
-
-    Returns
-    -------
-    methods : List[str]
-        The list of available smoothing methods
-
-    """
-
-    return list(_smoothing_filters.keys())
-
-
-def get_smooth_filter(method: str) -> abc.Callable:
-    """Creates and returns the smoothing filter for the given method
-
-    Parameters
-    ----------
-    method : str
-        Smoothing method
-
-    Returns
-    -------
-    smooth_filter : Callable
-        Smoothing filter callable
-
-    See Also
-    --------
-    smooth_methods
-
-    Raises
-    ------
-    NameError : If smooth method is unknown
-
-    """
-
-    if method not in _smoothing_filters:
-        raise NameError('Cannot find the smoothing filter for given method "{}"'.format(method))
-
-    return _smoothing_filters[method]
-
-
 def smooth(curve: 'Curve', method: str, **params) -> 'Curve':
     """Smoothes a n-dimensional curve using the given method and its parameters
 
@@ -162,10 +171,10 @@ def smooth(curve: 'Curve', method: str, **params) -> 'Curve':
 
     """
 
-    smooth_filter = get_smooth_filter(method)
+    smooth_method = get_smooth_method(method)
 
     try:
-        smoothed_data = smooth_filter(curve, **params)
+        smoothed_data = smooth_method(curve, **params)
     except (ValueError, TypeError):
         raise
     except Exception as err:
