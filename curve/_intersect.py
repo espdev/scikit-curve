@@ -19,8 +19,8 @@ if ty.TYPE_CHECKING:
     from curve._base import Point, Segment, Curve
 
 
-_INTERSECT_METHODS = {}
-_DEFAULT_INTERSECT_METHOD = None  # type: ty.Optional[str]
+_intersect_methods = {}
+_default_intersect_method = None  # type: ty.Optional[str]
 
 NotIntersected = None
 
@@ -194,7 +194,7 @@ def intersect_methods() -> ty.List[str]:
 
     """
 
-    return list(_INTERSECT_METHODS.keys())
+    return list(_intersect_methods.keys())
 
 
 def get_intersect_method(method: str) -> abc.Callable:
@@ -221,12 +221,12 @@ def get_intersect_method(method: str) -> abc.Callable:
 
     """
 
-    if method not in _INTERSECT_METHODS:
+    if method not in _intersect_methods:
         raise NameError(
             'Unknown method "{}". The following methods are available: {}'.format(
                 method, intersect_methods()))
 
-    return _INTERSECT_METHODS[method]
+    return _intersect_methods[method]
 
 
 def default_intersect_method() -> str:
@@ -237,8 +237,8 @@ def default_intersect_method() -> str:
     method : str
         Default intersect method
     """
-    global _DEFAULT_INTERSECT_METHOD
-    return _DEFAULT_INTERSECT_METHOD
+    global _default_intersect_method
+    return _default_intersect_method
 
 
 def set_default_intersect_method(method: str) -> None:
@@ -255,14 +255,14 @@ def set_default_intersect_method(method: str) -> None:
     register_intersect_method
     """
 
-    global _DEFAULT_INTERSECT_METHOD
+    global _default_intersect_method
 
-    if method not in _INTERSECT_METHODS:
+    if method not in _intersect_methods:
         raise NameError(
             'Unknown method "{}". The following methods are available: {}'.format(
                 method, intersect_methods()))
 
-    _DEFAULT_INTERSECT_METHOD = method
+    _default_intersect_method = method
 
 
 def register_intersect_method(method: str, default: bool = False):
@@ -283,10 +283,10 @@ def register_intersect_method(method: str, default: bool = False):
     """
 
     def decorator(method_callable):
-        if method in _INTERSECT_METHODS:
+        if method in _intersect_methods:
             raise ValueError('"{}" intersect method already registered for {}'.format(
-                method, _INTERSECT_METHODS[method]))
-        _INTERSECT_METHODS[method] = method_callable
+                method, _intersect_methods[method]))
+        _intersect_methods[method] = method_callable
 
         if default:
             set_default_intersect_method(method)
@@ -437,10 +437,10 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
 
     """
 
-    global _DEFAULT_INTERSECT_METHOD
+    global _default_intersect_method
 
     if method is None:
-        method = _DEFAULT_INTERSECT_METHOD
+        method = _default_intersect_method
 
     if segment1.ndim != segment2.ndim:
         raise ValueError('The dimension of the segments must be equal.')
