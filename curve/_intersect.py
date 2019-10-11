@@ -117,12 +117,14 @@ class SegmentsIntersection:
 
     @property
     def intersect_info(self) -> IntersectionInfo:
-        """Returns the type of intersection info
+        """Returns the information about intersection
 
         Returns
         -------
         info : IntersectionInfo
-            Intersection info named tuple
+            Intersection info named tuple ``(data, type)`` where:
+                - ``data`` is Point or Segment (for OVERLAP/ALMOST intersection type)
+                - ``type`` intersection type (IntersectionType) EXACT/OVERLAP/ALMOST
         """
 
         return self._intersect_info
@@ -134,7 +136,7 @@ class SegmentsIntersection:
         Returns
         -------
         type : IntersectionType
-            Intersection type enum item
+            Intersection type enum item (EXACT/OVERLAP/ALMOST)
         """
 
         return self._intersect_info.type
@@ -151,8 +153,12 @@ class SegmentsIntersection:
         Notes
         -----
 
-        If the segments are overlapped will be returned
-        ``overlap_segment.point(t=0.5)`` as intersection point.
+        If the intersection type is OVERLAP or ALMOST will be returned
+        ``intersect_segment.point(t=0.5)`` as intersection point.
+
+        See Also
+        --------
+        intersect_segment
         """
 
         if self.intersect_type == IntersectionType.EXACT:
@@ -168,7 +174,16 @@ class SegmentsIntersection:
         -------
         segment : Segment
             Overlapping or connecting segment if the segments are overlapped or
-            almost intersected. If the intersection is exact a singular segment will be returned.
+            almost intersected.
+
+        Notes
+        -----
+
+        If the intersection type is EXACT a singular segment will be returned.
+
+        See Also
+        --------
+        intersect_point
         """
 
         from curve._base import Segment
