@@ -388,12 +388,12 @@ def register_interpolator(method: str):
 
     """
 
-    def decorator(cls):
+    def decorator(cls: ty.Type[InterpolatorBase]):
         if method in _interpolators:
             raise ValueError('"{}" interpolation method already registered for {}'.format(
                 method, _interpolators[method]))
         if not issubclass(cls, InterpolatorBase):
-            raise TypeError('{} is not a subclass of InterpolatorBase'.format(cls))
+            raise TypeError("{} is not a subclass of 'InterpolatorBase'".format(cls))
         _interpolators[method] = cls
     return decorator
 
