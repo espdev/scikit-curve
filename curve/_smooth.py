@@ -6,6 +6,7 @@ This module provides routines for smoothing n-dimensional curves
 """
 
 import typing as ty
+import typing_extensions as ty_ext
 import collections.abc as abc
 
 import numpy as np
@@ -17,12 +18,37 @@ if ty.TYPE_CHECKING:
     from curve._base import Curve  # noqa
 
 
-_smooth_methods = {}
+_smooth_methods = {}  # type: ty.Dict[str, 'SmoothingMethod']
 
 
 class SmoothingError(Exception):
     """Any smoothing errors
     """
+
+
+class SmoothingMethod(ty_ext.Protocol):
+    """Defines smoothing method callable protocol type
+
+    Callable signature::
+
+        (curve: Curve, **params: Any) -> numpy.ndarray
+
+    Parameters
+
+        - curve : The curve object
+        - **params : Additional any key-word parameters
+
+    Returns
+
+        - array : MxN array with smoothing results
+
+    See Also
+    --------
+    register_smooth_method
+
+    """
+
+    def __call__(self, curve: 'Curve', **params: ty.Any) -> np.ndarray: ...
 
 
 def register_smooth_method(method: str):
@@ -32,13 +58,19 @@ def register_smooth_method(method: str):
     ----------
     method : str
         The smoothing method name
+
+    See Also
+    --------
+    smooth_methods
+    SmoothingMethod
+
     """
 
-    def decorator(filter_callable):
+    def decorator(method_callable: SmoothingMethod):
         if method in _smooth_methods:
             raise ValueError('"{}" smoothing method already registered for {}'.format(
                 method, _smooth_methods[method]))
-        _smooth_methods[method] = filter_callable
+        _smooth_methods[method] = method_callable
 
     return decorator
 
@@ -51,13 +83,17 @@ def smooth_methods() -> ty.List[str]:
     methods : List[str]
         The list of available smoothing methods
 
+    See Also
+    --------
+    get_smooth_method
+
     """
 
     return list(_smooth_methods.keys())
 
 
-def get_smooth_method(method: str) -> abc.Callable:
-    """Creates and returns the smoothing filter for the given method
+def get_smooth_method(method: str) -> SmoothingMethod:
+    """Creates and returns the smoothing method for the given name
 
     Parameters
     ----------
@@ -66,8 +102,8 @@ def get_smooth_method(method: str) -> abc.Callable:
 
     Returns
     -------
-    smooth_filter : Callable
-        Smoothing filter callable
+    smooth_method : Callable
+        Smoothing method callable
 
     See Also
     --------
