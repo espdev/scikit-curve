@@ -67,8 +67,6 @@ for intersect in intersections:
     iz.append(p[Axis.Z])
 
 ax.plot(ix, iy, iz, 'o', markerfacecolor='r', markeredgecolor='k', zorder=1000)
-
-ax.set_title('')
 plt.show()
 ```
 
