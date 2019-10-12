@@ -25,18 +25,14 @@ import numpy as np
 
 from cached_property import cached_property
 
-from curve._distance import MetricType, get_metric
-from curve._utils import as2d
+import curve._distance as _distance
+import curve._diffgeom as _diffgeom
+import curve._geomalg as _geomalg
+import curve._intersect as _intersect
+import curve._interpolate as _interpolate
+import curve._smooth as _smooth
 from curve._numeric import allequal, F_EPS
-from curve import _diffgeom
-from curve import _geomalg
-from curve._interpolate import InterpGridSpecType, interpolate
-from curve._smooth import smooth
-from curve._intersect import (
-    intersect_segments,
-    intersect_curves,
-    SegmentsIntersection,
-)
+from curve._utils import as2d
 
 
 Numeric = ty.Union[numbers.Number, np.number]
@@ -333,7 +329,7 @@ class Point(abc.Sequence):
 
         return np.sqrt(self @ self)
 
-    def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> Numeric:
+    def distance(self, other: 'Point', metric: _distance.MetricType = 'euclidean', **kwargs) -> Numeric:
         """Compute distance from this point to other point by given metric
 
         Parameters
@@ -358,7 +354,7 @@ class Point(abc.Sequence):
         """
 
         if isinstance(metric, str):
-            metric = get_metric(metric, **kwargs)
+            metric = _distance.get_metric(metric, **kwargs)
 
         if not callable(metric):
             raise TypeError('Metric must be str or callable')
@@ -1041,7 +1037,7 @@ class Segment:
         return _geomalg.overlap_segments(self, other, tol=tol)
 
     def intersect(self, other: 'Segment',
-                  method: ty.Optional[str] = None, **params) -> SegmentsIntersection:
+                  method: ty.Optional[str] = None, **params) -> _intersect.SegmentsIntersection:
         """Finds the intersection of the segment and other segment
 
         Parameters
@@ -1063,7 +1059,7 @@ class Segment:
         res : SegmentsIntersection
         """
 
-        return intersect_segments(self, other, method=method, **params)
+        return _intersect.intersect_segments(self, other, method=method, **params)
 
     def distance(self, other: ty.Union['Point', 'Segment']) -> float:
         """Computes the shortest distance between the segment and given point or segment
@@ -2678,7 +2674,7 @@ class Curve(abc.Sequence):
 
         return _diffgeom.nonsingular(self)
 
-    def interpolate(self, grid_spec: InterpGridSpecType, method: str, **kwargs) -> 'Curve':
+    def interpolate(self, grid_spec: _interpolate.InterpGridSpecType, method: str, **kwargs) -> 'Curve':
         """Interpolates the curve data
 
         The method interpolates the curve data by given grid or
@@ -2757,7 +2753,7 @@ class Curve(abc.Sequence):
 
         """
 
-        return interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
+        return _interpolate.interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
 
     def smooth(self, method: str, **params) -> 'Curve':
         """Smoothes the curve using the given method and its parameters
@@ -2793,10 +2789,10 @@ class Curve(abc.Sequence):
 
         """
 
-        return smooth(self, method, **params)
+        return _smooth.smooth(self, method, **params)
 
     def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None,
-                  method: ty.Optional[str] = None, **params) -> ty.List[SegmentsIntersection]:
+                  method: ty.Optional[str] = None, **params) -> ty.List[_intersect.SegmentsIntersection]:
         """Determines the curve intersections with other curve or segment or itself
 
         Parameters
@@ -2834,11 +2830,11 @@ class Curve(abc.Sequence):
         else:
             raise TypeError("'other' argument must be 'Curve' or 'Segment' or None.")
 
-        intersections = intersect_curves(self, curve2, method=method, **params)
+        intersections = _intersect.intersect_curves(self, curve2, method=method, **params)
 
         if isinstance(other, Segment):
             for i, intersection in enumerate(intersections):
-                intersections[i] = SegmentsIntersection(
+                intersections[i] = _intersect.SegmentsIntersection(
                     segment1=intersection.segment1,
                     segment2=other,
                     intersect_info=intersection.intersect_info,

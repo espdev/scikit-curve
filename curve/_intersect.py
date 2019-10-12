@@ -14,6 +14,7 @@ import enum
 
 import numpy as np
 
+import curve._base
 from curve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
@@ -44,16 +45,14 @@ class IntersectionType(enum.Enum):
     ALMOST = 3
 
     def __call__(self, intersect_data: ty.Optional[ty.Union['Point', 'Segment']] = None) -> 'IntersectionInfo':
-        from curve._base import Point, Segment
-
         if self == IntersectionType.NONE and intersect_data is not IntersectionType:
             raise ValueError('"intersect_data" must be \'None\' for type {}'.format(self))
 
-        if self == IntersectionType.EXACT and not isinstance(intersect_data, Point):
+        if self == IntersectionType.EXACT and not isinstance(intersect_data, curve._base.Point):
             raise ValueError('"intersect_data" must be \'Point\' for type {}'.format(self))
 
         if (self in (IntersectionType.OVERLAP, IntersectionType.ALMOST) and
-                not isinstance(intersect_data, Segment)):
+                not isinstance(intersect_data, curve._base.Segment)):
             raise ValueError('"intersect_data" must be \'Segment\' for type {}'.format(self))
 
         return IntersectionInfo(intersect_data, self)
@@ -227,13 +226,11 @@ class SegmentsIntersection:
         intersect_point
         """
 
-        from curve._base import Segment
-
         if not self:
             return None
 
         if self.intersect_type == IntersectionType.EXACT:
-            return Segment(self._intersect_info.data, self._intersect_info.data)
+            return curve._base.Segment(self._intersect_info.data, self._intersect_info.data)
         else:
             return self._intersect_info.data
 
