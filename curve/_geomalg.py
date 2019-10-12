@@ -11,6 +11,7 @@ import typing as ty
 
 import numpy as np
 
+import curve._base
 from curve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
@@ -47,8 +48,6 @@ def segment_point(segment: 'Segment',
 
     """
 
-    from curve._base import Point
-
     if isinstance(t, (abc.Sequence, np.ndarray)):
         t = np.asarray(t)
         if t.ndim > 1:
@@ -57,7 +56,7 @@ def segment_point(segment: 'Segment',
         dt = segment.direction.data * t[np.newaxis].T
         points_data = segment.p1.data + dt
 
-        return [Point(pdata) for pdata in points_data]
+        return [curve._base.Point(pdata) for pdata in points_data]
     else:
         return segment.p1 + segment.direction * t
 
@@ -83,9 +82,7 @@ def segment_t(segment: 'Segment', point: ty.Union['Point', ty.Sequence['Point']]
 
     """
 
-    from curve._base import Point
-
-    if isinstance(point, Point):
+    if isinstance(point, curve._base.Point):
         if not segment.collinear(point, tol=tol):
             warnings.warn(
                 "Given point '{}' is not collinear with the segment '{}'".format(point, segment),
@@ -283,8 +280,6 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
 
     """
 
-    from curve._base import Point, Segment
-
     if not segment1.collinear(segment2, tol=tol):
         return None
 
@@ -306,7 +301,8 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
     if np.any(data_maxmin > data_minmax):
         return None
 
-    return Segment(Point(data_maxmin), Point(data_minmax))
+    return curve._base.Segment(curve._base.Point(data_maxmin),
+                               curve._base.Point(data_minmax))
 
 
 def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
@@ -326,24 +322,22 @@ def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
 
     """
 
-    from curve._base import Segment
-
     segment_direction = segment.direction
     to_point_direction = point - segment.p1
 
     c1 = to_point_direction @ segment_direction
 
     if c1 < 0 or np.isclose(c1, 0):
-        return Segment(point, segment.p1)
+        return curve._base.Segment(point, segment.p1)
 
     c2 = segment_direction @ segment_direction
 
     if c2 < c1 or np.isclose(c2, c1):
-        return Segment(point, segment.p2)
+        return curve._base.Segment(point, segment.p2)
 
     t = c1 / c2
     pp = segment.p1 + segment_direction * t
-    shortest_segment = Segment(point, pp)
+    shortest_segment = curve._base.Segment(point, pp)
 
     return shortest_segment
 
@@ -371,8 +365,6 @@ def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_
             <http://geomalgorithms.com/a07-_distance.html>`_
 
     """
-
-    from curve._base import Segment
 
     u = segment1.direction
     v = segment2.direction
@@ -433,5 +425,5 @@ def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_
     sc = 0.0 if np.abs(sn) < tol else sn / sd
     tc = 0.0 if np.abs(tn) < tol else tn / td
 
-    shortest_segment = Segment(segment1.point(sc), segment2.point(tc))
+    shortest_segment = curve._base.Segment(segment1.point(sc), segment2.point(tc))
     return shortest_segment
