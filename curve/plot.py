@@ -15,7 +15,7 @@ if ty.TYPE_CHECKING:
     from curve import Curve
 
 
-class curveplot:
+class plot:
     """Plots a curve
 
     The function plots 2-d or 3-d curve using matplotlib.
@@ -61,14 +61,14 @@ class curveplot:
     def axes(self) -> plt.Axes:
         return self._axes
 
-    def curveplot(self,
-                  curve: 'Curve',
-                  *args: ty.Any,
-                  param: ty.Optional[str] = None,
-                  param_cmap: str = 'plasma',
-                  show_normals: bool = False,
-                  **kwargs: ty.Any) -> 'curveplot':
-        return curveplot(
+    def plot(self,
+             curve: 'Curve',
+             *args: ty.Any,
+             param: ty.Optional[str] = None,
+             param_cmap: str = 'plasma',
+             show_normals: bool = False,
+             **kwargs: ty.Any) -> 'plot':
+        return plot(
             curve,
             *args,
             param=param,

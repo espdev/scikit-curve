@@ -17,7 +17,7 @@ A toolkit to manipulate n-dimensional geometric curves in Python.
 import matplotlib.pyplot as plt
 
 from curve.curves import lissajous
-from curve.plot import curveplot
+from curve.plot import plot
 from curve import PreservedSpeedInterpolationGrid
 
 curve = lissajous(p_count=51)
@@ -25,7 +25,7 @@ curve = lissajous(p_count=51)
 grid = PreservedSpeedInterpolationGrid(301)
 curve_i = curve.interpolate(grid, method='hermite')
 
-curveplot(curve_i, param='speed', show_normals=True, marker='.')
+plot(curve_i, param='speed', show_normals=True, marker='.')
 
 plt.show()
 ```
@@ -37,7 +37,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from curve import Curve, Axis
-from curve.plot import curveplot
+from curve.plot import plot
 
 t = np.linspace(0, 2*np.pi, 100)
 
@@ -51,8 +51,8 @@ curve2 = Curve([x, y, z2])
 
 intersections = curve1.intersect(curve2)
 
-ax = curveplot(curve1, param='curvature', linewidth=2).\
-     curveplot(curve2, param='curvature', param_cmap='viridis', linewidth=2).axes
+ax = plot(curve1, param='curvature', linewidth=2).\
+     plot(curve2, param='curvature', param_cmap='viridis', linewidth=2).axes
 
 ix = []
 iy = []
