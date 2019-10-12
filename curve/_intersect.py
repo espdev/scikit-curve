@@ -6,8 +6,9 @@ in n-dimensional Euclidean space.
 
 """
 
-import collections.abc as abc
 import typing as ty
+import typing_extensions as ty_ext
+
 import warnings
 import enum
 
@@ -19,10 +20,8 @@ if ty.TYPE_CHECKING:
     from curve._base import Point, Segment, Curve
 
 
-_intersect_methods = {}
+_intersect_methods = {}  # type: ty.Dict[str, 'IntersectionMethod']
 _default_intersect_method = None  # type: ty.Optional[str]
-
-NotIntersected = None
 
 
 class IntersectionWarning(UserWarning):
@@ -39,25 +38,61 @@ class IntersectionType(enum.Enum):
     """The types of intersection cases
     """
 
-    EXACT = 0
-    OVERLAP = 1
-    ALMOST = 2
+    NONE = 0
+    EXACT = 1
+    OVERLAP = 2
+    ALMOST = 3
 
-    def __call__(self, intersect_data: ty.Union['Point', 'Segment']) -> 'IntersectionInfo':
+    def __call__(self, intersect_data: ty.Optional[ty.Union['Point', 'Segment']] = None) -> 'IntersectionInfo':
         from curve._base import Point, Segment
 
-        if ((isinstance(intersect_data, Point) and self != IntersectionType.EXACT) or
-                (isinstance(intersect_data, Segment) and self == IntersectionType.EXACT)):
-            raise ValueError('Invalid "intersect_data" {} for type {}'.format(
-                type(intersect_data), self))
+        if self == IntersectionType.NONE and intersect_data is not IntersectionType:
+            raise ValueError('"intersect_data" must be \'None\' for type {}'.format(self))
+
+        if self == IntersectionType.EXACT and not isinstance(intersect_data, Point):
+            raise ValueError('"intersect_data" must be \'Point\' for type {}'.format(self))
+
+        if (self in (IntersectionType.OVERLAP, IntersectionType.ALMOST) and
+                not isinstance(intersect_data, Segment)):
+            raise ValueError('"intersect_data" must be \'Segment\' for type {}'.format(self))
 
         return IntersectionInfo(intersect_data, self)
 
 
 IntersectionInfo = ty.NamedTuple('IntersectionInfo', [
-    ('data', ty.Union['Point', 'Segment']),
+    ('data', ty.Optional[ty.Union['Point', 'Segment']]),
     ('type', IntersectionType),
 ])
+
+
+NOT_INTERSECTED = IntersectionInfo(None, IntersectionType.NONE)
+"""The constant for cases when the intersection does not exist"""
+
+
+class IntersectionMethod(ty_ext.Protocol):
+    """Defines intersection method callable protocol type
+
+    Callable signature::
+
+        (segment1: Segment, segment2: Segment, **params: Any) -> IntersectionInfo
+
+    Parameters
+
+        - segment1 : The firts segment
+        - segment2 : The second segment
+        - **params : Additional any key-word parameters
+
+    Returns
+
+        - intersection_info : `IntersectionInfo` object
+
+    See Also
+    --------
+    IntersectionInfo
+
+    """
+
+    def __call__(self, segment1: 'Segment', segment2: 'Segment', **params: ty.Any) -> IntersectionInfo: ...
 
 
 class SegmentsIntersection:
@@ -91,6 +126,9 @@ class SegmentsIntersection:
             self.intersect_type.name,
         )
 
+    def __bool__(self) -> bool:
+        return self.intersect_type != IntersectionType.NONE
+
     @property
     def segment1(self) -> 'Segment':
         """The first segment
@@ -123,8 +161,8 @@ class SegmentsIntersection:
         -------
         info : IntersectionInfo
             Intersection info named tuple ``(data, type)`` where:
-                - ``data`` is Point or Segment (for OVERLAP/ALMOST intersection type)
-                - ``type`` intersection type (IntersectionType) EXACT/OVERLAP/ALMOST
+                - ``data`` is None or Point or Segment
+                - ``type`` intersection type (IntersectionType) NONE/EXACT/OVERLAP/ALMOST
         """
 
         return self._intersect_info
@@ -136,19 +174,19 @@ class SegmentsIntersection:
         Returns
         -------
         type : IntersectionType
-            Intersection type enum item (EXACT/OVERLAP/ALMOST)
+            Intersection type enum item (NONE/EXACT/OVERLAP/ALMOST)
         """
 
         return self._intersect_info.type
 
     @property
-    def intersect_point(self) -> 'Point':
+    def intersect_point(self) -> ty.Optional['Point']:
         """Returns the intersection point
 
         Returns
         -------
-        point : Point
-            The intersection point
+        point : Point, None
+            The intersection point or None if the intersection does not exist
 
         Notes
         -----
@@ -161,20 +199,23 @@ class SegmentsIntersection:
         intersect_segment
         """
 
+        if not self:
+            return None
+
         if self.intersect_type == IntersectionType.EXACT:
             return self._intersect_info.data
         else:
             return self._intersect_info.data.point(0.5)
 
     @property
-    def intersect_segment(self) -> 'Segment':
+    def intersect_segment(self) -> ty.Optional['Segment']:
         """Returns the segment if the segments are overlapped or almost intersected
 
         Returns
         -------
-        segment : Segment
+        segment : Segment, None
             Overlapping or connecting segment if the segments are overlapped or
-            almost intersected.
+            almost intersected. None if the intersection does not exist.
 
         Notes
         -----
@@ -187,6 +228,9 @@ class SegmentsIntersection:
         """
 
         from curve._base import Segment
+
+        if not self:
+            return None
 
         if self.intersect_type == IntersectionType.EXACT:
             return Segment(self._intersect_info.data, self._intersect_info.data)
@@ -212,7 +256,7 @@ def intersect_methods() -> ty.List[str]:
     return list(_intersect_methods.keys())
 
 
-def get_intersect_method(method: str) -> abc.Callable:
+def get_intersect_method(method: str) -> IntersectionMethod:
     """Returns the intersection method callable for the given method name
 
     Parameters
@@ -222,7 +266,7 @@ def get_intersect_method(method: str) -> abc.Callable:
 
     Returns
     -------
-    intersect : Callable
+    intersect : IntersectionMethod
         Intersection method callable
 
     See Also
@@ -252,7 +296,7 @@ def default_intersect_method() -> str:
     method : str
         Default intersect method
     """
-    global _default_intersect_method
+
     return _default_intersect_method
 
 
@@ -283,21 +327,26 @@ def set_default_intersect_method(method: str) -> None:
 def register_intersect_method(method: str, default: bool = False):
     """Decorator for registering segment intersection methods
 
+    The decorator can be used for registering new intersection methods.
+
+    The intersection method should be callable and implement `IntersectionMethod` protocol.
+
     Parameters
     ----------
     method : str
         Method name
     default : bool
-        Makes given method as default
+        Makes registered method as default
 
     See Also
     --------
+    IntersectionMethod
     intersect_methods
     get_intersect_method
 
     """
 
-    def decorator(method_callable):
+    def decorator(method_callable: IntersectionMethod):
         if method in _intersect_methods:
             raise ValueError('"{}" intersect method already registered for {}'.format(
                 method, _intersect_methods[method]))
@@ -310,7 +359,7 @@ def register_intersect_method(method: str, default: bool = False):
 
 
 @register_intersect_method('exact', default=True)
-def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> ty.Optional[IntersectionInfo]:
+def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
     """Determines the segments intersection exactly
 
     We should solve the linear system of the following equations:
@@ -334,15 +383,15 @@ def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> ty.Optional[Int
 
     Returns
     -------
-    intersect_info : IntersectionInfo, NotIntersected
-        Intersection info or NotIntersected
+    intersect_info : IntersectionInfo
+        Intersection info
     """
 
     if not segment1.coplanar(segment2):
-        return NotIntersected
+        return NOT_INTERSECTED
 
     if segment1.singular or segment2.singular:
-        return NotIntersected
+        return NOT_INTERSECTED
 
     a = np.stack((segment1.direction.data,
                   -segment2.direction.data), axis=1)
@@ -354,7 +403,7 @@ def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> ty.Optional[Int
         except np.linalg.LinAlgError as err:
             warnings.warn(
                 'Cannot solve system of equations: {}'.format(err), IntersectionWarning)
-            return NotIntersected
+            return NOT_INTERSECTED
     else:
         t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
 
@@ -375,16 +424,16 @@ def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> ty.Optional[Int
                 warnings.warn(
                     'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
                         distance), IntersectionWarning)
-                return NotIntersected
+                return NOT_INTERSECTED
 
         return IntersectionType.EXACT(intersect_point1)
 
-    return NotIntersected
+    return NOT_INTERSECTED
 
 
 @register_intersect_method('almost')
 def almost_intersect(segment1: 'Segment', segment2: 'Segment',
-                     almost_tol: float = 1e-5) -> ty.Optional[IntersectionInfo]:
+                     almost_tol: float = 1e-5) -> IntersectionInfo:
     """Determines the almost intersection of two skewnes segments
 
     We should compute the shortest connecting segment between the segments in this case.
@@ -402,8 +451,8 @@ def almost_intersect(segment1: 'Segment', segment2: 'Segment',
 
     Returns
     -------
-    intersect_info : IntersectionInfo, NotIntersected
-        Intersection info or NotIntersected
+    intersect_info : IntersectionInfo
+        Intersection info
     """
 
     shortest_segment = segment1.shortest_segment(segment2)
@@ -411,16 +460,15 @@ def almost_intersect(segment1: 'Segment', segment2: 'Segment',
     if shortest_segment.seglen < almost_tol:
         return IntersectionType.ALMOST(shortest_segment)
 
-    return NotIntersected
+    return NOT_INTERSECTED
 
 
 def intersect_segments(segment1: 'Segment', segment2: 'Segment',
-                       method: ty.Optional[str] = None, **params) \
-        -> ty.Union[NotIntersected, SegmentsIntersection]:
-    """Finds exact intersection of two n-dimensional segments
+                       method: ty.Optional[str] = None, **params: ty.Any) -> SegmentsIntersection:
+    """Finds the intersection of two n-dimensional segments
 
-    The function finds exact intersection of two n-dimensional segments
-    using linear algebra routines.
+    The function finds the intersection of two n-dimensional segments
+    using given intersection method.
 
     Parameters
     ----------
@@ -440,10 +488,8 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
 
     Returns
     -------
-    res : NotIntersected, SegmentsIntersection
-        The intersection result. It can be:
-            - NotIntersected (None): No any intersection of the segments
-            - SegmentsIntersection: The intersection of the segments
+    res : SegmentsIntersection
+        The intersection result
 
     Raises
     ------
@@ -460,13 +506,15 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
     if segment1.ndim != segment2.ndim:
         raise ValueError('The dimension of the segments must be equal.')
 
+    not_intersected = SegmentsIntersection(segment1, segment2, NOT_INTERSECTED)
+
     # Firstly, we should check all corner cases (overlap, parallel, not coplanar, singular...).
     if segment1.collinear(segment2):
         # We return overlap segment because we do not know exactly what point needed in this case.
         overlap_segment = segment1.overlap(segment2)
 
         if overlap_segment is None:
-            return NotIntersected
+            return not_intersected
 
         return SegmentsIntersection(
             segment1=segment1,
@@ -475,7 +523,7 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
         )
 
     if segment1.parallel(segment2):
-        return NotIntersected
+        return not_intersected
 
     # After checking all corner cases we are sure that
     # two segments (or lines) should intersected.
@@ -488,14 +536,11 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
         raise IntersectionError("'{}': finding intersection has failed: {}".format(
             method, err)) from err
 
-    if intersect_info:
-        return SegmentsIntersection(
-            segment1=segment1,
-            segment2=segment2,
-            intersect_info=intersect_info,
-        )
-
-    return NotIntersected
+    return SegmentsIntersection(
+        segment1=segment1,
+        segment2=segment2,
+        intersect_info=intersect_info,
+    )
 
 
 def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
@@ -561,8 +606,8 @@ def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
 
 
 def intersect_curves(curve1: 'Curve', curve2: 'Curve',
-                     method: ty.Optional[str] = None, **params) -> ty.List[SegmentsIntersection]:
-    """Finds the intersections between two n-dimensional curves or a curve self intersections
+                     method: ty.Optional[str] = None, **params: ty.Any) -> ty.List[SegmentsIntersection]:
+    """Finds the intersections between two n-dimensional curves or a curve itself
 
     Parameters
     ----------
@@ -595,22 +640,19 @@ def intersect_curves(curve1: 'Curve', curve2: 'Curve',
     if curve1.ndim != curve2.ndim:
         raise ValueError('The dimension the curves must be equal.')
 
+    intersections = []
+
     if curve1.size == 0 or curve2.size == 0:
-        return []
+        return intersections
 
     s1, s2 = _find_segments_bbox_intersection(curve1, curve2)
 
     if s1.size == 0:
-        return []
-
-    intersections = []
+        return intersections
 
     for segment1, segment2 in zip(curve1.segments[s1], curve2.segments[s2]):
         intersection = intersect_segments(segment1, segment2, method=method, **params)
-
-        if intersection is NotIntersected:
-            continue
-
-        intersections.append(intersection)
+        if intersection:
+            intersections.append(intersection)
 
     return intersections

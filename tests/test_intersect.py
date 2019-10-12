@@ -73,14 +73,7 @@ skip = functools.partial(pytest.param, marks=pytest.mark.skip)
 ])
 def test_intersect_segments(segment1, segment2, intersect_point):
     intersection = segment1.intersect(segment2)
-
-    if intersect_point is None:
-        assert intersection is None
-    else:
-        assert intersection is not None
-
-    if intersection:
-        assert intersection.intersect_point == intersect_point
+    assert intersection.intersect_point == intersect_point
 
 
 @pytest.mark.parametrize('data1, data2, segments1, segments2, intersect_points', [

@@ -189,25 +189,23 @@ def test_overlap(points1, points2, expected_points):
      (Point([1, 2]), Point([2, 1])), Point([1.5, 1.5]), IntersectionType.EXACT),
     ((Point([1, 1]), Point([2, 2])),
      (Point([3, 3]), Point([0, 0])), Point([1.5, 1.5]), IntersectionType.OVERLAP),
-    ((Point([1, 1]), Point([2, 2])), (Point([-5, 2]), Point([2, 10])), None, None),
+    ((Point([1, 1]), Point([2, 2])), (Point([-5, 2]), Point([2, 10])), None, IntersectionType.NONE),
 
     # 3d
     ((Point([1, 1, 1]), Point([2, 2, 2])),
      (Point([1, 2, 1]), Point([2, 1, 2])), Point([1.5, 1.5, 1.5]), IntersectionType.EXACT),
     ((Point([1, 1, 1]), Point([2, 2, 2])),
      (Point([0, 0, 0]), Point([3, 3, 3])), Point([1.5, 1.5, 1.5]), IntersectionType.OVERLAP),
-    ((Point([1, 1, 2]), Point([1, 2, 3])), (Point([0, 0, 0]), Point([2, 3, 1])), None, None),
+    ((Point([1, 1, 2]), Point([1, 2, 3])), (Point([0, 0, 0]), Point([2, 3, 1])), None, IntersectionType.NONE),
 ])
 def test_intersect(points1, points2, expected_intersect_point, intersect_type):
     segment1 = Segment(*points1)
     segment2 = Segment(*points2)
 
-    if expected_intersect_point is None:
-        assert segment1.intersect(segment2) == expected_intersect_point
-    else:
-        intersection = segment1.intersect(segment2)
-        assert intersection.intersect_point == expected_intersect_point
-        assert intersection.intersect_type == intersect_type
+    intersection = segment1.intersect(segment2)
+
+    assert intersection.intersect_point == expected_intersect_point
+    assert intersection.intersect_type == intersect_type
 
 
 @pytest.mark.parametrize('segment_points, point, expected_distance', [
