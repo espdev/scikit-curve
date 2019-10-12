@@ -18,7 +18,7 @@ import curve._base
 from curve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
-    from curve._base import Point, Segment, Curve
+    from curve._base import Point, Segment, Curve  # noqa
 
 
 _intersect_methods = {}  # type: ty.Dict[str, 'IntersectionMethod']

@@ -15,7 +15,7 @@ import curve._base
 from curve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
-    from curve._base import Point, Segment
+    from curve._base import Point, Segment  # noqa
 
 
 class GeometryAlgorithmsWarning(UserWarning):

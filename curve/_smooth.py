@@ -14,7 +14,7 @@ import scipy.signal.windows as windows
 import scipy.ndimage as ndimage
 
 if ty.TYPE_CHECKING:
-    from curve._base import Curve
+    from curve._base import Curve  # noqa
 
 
 _smooth_methods = {}

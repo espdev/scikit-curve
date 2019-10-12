@@ -26,7 +26,7 @@ import csaps
 from curve._numeric import linrescale
 
 if ty.TYPE_CHECKING:
-    from curve._base import Curve
+    from curve._base import Curve  # noqa
 
 
 _interpolators = {}  # type: ty.Dict[str, ty.Type['InterpolatorBase']]
