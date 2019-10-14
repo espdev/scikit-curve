@@ -20,10 +20,21 @@ from curve._interpolate import (
 from curve._smooth import (
     SmoothingError,
     smooth_methods,
-    get_smooth_filter,
-    register_smooth_filter,
+    get_smooth_method,
+    register_smooth_method,
 )
-from curve._intersect import SegmentsIntersection, NotIntersected
+from curve._geomalg import GeometryAlgorithmsWarning
+from curve._intersect import (
+    IntersectionInfo,
+    IntersectionType,
+    SegmentsIntersection,
+    NOT_INTERSECTED,
+    intersect_methods,
+    get_intersect_method,
+    default_intersect_method,
+    set_default_intersect_method,
+    register_intersect_method,
+)
 from curve._numeric import isequal, allequal, dot1d
 
 __all__ = [
@@ -57,12 +68,22 @@ __all__ = [
     # smoothing
     'SmoothingError',
     'smooth_methods',
-    'get_smooth_filter',
-    'register_smooth_filter',
+    'get_smooth_method',
+    'register_smooth_method',
+
+    # geomalgo
+    'GeometryAlgorithmsWarning',
 
     # intersection
+    'IntersectionInfo',
+    'IntersectionType',
     'SegmentsIntersection',
-    'NotIntersected',
+    'NOT_INTERSECTED',
+    'intersect_methods',
+    'get_intersect_method',
+    'default_intersect_method',
+    'set_default_intersect_method',
+    'register_intersect_method',
 
     # numeric
     'isequal',

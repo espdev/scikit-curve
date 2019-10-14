@@ -15,54 +15,7 @@ if ty.TYPE_CHECKING:
     from curve import Curve
 
 
-def _multicolor_curveplot(curve, name, cmap, ax, **kwargs):
-    """Plots a curve parameter as multicolored line with given colormap
-    """
-
-    points = curve.data[:, np.newaxis]
-    segments = np.concatenate([points[:-1], points[1:]], axis=1)
-    curve_values = list(curve.values())
-    multicolor_values = getattr(curve, name)
-
-    marker = kwargs.pop('marker', None)
-
-    if curve.is2d:
-        line_collection = LineCollection
-    else:
-        line_collection = Line3DCollection
-
-    norm = Normalize(multicolor_values.min(), multicolor_values.max())
-    mappable = ScalarMappable(norm=norm, cmap=cmap)
-    colors = mappable.to_rgba(multicolor_values)
-
-    curve_segments = line_collection(segments, zorder=0, **kwargs)
-    curve_segments.set_array(multicolor_values)
-    curve_segments.set_norm(norm)
-    curve_segments.set_cmap(cmap)
-
-    if curve.is2d:
-        line = ax.add_collection(curve_segments)
-        ax.autoscale()
-    else:
-        line = ax.add_collection3d(curve_segments)
-        ax.auto_scale_xyz(*curve_values)
-
-    if marker:
-        ax.scatter(*curve_values, c=colors, marker=marker, **kwargs)
-
-    cbar = ax.figure.colorbar(mappable, ax=ax)
-    cbar.ax.set_ylabel(name)
-
-    return line
-
-
-def curveplot(curve: 'Curve',
-              *args,
-              param: ty.Optional[str] = None,
-              param_cmap: str = 'plasma',
-              show_normals: bool = False,
-              ax: ty.Optional[plt.Axes] = None,
-              **kwargs) -> ty.Optional[plt.Axes]:
+class curveplot:
     """Plots a curve
 
     The function plots 2-d or 3-d curve using matplotlib.
@@ -80,65 +33,129 @@ def curveplot(curve: 'Curve',
     ax : Optional[Axes]
         MPL axes
 
-    Returns
-    -------
-    ax : Axes
-        If axes object was created
-
     """
 
-    if curve.ndim > 3:
-        raise ValueError('Cannot plot the {}-dimensional curve.'.format(curve.ndim))
+    def __init__(self,
+                 curve: 'Curve',
+                 *args: ty.Any,
+                 param: ty.Optional[str] = None,
+                 param_cmap: str = 'plasma',
+                 show_normals: bool = False,
+                 axes: ty.Optional[plt.Axes] = None,
+                 **kwargs: ty.Any) -> None:
+        if curve.ndim > 3:
+            raise ValueError(
+                'Cannot plot the {}-dimensional curve.'.format(curve.ndim))
 
-    return_axes = False
+        self._curve = curve
+        self._param = param
+        self._param_cmap = param_cmap
+        self._show_normals = show_normals
+        self._axes = axes
+        self._args = args
+        self._kwargs = kwargs
 
-    if ax is None:
-        return_axes = True
-        fig = plt.figure()
+        self._plot()
 
-        if curve.is2d:
-            ax = fig.add_subplot(1, 1, 1)
-        elif curve.is3d:
-            ax = fig.add_subplot(1, 1, 1, projection='3d')
-    else:
-        if curve.is3d and not isinstance(ax, Axes3D):
-            raise TypeError('Cannot plot 3-d curve on 2-d axes')
+    @property
+    def axes(self) -> plt.Axes:
+        return self._axes
 
-    values = list(curve.values())
+    def curveplot(self,
+                  curve: 'Curve',
+                  *args: ty.Any,
+                  param: ty.Optional[str] = None,
+                  param_cmap: str = 'plasma',
+                  show_normals: bool = False,
+                  **kwargs: ty.Any) -> 'curveplot':
+        return curveplot(
+            curve,
+            *args,
+            param=param,
+            param_cmap=param_cmap,
+            show_normals=show_normals,
+            axes=self._axes,
+            **kwargs
+        )
 
-    if param:
-        _multicolor_curveplot(curve, param, param_cmap, ax, **kwargs)
-    else:
-        ax.plot(*values, *args, **kwargs)
+    def _multicolor_plot(self):
+        """Plots a curve parameter as multicolored line with given colormap
+        """
 
-    if show_normals:
-        normals = [curve.frenet2[:, i] for i in range(curve.ndim)]
+        points = self._curve.data[:, np.newaxis]
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        curve_values = list(self._curve.values())
+        multicolor_values = getattr(self._curve, self._param)
 
-        if curve.is2d:
-            ax.quiver(*values, *normals,
-                      units='height', width=0.002, zorder=0, color='gray')
+        marker = self._kwargs.pop('marker', None)
+
+        if self._curve.is2d:
+            line_collection = LineCollection
         else:
-            # FIXME: quiver3d in mpl is a piece of shit
-            # Maybe we could use this solution
-            # https://stackoverflow.com/a/22867877/419926
+            line_collection = Line3DCollection
 
-            # length = np.abs(np.array(values)).mean() / 3
-            #
-            # ax.quiver(*values, *normals,
-            #           length=length, normalize=True, arrow_length_ratio=0.1, color='gray')
-            raise NotImplementedError('Plot normals is not implemented for 3-d curves')
+        norm = Normalize(multicolor_values.min(), multicolor_values.max())
+        mappable = ScalarMappable(norm=norm, cmap=self._param_cmap)
+        colors = mappable.to_rgba(multicolor_values)
 
-    title = 'Curve (points: {}, length: ~{:.2f})'.format(curve.size, curve.arclen)
+        curve_segments = line_collection(segments, zorder=0, **self._kwargs)
+        curve_segments.set_array(multicolor_values)
+        curve_segments.set_norm(norm)
+        curve_segments.set_cmap(self._param_cmap)
 
-    ax.set_title(title)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    if curve.is3d:
-        ax.set_zlabel('Z')
+        if self._curve.is2d:
+            self._axes.add_collection(curve_segments)
+            self._axes.autoscale()
+        else:
+            self._axes.add_collection3d(curve_segments)
+            self._axes.auto_scale_xyz(*curve_values)
 
-    if curve.is2d:
-        ax.axis('equal')
+        if marker:
+            self._axes.scatter(*curve_values, c=colors, marker=marker, **self._kwargs)
 
-    if return_axes:
-        return ax
-    return None
+        cbar = self._axes.figure.colorbar(mappable, ax=self._axes)
+        cbar.ax.set_ylabel(self._param)
+
+    def _plot(self):
+        if self._axes is None:
+            fig = plt.figure()
+
+            if self._curve.is2d:
+                self._axes = fig.add_subplot(1, 1, 1)
+            elif self._curve.is3d:
+                self._axes = fig.add_subplot(1, 1, 1, projection='3d')
+        else:
+            if self._curve.is3d and not isinstance(self._axes, Axes3D):
+                raise TypeError('Cannot plot 3-d curve on 2-d axes')
+
+        values = list(self._curve.values())
+
+        if self._param:
+            self._multicolor_plot()
+        else:
+            self._axes.plot(*values, *self._args, **self._kwargs)
+
+        if self._show_normals:
+            normals = [self._curve.frenet2[:, i] for i in range(self._curve.ndim)]
+
+            if self._curve.is2d:
+                self._axes.quiver(*values, *normals,
+                                  units='height', width=0.002, zorder=0, color='gray')
+            else:
+                # FIXME: quiver3d in mpl is a piece of shit
+                # Maybe we could use this solution
+                # https://stackoverflow.com/a/22867877/419926
+
+                # length = np.abs(np.array(values)).mean() / 3
+                #
+                # ax.quiver(*values, *normals,
+                #           length=length, normalize=True, arrow_length_ratio=0.1, color='gray')
+                raise NotImplementedError('Plot normals is not implemented for 3-d curves')
+
+        # TODO: add curve info to legend
+        # title = 'Curve (points: {}, length: ~{:.2f})'.format(
+        #     self._curve.size, self._curve.arclen)
+        # self._axes.set_title(title)
+
+        if self._curve.is2d:
+            self._axes.axis('equal')

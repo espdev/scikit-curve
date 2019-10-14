@@ -3,7 +3,9 @@
 import functools
 import pytest
 
-from curve import Point, Segment, Curve, CurveSegment
+import numpy as np
+
+from curve import Point, Segment, Curve, CurveSegment, curves
 
 
 skip = functools.partial(pytest.param, marks=pytest.mark.skip)
@@ -71,14 +73,7 @@ skip = functools.partial(pytest.param, marks=pytest.mark.skip)
 ])
 def test_intersect_segments(segment1, segment2, intersect_point):
     intersection = segment1.intersect(segment2)
-
-    if intersect_point is None:
-        assert intersection is None
-    else:
-        assert intersection is not None
-
-    if intersection:
-        assert intersection.intersect_point == intersect_point
+    assert intersection.intersect_point == intersect_point
 
 
 @pytest.mark.parametrize('data1, data2, segments1, segments2, intersect_points', [
@@ -170,3 +165,20 @@ def test_intersect_curves(data1, data2, segments1, segments2, intersect_points):
         assert CurveSegment(curve1, index=segments1[i]) == intersection.segment1
         assert CurveSegment(curve2, index=segments2[i]) == intersection.segment2
         assert intersect_points[i] == intersection.intersect_point
+
+
+def test_intersect_curves_almost():
+    curve1 = curves.helix(t_start=-np.pi, t_stop=np.pi * 3, p_count=100)
+    curve2 = curves.helix(t_start=-np.pi, t_stop=np.pi * 3, a=-1, b=-1, p_count=100)
+
+    intersections = curve1.intersect(curve2, method='almost', almost_tol=0.01)
+
+    assert len(intersections) == 2
+
+    expected_intersect_points = [
+        Point([-0.9986155794073, -0.0000159984365, -1.5708163062868]),
+        Point([0.9986155794073, 0.0000159984365, 1.5708163062868]),
+    ]
+
+    for intersection, expected_point in zip(intersections, expected_intersect_points):
+        assert intersection.intersect_point == expected_point

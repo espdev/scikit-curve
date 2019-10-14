@@ -51,8 +51,8 @@ curve2 = Curve([x, y, z2])
 
 intersections = curve1.intersect(curve2)
 
-ax = curveplot(curve1, param='curvature', linewidth=2)
-curveplot(curve2, param='curvature', param_cmap='viridis', linewidth=2, ax=ax)
+ax = curveplot(curve1, param='curvature', linewidth=2).\
+     curveplot(curve2, param='curvature', param_cmap='viridis', linewidth=2).axes
 
 ix = []
 iy = []
@@ -67,8 +67,6 @@ for intersect in intersections:
     iz.append(p[Axis.Z])
 
 ax.plot(ix, iy, iz, 'o', markerfacecolor='r', markeredgecolor='k', zorder=1000)
-
-ax.set_title('')
 plt.show()
 ```
 

@@ -25,13 +25,14 @@ import numpy as np
 
 from cached_property import cached_property
 
-from curve._distance import MetricType, get_metric
-from curve._utils import as2d
+import curve._distance as _distance
+import curve._diffgeom as _diffgeom
+import curve._geomalg as _geomalg
+import curve._intersect as _intersect
+import curve._interpolate as _interpolate
+import curve._smooth as _smooth
 from curve._numeric import allequal, F_EPS
-from curve import _diffgeom
-from curve._interpolate import InterpGridSpecType, interpolate
-from curve._smooth import smooth
-from curve._intersect import intersect_segments, intersect_curves, NotIntersected, SegmentsIntersection
+from curve._utils import as2d
 
 
 Numeric = ty.Union[numbers.Number, np.number]
@@ -328,7 +329,7 @@ class Point(abc.Sequence):
 
         return np.sqrt(self @ self)
 
-    def distance(self, other: 'Point', metric: MetricType = 'euclidean', **kwargs) -> Numeric:
+    def distance(self, other: 'Point', metric: _distance.MetricType = 'euclidean', **kwargs) -> Numeric:
         """Compute distance from this point to other point by given metric
 
         Parameters
@@ -353,7 +354,7 @@ class Point(abc.Sequence):
         """
 
         if isinstance(metric, str):
-            metric = get_metric(metric, **kwargs)
+            metric = _distance.get_metric(metric, **kwargs)
 
         if not callable(metric):
             raise TypeError('Metric must be str or callable')
@@ -877,17 +878,7 @@ class Segment:
             The point(s) on the segment for given "t"
         """
 
-        if isinstance(t, (abc.Sequence, np.ndarray)):
-            t = np.asarray(t)
-            if t.ndim > 1:
-                raise ValueError('"t" must be a sequence or 1-d numpy array')
-
-            dt = self.direction.data * t[np.newaxis].T
-            points_data = self.p1.data + dt
-
-            return [Point(pdata) for pdata in points_data]
-        else:
-            return self.p1 + self.direction * t
+        return _geomalg.segment_point(self, t)
 
     def t(self, point: ty.Union['Point', ty.Sequence['Point']],
           tol: ty.Optional[float] = None) -> ty.Union[float, np.ndarray]:
@@ -908,38 +899,7 @@ class Segment:
 
         """
 
-        if isinstance(point, Point):
-            if not self.collinear(point, tol=tol):
-                warnings.warn(
-                    "Given point '{}' is not collinear with the segment '{}'".format(point, self), RuntimeWarning)
-                return np.nan
-            b = point.data - self.p1.data
-            is_collinear = np.asarray([])
-        else:
-            is_collinear = np.array([self.collinear(p, tol=tol) for p in point], dtype=np.bool_)
-            b = np.stack([p.data - self.p1.data for p in point], axis=1)
-
-        a = self.direction.data[np.newaxis].T
-
-        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
-
-        if residuals.size > 0 and residuals[0] > F_EPS:
-            warnings.warn(
-                'The "lstsq" residuals are {}. "t" value(s) might be wrong.'.format(residuals),
-                RuntimeWarning)
-
-        t = t.squeeze()
-
-        if is_collinear.size == 0:
-            return float(t)
-        else:
-            if not np.all(is_collinear):
-                warnings.warn(
-                    "Some given points are not collinear with the segment", RuntimeWarning)
-                t[~is_collinear] = np.nan
-            if t.size == 1:
-                t = np.array(t, ndmin=1)
-            return t
+        return _geomalg.segment_t(self, point, tol=tol)
 
     def angle(self, other: 'Segment', ndigits: ty.Optional[int] = None) -> float:
         """Returns the angle between this segment and other segment
@@ -960,27 +920,31 @@ class Segment:
         if not isinstance(other, Segment):
             raise TypeError('The type of "other" argument must be \'Segment\'.')
 
-        u1 = self.direction
-        u2 = other.direction
+        return _geomalg.segments_angle(self, other, ndigits=ndigits)
 
-        denominator = u1.norm() * u2.norm()
+    def parallel(self, other: 'Segment', tol: float = F_EPS) -> bool:
+        """Returns True if the segment and other segment are parallel
 
-        if np.isclose(denominator, 0.0):
-            warnings.warn(
-                'Cannot compute angle between segments. One or both segments degenerate into a point.',
-                RuntimeWarning)
-            return np.nan
+        Parameters
+        ----------
+        other : Segment
+            Other segment
+        tol : float
+            Epsilon. It is a small float number. By default float64 eps
 
-        cos_phi = (u1 @ u2) / denominator
+        Returns
+        -------
+        flag : bool
+            True if the segment and other segment are parallel
 
-        if ndigits is not None:
-            cos_phi = round(cos_phi, ndigits=ndigits)
+        See Also
+        --------
+        collinear
+        angle
 
-        # We need to consider floating point errors
-        cos_phi = 1.0 if cos_phi > 1.0 else cos_phi
-        cos_phi = -1.0 if cos_phi < -1.0 else cos_phi
+        """
 
-        return np.arccos(cos_phi)
+        return _geomalg.parallel_segments(self, other, tol=tol)
 
     def collinear(self, other: ty.Union['Segment', 'Point'],
                   tol: ty.Optional[float] = None) -> bool:
@@ -1005,56 +969,20 @@ class Segment:
 
         """
 
+        points = [self.p1, self.p2]
+
         if isinstance(other, Point):
             if other == self.p1 or other == self.p2:
                 return True
+            points.append(other)
         elif isinstance(other, Segment):
             if other == self or other.swap() == self:
                 return True
+            points.extend([other.p1, other.p2])
         else:
-            raise TypeError('"other" argument must be type \'Segment\'.')
+            raise TypeError('"other" argument must be type \'Point\' or \'Segment\'.')
 
-        # In n-dimensional space, a set of three or more distinct points are collinear
-        # if and only if, the matrix of the coordinates of these vectors is of rank 1 or less.
-        m = np.unique(np.vstack((self.data, other.data)).T, axis=1)
-
-        if m.shape[1] < 3:
-            return True
-
-        return np.linalg.matrix_rank(m, tol=tol) <= 1
-
-    def parallel(self, other: 'Segment',
-                 ndigits: ty.Optional[int] = 8,
-                 rtol: float = 1e-5, atol: float = 1e-8) -> bool:
-        """Returns True if the segment and other segment are parallel
-
-        Parameters
-        ----------
-        other : Segment
-            Other segment
-        ndigits : int, None
-            The number of significant digits
-        rtol : float
-            Relative tolerance with check angle
-        atol : float
-            Absolute tolerance with check angle
-
-        Returns
-        -------
-        flag : bool
-            True if the segment and other segment are parallel
-
-        See Also
-        --------
-        collinear
-        angle
-
-        """
-
-        phi = self.angle(other, ndigits=ndigits)
-        if np.isnan(phi):
-            return False
-        return np.isclose(phi, [0., np.pi], rtol=rtol, atol=atol).any()
+        return _geomalg.collinear_points(points, tol=tol)
 
     def coplanar(self, other: ty.Union['Segment', 'Point'],
                  tol: ty.Optional[float] = None) -> bool:
@@ -1078,17 +1006,16 @@ class Segment:
 
         """
 
-        m = self.data.copy()
+        points = [self.p1, self.p2]
 
         if isinstance(other, Point):
-            m -= other.data
+            points.append(other)
         elif isinstance(other, Segment):
-            m = np.vstack((m, other.p1.data))
-            m -= other.p2.data
+            points.extend([other.p1, other.p2])
         else:
             raise TypeError('"other" argument must be type \'Point\' or \'Segment\'')
 
-        return np.linalg.matrix_rank(m, tol=tol) <= 2
+        return _geomalg.coplanar_points(points, tol=tol)
 
     def overlap(self, other: 'Segment', tol: ty.Optional[float] = None) -> ty.Optional['Segment']:
         """Returns overlap segment between the segment and other segment if it exists
@@ -1107,47 +1034,81 @@ class Segment:
 
         """
 
-        if not self.collinear(other, tol=tol):
-            return None
+        return _geomalg.overlap_segments(self, other, tol=tol)
 
-        p11_data = self.p1.data
-        p12_data = self.p2.data
-        p21_data = other.p1.data
-        p22_data = other.p2.data
-
-        data_minmax = np.minimum(
-            np.maximum(p11_data, p12_data),
-            np.maximum(p21_data, p22_data),
-        )
-
-        data_maxmin = np.maximum(
-            np.minimum(p11_data, p12_data),
-            np.minimum(p21_data, p22_data),
-        )
-
-        if np.any(data_maxmin > data_minmax):
-            return None
-
-        return Segment(Point(data_maxmin), Point(data_minmax))
-
-    def intersect(self, other: 'Segment') -> ty.Union[NotIntersected, SegmentsIntersection]:
+    def intersect(self, other: 'Segment',
+                  method: ty.Optional[str] = None, **params) -> _intersect.SegmentsIntersection:
         """Finds the intersection of the segment and other segment
 
         Parameters
         ----------
         other : Segment
             Other segment
+        method : str, None
+            The method to determine intersection. By default the following methods are available:
+                - ``exact`` -- (default) the exact intersection solving the system of equations
+                - ``almost`` -- the almost intersection using the shortest connecting segment.
+                  This is usually actual for dimension >= 3.
+
+                The default method is ``exact``.
+        params : mapping
+            The intersection method parameters
 
         Returns
         -------
-        res : None (NotIntersected), SegmentsIntersection
-            The intersection result. It can be:
-                - NotIntersected (None): No any intersection of the segments
-                - SegmentsIntersection: The intersection of the segments
+        res : SegmentsIntersection
+        """
+
+        return _intersect.intersect_segments(self, other, method=method, **params)
+
+    def distance(self, other: ty.Union['Point', 'Segment']) -> float:
+        """Computes the shortest distance between the segment and given point or segment
+
+        Parameters
+        ----------
+        other : Point, Segment
+            The point or segment object
+
+        Returns
+        -------
+        dist : float
+            The shortest distance
+
+        See Also
+        --------
+        shortest_segment
 
         """
 
-        return intersect_segments(self, other)
+        return self.shortest_segment(other).seglen
+
+    def shortest_segment(self, other: ty.Union['Point', 'Segment']) -> 'Segment':
+        """Returns the shortest segment between the segment and given point or segment
+
+        Parameters
+        ----------
+        other : Point, Segment
+            The point or segment object
+
+        Returns
+        -------
+        segment : Segment
+            Shortest segment
+
+        See Also
+        --------
+        distance
+
+        """
+
+        if isinstance(other, Point):
+            shortest_to = _geomalg.segment_to_point
+        elif isinstance(other, Segment):
+            shortest_to = _geomalg.segment_to_segment
+        else:
+            raise TypeError('"other" argument must be \'Point\' or \'Segment\' type.')
+
+        return shortest_to(self, other)
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
@@ -2713,7 +2674,7 @@ class Curve(abc.Sequence):
 
         return _diffgeom.nonsingular(self)
 
-    def interpolate(self, grid_spec: InterpGridSpecType, method: str = 'linear', **kwargs) -> 'Curve':
+    def interpolate(self, grid_spec: _interpolate.InterpGridSpecType, method: str, **kwargs) -> 'Curve':
         """Interpolates the curve data
 
         The method interpolates the curve data by given grid or
@@ -2736,6 +2697,7 @@ class Curve(abc.Sequence):
                 * ``akima`` -- Akima interpolation
                 * ``pchip`` -- PCHIP 1-d monotonic cubic interpolation
                 * ``spline`` -- General k-order weighted spline interpolation
+                * ``csaps`` -- Smoothing weighted natural cubic spline interpolation/approximation
 
         **kwargs : mapping
             Additional interpolator parameters dependent on interpolation method
@@ -2791,7 +2753,7 @@ class Curve(abc.Sequence):
 
         """
 
-        return interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
+        return _interpolate.interpolate(self, grid_spec=grid_spec, method=method, **kwargs)
 
     def smooth(self, method: str, **params) -> 'Curve':
         """Smoothes the curve using the given method and its parameters
@@ -2827,15 +2789,25 @@ class Curve(abc.Sequence):
 
         """
 
-        return smooth(self, method, **params)
+        return _smooth.smooth(self, method, **params)
 
-    def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None) -> ty.List[SegmentsIntersection]:
-        """Determines the curve intersections with other curve/segment or itself
+    def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None,
+                  method: ty.Optional[str] = None, **params) -> ty.List[_intersect.SegmentsIntersection]:
+        """Determines the curve intersections with other curve or segment or itself
 
         Parameters
         ----------
         other : Curve, Segment, None
             Other object to determine intersection or None for itself
+        method : str, None
+            The method to determine intersection. By default the following methods are available:
+                - ``exact`` -- (default) the exact intersection solving the system of equations
+                - ``almost`` -- the almost intersection using the shortest connecting segment.
+                  This is usually actual for dimension >= 3.
+
+                The default method is ``exact``.
+        params : mapping
+            The intersection method parameters
 
         Returns
         -------
@@ -2856,21 +2828,20 @@ class Curve(abc.Sequence):
         elif isinstance(other, Segment):
             curve2 = other.to_curve()
         else:
-            raise TypeError('"other" object must be "Curve" or "CurveSegment" class or None')
+            raise TypeError("'other' argument must be 'Curve' or 'Segment' or None.")
 
-        intersections = intersect_curves(self, curve2)
+        intersections = _intersect.intersect_curves(self, curve2, method=method, **params)
 
         if isinstance(other, Segment):
             for i, intersection in enumerate(intersections):
-                intersections[i] = SegmentsIntersection(
+                intersections[i] = _intersect.SegmentsIntersection(
                     segment1=intersection.segment1,
                     segment2=other,
-                    intersection=(intersection.overlap_segment or
-                                  intersection.intersect_point),
+                    intersect_info=intersection.intersect_info,
                 )
 
         return intersections
 
     def _check_ndim(self, other: PointCurveUnion):
         if self.ndim != other.ndim:
-            raise ValueError('The dimensions of the curve and other object do not match')
+            raise ValueError('The dimensions of the curve and other object do not match.')
