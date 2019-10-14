@@ -67,7 +67,7 @@ class curveplot:
                   param: ty.Optional[str] = None,
                   param_cmap: str = 'plasma',
                   show_normals: bool = False,
-                  **kwargs: ty.Any) -> 'plot':
+                  **kwargs: ty.Any) -> 'curveplot':
         return curveplot(
             curve,
             *args,
