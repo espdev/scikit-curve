@@ -1753,6 +1753,28 @@ class Curve(abc.Sequence):
         return self.ndim >= 3
 
     @property
+    def isplane(self) -> bool:
+        """Returns True if the curve is plane
+
+        The plane curve may be spatial, but always is coplanar.
+
+        Returns
+        -------
+        flag : bool
+            If the curve is plane
+
+        See Also
+        --------
+        isspatial
+        torsion
+
+        """
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _diffgeom.DifferentialGeometryWarning)
+            return np.allclose(self.torsion, 0.)
+
+    @property
     def isparametric(self) -> bool:
         """Returns True if the curve has "tdata" vector (it is the parametric curve)
 
