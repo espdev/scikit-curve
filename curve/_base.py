@@ -1102,13 +1102,12 @@ class Segment:
         """
 
         if isinstance(other, Point):
-            shortest_to = _geomalg.segment_to_point
+            return _geomalg.segment_to_point(self, other)
         elif isinstance(other, Segment):
-            shortest_to = _geomalg.segment_to_segment
+            t1, t2 = _geomalg.segment_to_segment
+            return Segment(self.point(t1), other.point(t2))
         else:
             raise TypeError('"other" argument must be \'Point\' or \'Segment\' type.')
-
-        return shortest_to(self, other)
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
