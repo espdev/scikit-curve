@@ -495,8 +495,6 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
 
     """
 
-    global _default_intersect_method
-
     if method is None:
         method = _default_intersect_method
 
