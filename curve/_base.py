@@ -1770,9 +1770,7 @@ class Curve(abc.Sequence):
 
         """
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', _diffgeom.DifferentialGeometryWarning)
-            return np.allclose(self.torsion, 0.)
+        return _geomalg.coplanar_points(self.data)
 
     @property
     def isparametric(self) -> bool:
