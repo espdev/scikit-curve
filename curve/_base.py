@@ -1104,7 +1104,7 @@ class Segment:
         if isinstance(other, Point):
             return _geomalg.segment_to_point(self, other)
         elif isinstance(other, Segment):
-            t1, t2 = _geomalg.segment_to_segment
+            t1, t2 = _geomalg.segment_to_segment(self, other)
             return Segment(self.point(t1), other.point(t2))
         else:
             raise TypeError('"other" argument must be \'Point\' or \'Segment\' type.')
