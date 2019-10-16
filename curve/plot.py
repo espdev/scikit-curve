@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+"""
+Plotting routines
+
+"""
+
 import typing as ty
 
 import numpy as np
@@ -11,14 +16,13 @@ from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 import matplotlib.pyplot as plt
 
-if ty.TYPE_CHECKING:
-    from curve import Curve
+from curve import Curve
 
 
-class curveplot:
+class CurvePlot:
     """Plots a curve
 
-    The function plots 2-d or 3-d curve using matplotlib.
+    The class to plot 2-d or 3-d curves using matplotlib.
 
     Parameters
     ----------
@@ -32,11 +36,14 @@ class curveplot:
         Draw normal vectors
     ax : Optional[Axes]
         MPL axes
-
+    args : tuple
+        Additional positional arguments will be pass to mpl.plot
+    kwargs : mapping
+        Additional keyword arguments will be pass to mpl.plot
     """
 
     def __init__(self,
-                 curve: 'Curve',
+                 curve: Curve,
                  *args: ty.Any,
                  param: ty.Optional[str] = None,
                  param_cmap: str = 'plasma',
@@ -62,13 +69,44 @@ class curveplot:
         return self._axes
 
     def curveplot(self,
-                  curve: 'Curve',
+                  curve: Curve,
                   *args: ty.Any,
                   param: ty.Optional[str] = None,
                   param_cmap: str = 'plasma',
                   show_normals: bool = False,
-                  **kwargs: ty.Any) -> 'curveplot':
-        return curveplot(
+                  **kwargs: ty.Any) -> 'CurvePlot':
+        """Plots a curve on the same axes
+
+        The method can be used to plot several curves on the same axes
+        using chained API::
+
+            curveplot(curve1).\
+            curveplot(curve2).\
+            curveplot(curve3)
+            ...
+
+        Parameters
+        ----------
+        curve : Curve
+            Curve object
+        param : Optional[str]
+            The curve parameter name for show as multicolor line, "curvature", for example
+        param_cmap : Optional[str]
+            The colormap for show the curve parameter as multicolor line
+        show_normals : bool
+            Draw normal vectors
+        args : tuple
+            Additional positional arguments will be pass to mpl.plot
+        kwargs : mapping
+            Additional keyword arguments will be pass to mpl.plot
+
+        Returns
+        -------
+        curve_plot : CurvePlot
+            CurvePlot instance
+        """
+
+        return CurvePlot(
             curve,
             *args,
             param=param,
@@ -126,7 +164,7 @@ class curveplot:
                 self._axes = fig.add_subplot(1, 1, 1, projection='3d')
         else:
             if self._curve.is3d and not isinstance(self._axes, Axes3D):
-                raise TypeError('Cannot plot 3-d curve on 2-d axes')
+                raise TypeError('Cannot plot 3-d curve on 2-d axes.')
 
         values = list(self._curve.values())
 
@@ -157,5 +195,9 @@ class curveplot:
         #     self._curve.size, self._curve.arclen)
         # self._axes.set_title(title)
 
-        if self._curve.is2d:
+        if not isinstance(self._axes, Axes3D):
             self._axes.axis('equal')
+
+
+curveplot = CurvePlot
+"""'CurvePlot' class alias for using chained API"""
