@@ -305,7 +305,7 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
                                curve._base.Point(data_minmax))
 
 
-def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
+def segment_to_point(segment: 'Segment', point: 'Point') -> float:
     """Computes the shortest segment from the segment to the point
 
     Parameters
@@ -317,8 +317,8 @@ def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
 
     Returns
     -------
-    shortest_segment : Segment
-        The shortest segment between the point and the segment
+    t : float
+        The t-parameter to determine the point in the segment
 
     """
 
@@ -328,18 +328,15 @@ def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
     c1 = to_point_direction @ segment_direction
 
     if c1 < 0 or np.isclose(c1, 0):
-        return curve._base.Segment(point, segment.p1)
+        return 0.0
 
     c2 = segment_direction @ segment_direction
 
     if c2 < c1 or np.isclose(c2, c1):
-        return curve._base.Segment(point, segment.p2)
+        return 1.0
 
     t = c1 / c2
-    pp = segment.p1 + segment_direction * t
-    shortest_segment = curve._base.Segment(point, pp)
-
-    return shortest_segment
+    return t
 
 
 def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_EPS) -> ty.Tuple[float, float]:
