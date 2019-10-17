@@ -471,9 +471,9 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
          data2[:-1, :][np.newaxis].transpose(2, 0, 1))
 
     # Vectorized computing dot products
-    a = np.einsum('ijk,ijk->jk', u, u).repeat(m1, axis=1)
+    a = np.einsum('ijk,ijk->jk', u, u).repeat(m2, axis=1)
     b = np.einsum('ijk,ikl->jl', u, v)
-    c = np.einsum('ijk,ijk->jk', v, v).repeat(m2, axis=0)
+    c = np.einsum('ijk,ijk->jk', v, v).repeat(m1, axis=0)
     d = np.einsum('ijk,ijl->jl', u, w)
     e = np.einsum('ijk,ilk->lk', v, w)
 
@@ -485,6 +485,7 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
     tn = np.zeros_like(dd)
 
     dd_lt_tol = dd < tol
+    not_dd_lt_tol = ~dd_lt_tol
 
     sd[dd_lt_tol] = 1.0
     tn[dd_lt_tol] = e[dd_lt_tol]
@@ -493,16 +494,16 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
     be_cd = b * e - c * d
     ae_bd = a * e - b * d
 
-    sn[~dd_lt_tol] = be_cd[~dd_lt_tol]
-    tn[~dd_lt_tol] = ae_bd[~dd_lt_tol]
+    sn[not_dd_lt_tol] = be_cd[not_dd_lt_tol]
+    tn[not_dd_lt_tol] = ae_bd[not_dd_lt_tol]
 
-    sn_lt_zero = (sn < 0) & ~dd_lt_tol
+    sn_lt_zero = (sn < 0) & not_dd_lt_tol
 
     sn[sn_lt_zero] = 0.0
     tn[sn_lt_zero] = e[sn_lt_zero]
     td[sn_lt_zero] = c[sn_lt_zero]
 
-    sn_gt_sd = (sn > sd) & ~dd_lt_tol
+    sn_gt_sd = (sn > sd) & not_dd_lt_tol
 
     sn[sn_gt_sd] = sd[sn_gt_sd]
     tn[sn_gt_sd] = e[sn_gt_sd] + b[sn_gt_sd]
@@ -534,13 +535,13 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
     sn[bmd_else] = bmd[bmd_else]
     sd[bmd_else] = a[bmd_else]
 
-    abs_sn_lt_tol = np.abs(sn) < tol
-    abs_tn_lt_tol = np.abs(tn) < tol
+    abs_sn_gt_tol = ~(np.abs(sn) < tol)
+    abs_tn_gt_tol = ~(np.abs(tn) < tol)
 
     t1 = np.zeros_like(dd)
     t2 = np.zeros_like(dd)
 
-    t1[~abs_sn_lt_tol] = sn[~abs_sn_lt_tol] / sd[~abs_sn_lt_tol]
-    t2[~abs_tn_lt_tol] = tn[~abs_tn_lt_tol] / td[~abs_tn_lt_tol]
+    t1[abs_sn_gt_tol] = (sn / sd)[abs_sn_gt_tol]
+    t2[abs_tn_gt_tol] = (tn / td)[abs_tn_gt_tol]
 
     return t1, t2
