@@ -350,3 +350,23 @@ def test_unique(curve_data, expected_data):
 ])
 def test_drop(curve_data, isa, expected_data):
     assert Curve(curve_data).drop(isa) == Curve(expected_data)
+
+
+def test_isplane():
+    t = np.linspace(0, np.pi*2, 100)
+    x = np.sin(t)
+    y = t
+    z = t
+
+    curve = Curve([x, y, z])
+    assert curve.isplane
+
+
+def test_isnotplane():
+    t = np.linspace(0, np.pi * 2, 100)
+    x = np.sin(t)
+    y = np.cos(t)
+    z = x * y
+
+    curve = Curve([x, y, z])
+    assert not curve.isplane

@@ -305,7 +305,7 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
                                curve._base.Point(data_minmax))
 
 
-def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
+def segment_to_point(segment: 'Segment', point: 'Point') -> float:
     """Computes the shortest segment from the segment to the point
 
     Parameters
@@ -317,8 +317,8 @@ def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
 
     Returns
     -------
-    shortest_segment : Segment
-        The shortest segment between the point and the segment
+    t : float
+        The t-parameter to determine the point in the segment
 
     """
 
@@ -328,21 +328,18 @@ def segment_to_point(segment: 'Segment', point: 'Point') -> 'Segment':
     c1 = to_point_direction @ segment_direction
 
     if c1 < 0 or np.isclose(c1, 0):
-        return curve._base.Segment(point, segment.p1)
+        return 0.0
 
     c2 = segment_direction @ segment_direction
 
     if c2 < c1 or np.isclose(c2, c1):
-        return curve._base.Segment(point, segment.p2)
+        return 1.0
 
     t = c1 / c2
-    pp = segment.p1 + segment_direction * t
-    shortest_segment = curve._base.Segment(point, pp)
-
-    return shortest_segment
+    return t
 
 
-def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_EPS) -> 'Segment':
+def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_EPS) -> ty.Tuple[float, float]:
     """Computes the shortest segment between two segments
 
     Parameters
@@ -356,8 +353,10 @@ def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_
 
     Returns
     -------
-    shortest_segment : Segment
-        The shortest segment between two segments
+    t1 : float
+        The t-parameter in the range [0, 1] for the first segment
+    t2 : float
+        The t-parameter in the range [0, 1] for the second segment
 
     References
     ----------
@@ -422,8 +421,127 @@ def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_
             sd = a
 
     # finally do the division to get sc and tc
-    sc = 0.0 if np.abs(sn) < tol else sn / sd
-    tc = 0.0 if np.abs(tn) < tol else tn / td
+    t1 = 0.0 if np.abs(sn) < tol else sn / sd
+    t2 = 0.0 if np.abs(tn) < tol else tn / td
 
-    shortest_segment = curve._base.Segment(segment1.point(sc), segment2.point(tc))
-    return shortest_segment
+    return t1, t2
+
+
+def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EPS) \
+        -> ty.Tuple[np.ndarray, np.ndarray]:
+    """Computes the shortest segments between all segment pairs from two segment sets
+
+    Computes the shortest segments between all segment pairs and returns M1xM2 matrices for t1 and t2 parameters.
+
+    Parameters
+    ----------
+    data1 : np.ndarray
+        The first M1xN data
+    data2 : np.ndarray
+        The second M2xN data
+    tol : float
+        Tolerance
+
+    Returns
+    -------
+    t1 : np.ndarray
+        M1xM2 matrix fot t1 parameter
+    t2 : np.ndarray
+        M1xM2 matrix fot t2 parameter
+
+    Notes
+    -----
+
+    This function is vectorized version of `segment_to_segment`
+
+    See Also
+    --------
+    segment_to_segment
+
+    """
+
+    m1 = data1.shape[0] - 1
+    m2 = data2.shape[0] - 1
+
+    # Segment direction vectors
+    u = np.diff(data1, axis=0)[np.newaxis].transpose(2, 1, 0)
+    v = np.diff(data2, axis=0)[np.newaxis].transpose(2, 0, 1)
+
+    w = (data1[:-1, :][np.newaxis].transpose(2, 1, 0) -
+         data2[:-1, :][np.newaxis].transpose(2, 0, 1))
+
+    # Vectorized computing dot products
+    a = np.einsum('ijk,ijk->jk', u, u).repeat(m2, axis=1)
+    b = np.einsum('ijk,ikl->jl', u, v)
+    c = np.einsum('ijk,ijk->jk', v, v).repeat(m1, axis=0)
+    d = np.einsum('ijk,ijl->jl', u, w)
+    e = np.einsum('ijk,ilk->lk', v, w)
+
+    dd = a * c - b * b
+    sd = dd.copy()
+    td = dd.copy()
+
+    sn = np.zeros_like(dd)
+    tn = np.zeros_like(dd)
+
+    dd_lt_tol = dd < tol
+    not_dd_lt_tol = ~dd_lt_tol
+
+    sd[dd_lt_tol] = 1.0
+    tn[dd_lt_tol] = e[dd_lt_tol]
+    td[dd_lt_tol] = c[dd_lt_tol]
+
+    be_cd = b * e - c * d
+    ae_bd = a * e - b * d
+
+    sn[not_dd_lt_tol] = be_cd[not_dd_lt_tol]
+    tn[not_dd_lt_tol] = ae_bd[not_dd_lt_tol]
+
+    sn_lt_zero = (sn < 0) & not_dd_lt_tol
+
+    sn[sn_lt_zero] = 0.0
+    tn[sn_lt_zero] = e[sn_lt_zero]
+    td[sn_lt_zero] = c[sn_lt_zero]
+
+    sn_gt_sd = (sn > sd) & not_dd_lt_tol
+
+    sn[sn_gt_sd] = sd[sn_gt_sd]
+    tn[sn_gt_sd] = e[sn_gt_sd] + b[sn_gt_sd]
+    td[sn_gt_sd] = c[sn_gt_sd]
+
+    tn_lt_zero = tn < 0
+    tn[tn_lt_zero] = 0.0
+
+    md_lt_zero = (-d < 0) & tn_lt_zero
+    md_gt_a = (-d > a) & tn_lt_zero
+    md_else = (~md_lt_zero & ~md_gt_a) & tn_lt_zero
+
+    sn[md_lt_zero] = 0.0
+    sn[md_gt_a] = sd[md_gt_a]
+    sn[md_else] = -d[md_else]
+    sd[md_else] = a[md_else]
+
+    tn_gt_td = tn > td
+    tn[tn_gt_td] = td[tn_gt_td]
+
+    bmd = b - d
+
+    bmd_lt_zero = (bmd < 0) & tn_gt_td
+    bmd_gt_a = (bmd > a) & tn_gt_td
+    bmd_else = (~bmd_lt_zero & ~bmd_gt_a) & tn_gt_td
+
+    sn[bmd_lt_zero] = 0.0
+    sn[bmd_gt_a] = sd[bmd_gt_a]
+    sn[bmd_else] = bmd[bmd_else]
+    sd[bmd_else] = a[bmd_else]
+
+    abs_sn_gt_tol = ~(np.abs(sn) < tol)
+    abs_tn_gt_tol = ~(np.abs(tn) < tol)
+
+    t1 = np.zeros_like(dd)
+    t2 = np.zeros_like(dd)
+
+    t1[abs_sn_gt_tol] = (sn / sd)[abs_sn_gt_tol]
+    t2[abs_tn_gt_tol] = (tn / td)[abs_tn_gt_tol]
+
+    return t1, t2

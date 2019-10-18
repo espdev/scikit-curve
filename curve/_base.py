@@ -1102,13 +1102,17 @@ class Segment:
         """
 
         if isinstance(other, Point):
-            shortest_to = _geomalg.segment_to_point
+            t = _geomalg.segment_to_point(self, other)
+            p1 = self.point(t)
+            p2 = Point(other)
         elif isinstance(other, Segment):
-            shortest_to = _geomalg.segment_to_segment
+            t1, t2 = _geomalg.segment_to_segment(self, other)
+            p1 = self.point(t1)
+            p2 = other.point(t2)
         else:
             raise TypeError('"other" argument must be \'Point\' or \'Segment\' type.')
 
-        return shortest_to(self, other)
+        return Segment(p1, p2)
 
     def to_curve(self) -> 'Curve':
         """Returns the copy of segment data as curve object with 2 points
@@ -1770,9 +1774,7 @@ class Curve(abc.Sequence):
 
         """
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', _diffgeom.DifferentialGeometryWarning)
-            return np.allclose(self.torsion, 0.)
+        return _geomalg.coplanar_points(self.data)
 
     @property
     def isparametric(self) -> bool:
