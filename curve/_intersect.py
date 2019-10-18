@@ -64,7 +64,7 @@ IntersectionInfo = ty.NamedTuple('IntersectionInfo', [
 ])
 
 
-NOT_INTERSECTED = IntersectionInfo(None, IntersectionType.NONE)
+NOT_INTERSECTED = IntersectionInfo(None, IntersectionType.NONE)  # type: ty_ext.Final[IntersectionInfo]
 """The constant for cases when the intersection does not exist"""
 
 
