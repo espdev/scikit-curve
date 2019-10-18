@@ -428,7 +428,7 @@ def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_
 
 
 def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EPS) \
-        -> ty.Tuple[np.ndarray, np.ndarray]:
+        -> ty.Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Computes the shortest segments between all segment pairs from two segment sets
 
     Computes the shortest segments between all segment pairs and returns M1xM2 matrices for t1 and t2 parameters.
@@ -448,6 +448,10 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
         M1xM2 matrix fot t1 parameter
     t2 : np.ndarray
         M1xM2 matrix fot t2 parameter
+    p1 : np.ndarray
+        NxM1xM2 array of beginning points of shortest segments on the first segments
+    p2 : np.ndarray
+        NxM1xM2 array of ending points of shortest segments on the second segments
 
     Notes
     -----
@@ -467,8 +471,10 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
     u = np.diff(data1, axis=0)[np.newaxis].transpose(2, 1, 0)
     v = np.diff(data2, axis=0)[np.newaxis].transpose(2, 0, 1)
 
-    w = (data1[:-1, :][np.newaxis].transpose(2, 1, 0) -
-         data2[:-1, :][np.newaxis].transpose(2, 0, 1))
+    p11 = data1[:-1, :][np.newaxis].transpose(2, 1, 0)
+    p21 = data2[:-1, :][np.newaxis].transpose(2, 0, 1)
+
+    w = p11 - p21
 
     # Vectorized computing dot products
     a = np.einsum('ijk,ijk->jk', u, u).repeat(m2, axis=1)
@@ -544,4 +550,7 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
     t1[abs_sn_gt_tol] = (sn / sd)[abs_sn_gt_tol]
     t2[abs_tn_gt_tol] = (tn / td)[abs_tn_gt_tol]
 
-    return t1, t2
+    p1 = p11 + t1 * u
+    p2 = p21 + t2 * v
+
+    return t1, t2, p1, p2
