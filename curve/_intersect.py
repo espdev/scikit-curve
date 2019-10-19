@@ -16,6 +16,7 @@ import enum
 import numpy as np
 
 import curve._base
+from curve import _geomalg
 from curve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
@@ -219,7 +220,7 @@ class IntersectionMethodBase(abc.ABC):
                  obj2: ty.Union['Segment', 'Curve']) -> ty.Union[SegmentsIntersection, ty.List[SegmentsIntersection]]:
         valid_obj_types = (curve._base.Segment, curve._base.Curve)
         if not isinstance(obj1, valid_obj_types) or not isinstance(obj2, valid_obj_types):
-            raise TypeError('"obj1" and "obj2" arguments must be \'Segment\' or \'Curve\'')
+            raise TypeError('"obj1" and "obj2" arguments must be \'Segment\' or \'Curve\'.')
 
         if obj1.ndim != obj2.ndim:
             raise ValueError('The dimension of both objects must be equal.')
@@ -232,6 +233,8 @@ class IntersectionMethodBase(abc.ABC):
                 intersect_info=intersect_info,
             )
         elif isinstance(obj1, curve._base.Curve) and isinstance(obj2, curve._base.Curve):
+            if obj1.size == 0 or obj2.size == 0:
+                return []
             return self._intersect_curves(obj1, obj2)
         else:
             # Intersections between the curve and the segment
@@ -240,6 +243,9 @@ class IntersectionMethodBase(abc.ABC):
 
             curve1 = ty.cast(curve._base.Segment, obj1).to_curve() if obj1_is_segment else obj1
             curve2 = ty.cast(curve._base.Segment, obj2).to_curve() if obj2_is_segment else obj2
+
+            if curve1.size == 0 or curve2.size == 0:
+                return []
 
             intersections = self._intersect_curves(curve1, curve2)
 
@@ -251,6 +257,42 @@ class IntersectionMethodBase(abc.ABC):
                 )
 
             return intersections
+
+    @staticmethod
+    def _curves_intersect_indices(intersect_matrix: np.ndarray, self_intersect: bool) -> \
+            ty.Tuple[np.ndarray, np.ndarray]:
+        """Computes the segments indices for curves intersection matrix
+
+        Parameters
+        ----------
+        intersect_matrix : np.ndarray
+            The curves intersection boolean matrix: M1xM2 array (MxM array for self intersection)
+        self_intersect : bool
+            The flag defines the curve self-intersection
+
+        Returns
+        -------
+        s1 : np.ndarray
+            The segments indices for the first curve (or the first segments when self interesection)
+        s2 : np.ndarray
+            The segments indices for the second curve (or the second segments when self interesection)
+
+        """
+
+        if self_intersect:
+            # Removing duplicate combinations of segments when self intersection.
+            i, j = np.tril_indices(intersect_matrix.shape[0], k=0)
+            intersect_matrix[i, j] = False
+
+        s1, s2 = np.nonzero(intersect_matrix)
+
+        if self_intersect:
+            # Removing coincident and adjacent segments
+            adjacent = np.abs(s1 - s2) < 2
+            s1 = s1[~adjacent]
+            s2 = s2[~adjacent]
+
+        return s1, s2
 
     @abc.abstractmethod
     def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
@@ -471,9 +513,6 @@ class ExactIntersectionMethod(IntersectionMethodBase):
         return NOT_INTERSECTED
 
     def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
-        if curve1.size == 0 or curve2.size == 0:
-            return []
-
         s1, s2 = self._find_segments_bbox_intersection(curve1, curve2)
 
         if s1.size == 0:
@@ -492,8 +531,7 @@ class ExactIntersectionMethod(IntersectionMethodBase):
 
         return intersections
 
-    @staticmethod
-    def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
+    def _find_segments_bbox_intersection(self, curve1: 'Curve', curve2: 'Curve') \
             -> ty.Tuple[np.ndarray, np.ndarray]:
         """Finds intersections between axis-aligned bounding boxes (AABB) of curves segments
 
@@ -538,20 +576,62 @@ class ExactIntersectionMethod(IntersectionMethodBase):
                 ((curve1_pmax_tr > curve2_pmin_tr) | (np.isclose(curve1_pmax_tr, curve2_pmin_tr)))
         ).all(axis=0)
 
-        if self_intersect:
-            # Removing duplicate combinations of segments when self intersection.
-            i, j = np.tril_indices(curve1.size - 1, k=0)
-            is_intersect[i, j] = False
-
-        s1, s2 = np.nonzero(is_intersect)
-
-        if self_intersect:
-            # Removing coincident and adjacent segments
-            adjacent = np.abs(s1 - s2) < 2
-            s1 = s1[~adjacent]
-            s2 = s2[~adjacent]
-
+        s1, s2 = self._curves_intersect_indices(is_intersect, self_intersect)
         return s1, s2
+
+
+@register_intersect_method(method='almost')
+class AlmostIntersectionMethod(IntersectionMethodBase):
+    """Determines the almost intersection of two skewnes segments/curves
+
+    We should compute the shortest connecting segment between the segments in this case.
+    We check the length of the shortest segment. If it is smaller a tolerance value we
+    consider it as the intersection of the segments.
+
+    """
+
+    def __init__(self, almost_tol: float = 1e-5) -> None:
+        self._almost_tol = almost_tol
+
+    def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
+        shortest_segment = segment1.shortest_segment(segment2)
+
+        if shortest_segment.seglen < self._almost_tol:
+            return IntersectionType.ALMOST(shortest_segment)
+
+        return NOT_INTERSECTED
+
+    def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
+        t1, t2, p1, p2 = _geomalg.segments_to_segments(curve1.data, curve2.data)
+
+        dist = np.sum((p1 - p2)**2, axis=0)
+
+        intersect_matrix = dist < self._almost_tol
+        self_intersect = curve1 is curve2
+
+        s1, s2 = self._curves_intersect_indices(intersect_matrix, self_intersect)
+
+        if s1.size == 0:
+            return []
+
+        intersections = []
+
+        for segment1, segment2, t1_, t2_ in zip(curve1.segments[s1].tolist(),
+                                                curve2.segments[s2].tolist(),
+                                                t1[s1, s2].tolist(),
+                                                t2[s1, s2].tolist()):
+            shortest_segment = curve._base.Segment(
+                p1=segment1.point(t1_),
+                p2=segment2.point(t2_),
+            )
+
+            intersections.append(SegmentsIntersection(
+                segment1=segment1,
+                segment2=segment2,
+                intersect_info=IntersectionType.ALMOST(shortest_segment),
+            ))
+
+        return intersections
 
 
 def intersect(obj1: ty.Union['Segment', 'Curve'],
