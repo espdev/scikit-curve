@@ -1036,8 +1036,8 @@ class Segment:
 
         return _geomalg.overlap_segments(self, other, tol=tol)
 
-    def intersect(self, other: 'Segment',
-                  method: ty.Optional[str] = None, **params) -> _intersect.SegmentsIntersection:
+    def intersect(self, other: 'Segment', method: ty.Optional[str] = None, **params) \
+            -> _intersect.SegmentsIntersection:
         """Finds the intersection of the segment and other segment
 
         Parameters
@@ -1059,7 +1059,7 @@ class Segment:
         res : SegmentsIntersection
         """
 
-        return _intersect.intersect_segments(self, other, method=method, **params)
+        return _intersect.intersect(self, other, method=method, **params)
 
     def distance(self, other: ty.Union['Point', 'Segment']) -> float:
         """Computes the shortest distance between the segment and given point or segment
@@ -2846,25 +2846,9 @@ class Curve(abc.Sequence):
         """
 
         if other is None:
-            curve2 = self
-        elif isinstance(other, Curve):
-            curve2 = other
-        elif isinstance(other, Segment):
-            curve2 = other.to_curve()
-        else:
-            raise TypeError("'other' argument must be 'Curve' or 'Segment' or None.")
+            other = self
 
-        intersections = _intersect.intersect_curves(self, curve2, method=method, **params)
-
-        if isinstance(other, Segment):
-            for i, intersection in enumerate(intersections):
-                intersections[i] = _intersect.SegmentsIntersection(
-                    segment1=intersection.segment1,
-                    segment2=other,
-                    intersect_info=intersection.intersect_info,
-                )
-
-        return intersections
+        return _intersect.intersect(self, other, method=method, **params)
 
     def _check_ndim(self, other: PointCurveUnion):
         if self.ndim != other.ndim:

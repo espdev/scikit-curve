@@ -9,19 +9,21 @@ in n-dimensional Euclidean space.
 import typing as ty
 import typing_extensions as ty_ext
 
+import abc
 import warnings
 import enum
 
 import numpy as np
 
 import curve._base
+from curve import _geomalg
 from curve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
     from curve._base import Point, Segment, Curve  # noqa
 
 
-_intersect_methods = {}  # type: ty.Dict[str, 'IntersectionMethod']
+_intersect_methods = {}  # type: ty.Dict[str, ty.Type['IntersectionMethodBase']]
 _default_intersect_method = None  # type: ty.Optional[str]
 
 
@@ -64,34 +66,8 @@ IntersectionInfo = ty.NamedTuple('IntersectionInfo', [
 ])
 
 
-NOT_INTERSECTED = IntersectionInfo(None, IntersectionType.NONE)
+NOT_INTERSECTED = IntersectionInfo(None, IntersectionType.NONE)  # type: ty_ext.Final[IntersectionInfo]
 """The constant for cases when the intersection does not exist"""
-
-
-class IntersectionMethod(ty_ext.Protocol):
-    """Defines intersection method callable protocol type
-
-    Callable signature::
-
-        (segment1: Segment, segment2: Segment, **params: Any) -> IntersectionInfo
-
-    Parameters
-
-        - segment1 : The firts segment
-        - segment2 : The second segment
-        - **params : Additional any key-word parameters
-
-    Returns
-
-        - intersection_info : `IntersectionInfo` object
-
-    See Also
-    --------
-    IntersectionInfo
-
-    """
-
-    def __call__(self, segment1: 'Segment', segment2: 'Segment', **params: ty.Any) -> IntersectionInfo: ...
 
 
 class SegmentsIntersection:
@@ -235,6 +211,98 @@ class SegmentsIntersection:
             return self._intersect_info.data
 
 
+class IntersectionMethodBase(abc.ABC):
+    """The base class for all intersection methods
+    """
+
+    def __call__(self,
+                 obj1: ty.Union['Segment', 'Curve'],
+                 obj2: ty.Union['Segment', 'Curve']) -> ty.Union[SegmentsIntersection, ty.List[SegmentsIntersection]]:
+        valid_obj_types = (curve._base.Segment, curve._base.Curve)
+        if not isinstance(obj1, valid_obj_types) or not isinstance(obj2, valid_obj_types):
+            raise TypeError('"obj1" and "obj2" arguments must be \'Segment\' or \'Curve\'.')
+
+        if obj1.ndim != obj2.ndim:
+            raise ValueError('The dimension of both objects must be equal.')
+
+        if isinstance(obj1, curve._base.Segment) and isinstance(obj2, curve._base.Segment):
+            intersect_info = self._intersect_segments(obj1, obj2)
+            return SegmentsIntersection(
+                segment1=obj1,
+                segment2=obj2,
+                intersect_info=intersect_info,
+            )
+        elif isinstance(obj1, curve._base.Curve) and isinstance(obj2, curve._base.Curve):
+            if obj1.size == 0 or obj2.size == 0:
+                return []
+            return self._intersect_curves(obj1, obj2)
+        else:
+            # Intersections between the curve and the segment
+            obj1_is_segment = isinstance(obj1, curve._base.Segment)
+            obj2_is_segment = isinstance(obj2, curve._base.Segment)
+
+            curve1 = ty.cast(curve._base.Segment, obj1).to_curve() if obj1_is_segment else obj1
+            curve2 = ty.cast(curve._base.Segment, obj2).to_curve() if obj2_is_segment else obj2
+
+            if curve1.size == 0 or curve2.size == 0:
+                return []
+
+            intersections = self._intersect_curves(curve1, curve2)
+
+            for i, intersection in enumerate(intersections):
+                intersections[i] = SegmentsIntersection(
+                    segment1=ty.cast(curve._base.Segment, obj1) if obj1_is_segment else intersection.segment1,
+                    segment2=ty.cast(curve._base.Segment, obj2) if obj2_is_segment else intersection.segment2,
+                    intersect_info=intersection.intersect_info,
+                )
+
+            return intersections
+
+    @staticmethod
+    def _curves_intersect_indices(intersect_matrix: np.ndarray, self_intersect: bool) -> \
+            ty.Tuple[np.ndarray, np.ndarray]:
+        """Computes the segments indices for curves intersection matrix
+
+        Parameters
+        ----------
+        intersect_matrix : np.ndarray
+            The curves intersection boolean matrix: M1xM2 array (MxM array for self intersection)
+        self_intersect : bool
+            The flag defines the curve self-intersection
+
+        Returns
+        -------
+        s1 : np.ndarray
+            The segments indices for the first curve (or the first segments when self interesection)
+        s2 : np.ndarray
+            The segments indices for the second curve (or the second segments when self interesection)
+
+        """
+
+        if self_intersect:
+            # Removing duplicate combinations of segments when self intersection.
+            i, j = np.tril_indices(intersect_matrix.shape[0], k=0)
+            intersect_matrix[i, j] = False
+
+        s1, s2 = np.nonzero(intersect_matrix)
+
+        if self_intersect:
+            # Removing coincident and adjacent segments
+            adjacent = np.abs(s1 - s2) < 2
+            s1 = s1[~adjacent]
+            s2 = s2[~adjacent]
+
+        return s1, s2
+
+    @abc.abstractmethod
+    def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
+        pass
+
+    @abc.abstractmethod
+    def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
+        pass
+
+
 def intersect_methods() -> ty.List[str]:
     """Returns the list of available intersect methods
 
@@ -253,18 +321,20 @@ def intersect_methods() -> ty.List[str]:
     return list(_intersect_methods.keys())
 
 
-def get_intersect_method(method: str) -> IntersectionMethod:
+def get_intersect_method(method: str, **params) -> 'IntersectionMethodBase':
     """Returns the intersection method callable for the given method name
 
     Parameters
     ----------
     method : str
         Intersection method name
+    params : mapping
+        The method parameters
 
     Returns
     -------
-    intersect : IntersectionMethod
-        Intersection method callable
+    intersect : IntersectionMethodBase
+        Intersection method class
 
     See Also
     --------
@@ -282,7 +352,7 @@ def get_intersect_method(method: str) -> IntersectionMethod:
             'Unknown method "{}". The following methods are available: {}'.format(
                 method, intersect_methods()))
 
-    return _intersect_methods[method]
+    return _intersect_methods[method](**params)
 
 
 def default_intersect_method() -> str:
@@ -343,11 +413,13 @@ def register_intersect_method(method: str, default: bool = False):
 
     """
 
-    def decorator(method_callable: IntersectionMethod):
+    def decorator(cls: ty.Type[IntersectionMethodBase]):
         if method in _intersect_methods:
             raise ValueError('"{}" intersect method already registered for {}'.format(
                 method, _intersect_methods[method]))
-        _intersect_methods[method] = method_callable
+        if not issubclass(cls, IntersectionMethodBase):
+            raise TypeError("{} is not a subclass of 'IntersectionMethodBase'".format(cls))
+        _intersect_methods[method] = cls
 
         if default:
             set_default_intersect_method(method)
@@ -355,14 +427,14 @@ def register_intersect_method(method: str, default: bool = False):
     return decorator
 
 
-@register_intersect_method('exact', default=True)
-def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
-    """Determines the segments intersection exactly
+@register_intersect_method(method='exact', default=True)
+class ExactIntersectionMethod(IntersectionMethodBase):
+    """The method to determine the exact segments and curves intersection
 
     We should solve the linear system of the following equations:
         x1 + t1 * (x2 - x1) = x3 + t2 * (x4 - x3)
         y1 + t1 * (y2 - y1) = y3 + t2 * (y4 - y3)
-                         ...
+        ...
         n1 + t1 * (n2 - n3) = n3 + t2 * (n4 - n3)
 
     The solution of this system is t1 and t2 parameter values.
@@ -373,106 +445,210 @@ def exact_intersect(segment1: 'Segment', segment2: 'Segment') -> IntersectionInf
 
     Parameters
     ----------
-    segment1 : Segment
-        The first segment
-    segment2 : Segment
-        The second segment
+    feps : float
+        Floating point epsilon. F_EPS by default
 
-    Returns
-    -------
-    intersect_info : IntersectionInfo
-        Intersection info
     """
 
-    if not segment1.coplanar(segment2):
-        return NOT_INTERSECTED
+    def __init__(self, feps: float = F_EPS):
+        self._feps = feps
 
-    if segment1.singular or segment2.singular:
-        return NOT_INTERSECTED
+    def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
+        # Firstly, we should check all corner cases (overlap, parallel, not coplanar, singular...).
+        if segment1.collinear(segment2):
+            # We return overlap segment because we do not know exactly what point needed in this case.
+            overlap_segment = segment1.overlap(segment2)
 
-    a = np.stack((segment1.direction.data,
-                  -segment2.direction.data), axis=1)
-    b = (segment2.p1 - segment1.p1).data
-
-    if segment1.ndim == 2:
-        try:
-            t = np.linalg.solve(a, b)
-        except np.linalg.LinAlgError as err:
-            warnings.warn(
-                'Cannot solve system of equations: {}'.format(err), IntersectionWarning)
-            return NOT_INTERSECTED
-    else:
-        t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
-
-        if residuals.size > 0 and residuals[0] > F_EPS:
-            warnings.warn(
-                'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
-                    residuals, F_EPS), IntersectionWarning)
-
-    if np.all(((t > 0) | np.isclose(t, 0)) &
-              ((t < 1) | np.isclose(t, 1))):
-        intersect_point1 = segment1.point(t[0])
-        intersect_point2 = segment2.point(t[1])
-
-        if intersect_point1 != intersect_point2:
-            distance = intersect_point1.distance(intersect_point2)
-
-            if distance > F_EPS:
-                warnings.warn(
-                    'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
-                        distance), IntersectionWarning)
+            if overlap_segment is None:
                 return NOT_INTERSECTED
+            return IntersectionType.OVERLAP(overlap_segment)
 
-        return IntersectionType.EXACT(intersect_point1)
+        if segment1.parallel(segment2):
+            return NOT_INTERSECTED
 
-    return NOT_INTERSECTED
+        if not segment1.coplanar(segment2):
+            return NOT_INTERSECTED
+
+        if segment1.singular or segment2.singular:
+            return NOT_INTERSECTED
+
+        # After checking all corner cases we are sure that
+        # two segments (or lines) should intersected.
+
+        a = np.stack((segment1.direction.data,
+                      -segment2.direction.data), axis=1)
+        b = (segment2.p1 - segment1.p1).data
+
+        if segment1.ndim == 2:
+            try:
+                t = np.linalg.solve(a, b)
+            except np.linalg.LinAlgError as err:
+                warnings.warn(
+                    'Cannot solve system of equations: {}'.format(err), IntersectionWarning)
+                return NOT_INTERSECTED
+        else:
+            t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
+
+            if residuals.size > 0 and residuals[0] > self._feps:
+                warnings.warn(
+                    'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
+                        residuals, self._feps), IntersectionWarning)
+
+        if np.all(((t > 0) | np.isclose(t, 0)) &
+                  ((t < 1) | np.isclose(t, 1))):
+            intersect_point1 = segment1.point(t[0])
+            intersect_point2 = segment2.point(t[1])
+
+            if intersect_point1 != intersect_point2:
+                distance = intersect_point1.distance(intersect_point2)
+
+                if distance > self._feps:
+                    warnings.warn(
+                        'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
+                            distance), IntersectionWarning)
+                    return NOT_INTERSECTED
+
+            return IntersectionType.EXACT(intersect_point1)
+
+        return NOT_INTERSECTED
+
+    def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
+        s1, s2 = self._find_segments_bbox_intersection(curve1, curve2)
+
+        if s1.size == 0:
+            return []
+
+        intersections = []
+
+        for segment1, segment2 in zip(curve1.segments[s1], curve2.segments[s2]):
+            intersect_info = self._intersect_segments(segment1, segment2)
+            if intersect_info.type != IntersectionType.NONE:
+                intersections.append(SegmentsIntersection(
+                    segment1=segment1,
+                    segment2=segment2,
+                    intersect_info=intersect_info,
+                ))
+
+        return intersections
+
+    def _find_segments_bbox_intersection(self, curve1: 'Curve', curve2: 'Curve') \
+            -> ty.Tuple[np.ndarray, np.ndarray]:
+        """Finds intersections between axis-aligned bounding boxes (AABB) of curves segments
+
+        `Curve` 1 and `Curve` 2 can be different objects or the same objects (self intersection).
+        """
+
+        self_intersect = curve2 is curve1
+
+        if curve1.size == 0 or curve2.size == 0:
+            return (
+                np.array([], dtype=np.int64),
+                np.array([], dtype=np.int64),
+            )
+
+        # Get beginning and ending points of segments
+        p11 = curve1.data[:-1, :]
+        p12 = curve1.data[1:, :]
+
+        curve1_pmin = np.minimum(p11, p12)
+        curve1_pmax = np.maximum(p11, p12)
+
+        if self_intersect:
+            curve2_pmin = curve1_pmin
+            curve2_pmax = curve1_pmax
+        else:
+            p21 = curve2.data[:-1, :]
+            p22 = curve2.data[1:, :]
+
+            curve2_pmin = np.minimum(p21, p22)
+            curve2_pmax = np.maximum(p21, p22)
+
+        # Find overlapping between all curve1 segment bboxes and curve2 segment
+        # bboxes by all coordinates using vectorization
+        curve1_pmin_tr = curve1_pmin[np.newaxis].transpose(2, 1, 0)
+        curve1_pmax_tr = curve1_pmax[np.newaxis].transpose(2, 1, 0)
+
+        curve2_pmin_tr = curve2_pmin[np.newaxis].transpose(2, 0, 1)
+        curve2_pmax_tr = curve2_pmax[np.newaxis].transpose(2, 0, 1)
+
+        is_intersect = (
+                ((curve1_pmin_tr < curve2_pmax_tr) | (np.isclose(curve1_pmin_tr, curve2_pmax_tr))) &
+                ((curve1_pmax_tr > curve2_pmin_tr) | (np.isclose(curve1_pmax_tr, curve2_pmin_tr)))
+        ).all(axis=0)
+
+        s1, s2 = self._curves_intersect_indices(is_intersect, self_intersect)
+        return s1, s2
 
 
-@register_intersect_method('almost')
-def almost_intersect(segment1: 'Segment', segment2: 'Segment',
-                     almost_tol: float = 1e-5) -> IntersectionInfo:
-    """Determines the almost intersection of two skewnes segments
+@register_intersect_method(method='almost')
+class AlmostIntersectionMethod(IntersectionMethodBase):
+    """Determines the almost intersection of two skewnes segments/curves
 
     We should compute the shortest connecting segment between the segments in this case.
     We check the length of the shortest segment. If it is smaller a tolerance value we
     consider it as the intersection of the segments.
 
-    Parameters
-    ----------
-    segment1 : Segment
-        The first segment
-    segment2 : Segment
-        The second segment
-    almost_tol : float
-        The almost intersection tolerance value for. By default 1e-5.
-
-    Returns
-    -------
-    intersect_info : IntersectionInfo
-        Intersection info
     """
 
-    shortest_segment = segment1.shortest_segment(segment2)
+    def __init__(self, almost_tol: float = 1e-5) -> None:
+        self._almost_tol = almost_tol
 
-    if shortest_segment.seglen < almost_tol:
-        return IntersectionType.ALMOST(shortest_segment)
+    def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
+        shortest_segment = segment1.shortest_segment(segment2)
 
-    return NOT_INTERSECTED
+        if shortest_segment.seglen < self._almost_tol:
+            return IntersectionType.ALMOST(shortest_segment)
+
+        return NOT_INTERSECTED
+
+    def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
+        t1, t2, p1, p2 = _geomalg.segments_to_segments(curve1.data, curve2.data)
+
+        dist = np.sum((p1 - p2)**2, axis=0)
+
+        intersect_matrix = dist < self._almost_tol
+        self_intersect = curve1 is curve2
+
+        s1, s2 = self._curves_intersect_indices(intersect_matrix, self_intersect)
+
+        if s1.size == 0:
+            return []
+
+        intersections = []
+
+        for segment1, segment2, t1_, t2_ in zip(curve1.segments[s1].tolist(),
+                                                curve2.segments[s2].tolist(),
+                                                t1[s1, s2].tolist(),
+                                                t2[s1, s2].tolist()):
+            shortest_segment = curve._base.Segment(
+                p1=segment1.point(t1_),
+                p2=segment2.point(t2_),
+            )
+
+            intersections.append(SegmentsIntersection(
+                segment1=segment1,
+                segment2=segment2,
+                intersect_info=IntersectionType.ALMOST(shortest_segment),
+            ))
+
+        return intersections
 
 
-def intersect_segments(segment1: 'Segment', segment2: 'Segment',
-                       method: ty.Optional[str] = None, **params: ty.Any) -> SegmentsIntersection:
-    """Finds the intersection of two n-dimensional segments
+def intersect(obj1: ty.Union['Segment', 'Curve'],
+              obj2: ty.Union['Segment', 'Curve'],
+              method: ty.Optional[str] = None, **params: ty.Any) -> \
+        ty.Union[SegmentsIntersection, ty.List[SegmentsIntersection]]:
+    """Finds the intersection between n-dimensional segments and/or curves
 
     The function finds the intersection of two n-dimensional segments
     using given intersection method.
 
     Parameters
     ----------
-    segment1 : Segment
-        The first segment
-    segment2 : Segment
-        The second segment
+    obj1 : Segment, Curve
+        The first segment or curve object
+    obj2 : Segment, Curve
+        The second segment or curve object
     method : str, None
         The method to determine intersection. By default the following methods are available:
             - ``exact`` -- (default) the exact intersection solving the system of equations
@@ -485,7 +661,7 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
 
     Returns
     -------
-    res : SegmentsIntersection
+    res : Union[SegmentsIntersection, List[SegmentsIntersection]]
         The intersection result
 
     Raises
@@ -498,156 +674,13 @@ def intersect_segments(segment1: 'Segment', segment2: 'Segment',
     if method is None:
         method = _default_intersect_method
 
-    if segment1.ndim != segment2.ndim:
-        raise ValueError('The dimension of the segments must be equal.')
+    if obj1.ndim != obj2.ndim:
+        raise ValueError('The dimension of both objects must be equal.')
 
-    not_intersected = SegmentsIntersection(segment1, segment2, NOT_INTERSECTED)
-
-    # Firstly, we should check all corner cases (overlap, parallel, not coplanar, singular...).
-    if segment1.collinear(segment2):
-        # We return overlap segment because we do not know exactly what point needed in this case.
-        overlap_segment = segment1.overlap(segment2)
-
-        if overlap_segment is None:
-            return not_intersected
-
-        return SegmentsIntersection(
-            segment1=segment1,
-            segment2=segment2,
-            intersect_info=IntersectionType.OVERLAP(overlap_segment),
-        )
-
-    if segment1.parallel(segment2):
-        return not_intersected
-
-    # After checking all corner cases we are sure that
-    # two segments (or lines) should intersected.
-
-    intersect_method = get_intersect_method(method)
+    intersect_method = get_intersect_method(method, **params)
 
     try:
-        intersect_info = intersect_method(segment1, segment2, **params)
+        return intersect_method(obj1, obj2)
     except Exception as err:
         raise IntersectionError("'{}': finding intersection has failed: {}".format(
             method, err)) from err
-
-    return SegmentsIntersection(
-        segment1=segment1,
-        segment2=segment2,
-        intersect_info=intersect_info,
-    )
-
-
-def _find_segments_bbox_intersection(curve1: 'Curve', curve2: 'Curve') \
-        -> ty.Tuple[np.ndarray, np.ndarray]:
-    """Finds intersections between axis-aligned bounding boxes (AABB) of curves segments
-
-    `Curve` 1 and `Curve` 2 can be different objects or the same objects (self intersection).
-
-    """
-
-    self_intersect = curve2 is curve1
-
-    if curve1.size == 0 or curve2.size == 0:
-        return (
-            np.array([], dtype=np.int64),
-            np.array([], dtype=np.int64),
-        )
-
-    # Get beginning and ending points of segments
-    p11 = curve1.data[:-1, :]
-    p12 = curve1.data[1:, :]
-
-    curve1_pmin = np.minimum(p11, p12)
-    curve1_pmax = np.maximum(p11, p12)
-
-    if self_intersect:
-        curve2_pmin = curve1_pmin
-        curve2_pmax = curve1_pmax
-    else:
-        p21 = curve2.data[:-1, :]
-        p22 = curve2.data[1:, :]
-
-        curve2_pmin = np.minimum(p21, p22)
-        curve2_pmax = np.maximum(p21, p22)
-
-    # Find overlapping between all curve1 segment bboxes and curve2 segment
-    # bboxes by all coordinates using vectorization
-    curve1_pmin_tr = curve1_pmin[np.newaxis].transpose(2, 1, 0)
-    curve1_pmax_tr = curve1_pmax[np.newaxis].transpose(2, 1, 0)
-
-    curve2_pmin_tr = curve2_pmin[np.newaxis].transpose(2, 0, 1)
-    curve2_pmax_tr = curve2_pmax[np.newaxis].transpose(2, 0, 1)
-
-    is_intersect = (
-            ((curve1_pmin_tr < curve2_pmax_tr) | (np.isclose(curve1_pmin_tr, curve2_pmax_tr))) &
-            ((curve1_pmax_tr > curve2_pmin_tr) | (np.isclose(curve1_pmax_tr, curve2_pmin_tr)))
-    ).all(axis=0)
-
-    if self_intersect:
-        # Removing duplicate combinations of segments when self intersection.
-        i, j = np.tril_indices(curve1.size - 1, k=0)
-        is_intersect[i, j] = False
-
-    s1, s2 = np.nonzero(is_intersect)
-
-    if self_intersect:
-        # Removing coincident and adjacent segments
-        adjacent = np.abs(s1 - s2) < 2
-        s1 = s1[~adjacent]
-        s2 = s2[~adjacent]
-
-    return s1, s2
-
-
-def intersect_curves(curve1: 'Curve', curve2: 'Curve',
-                     method: ty.Optional[str] = None, **params: ty.Any) -> ty.List[SegmentsIntersection]:
-    """Finds the intersections between two n-dimensional curves or a curve itself
-
-    Parameters
-    ----------
-    curve1 : Curve
-        The first curve object
-    curve2 : Curve
-        The second curve object. If it is equal to curve1,
-        self intersection will be determined.
-    method : str, None
-        The method to determine intersection. By default the following methods are available:
-            - ``exact`` -- (default) the exact intersection solving the system of equations
-            - ``almost`` -- the almost intersection using the shortest connecting segment.
-              This is usually actual for dimension >= 3.
-
-            The default method is ``exact``.
-    params : mapping
-        The intersection method parameters
-
-    Returns
-    -------
-    intersections : List[SegmentsIntersection]
-        The list of intersections of curves segments
-
-    Raises
-    ------
-    ValueError : dimensions of the curves are different
-
-    """
-
-    if curve1.ndim != curve2.ndim:
-        raise ValueError('The dimension the curves must be equal.')
-
-    intersections = []
-
-    if curve1.size == 0 or curve2.size == 0:
-        return intersections
-
-    s1, s2 = _find_segments_bbox_intersection(curve1, curve2)
-
-    if s1.size == 0:
-        return intersections
-
-    for segment1, segment2 in zip(curve1.segments[s1], curve2.segments[s2]):
-        intersection = intersect_segments(segment1, segment2, method=method, **params)
-        if intersection:
-            intersections.append(intersection)
-
-    return intersections

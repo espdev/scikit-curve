@@ -171,7 +171,7 @@ def test_intersect_curves_almost():
     curve1 = curves.helix(t_start=-np.pi, t_stop=np.pi * 3, p_count=100)
     curve2 = curves.helix(t_start=-np.pi, t_stop=np.pi * 3, a=-1, b=-1, p_count=100)
 
-    intersections = curve1.intersect(curve2, method='almost', almost_tol=0.01)
+    intersections = curve1.intersect(curve2, method='almost', almost_tol=0.00001)
 
     assert len(intersections) == 2
 
