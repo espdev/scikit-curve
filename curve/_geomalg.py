@@ -427,8 +427,15 @@ def segment_to_segment(segment1: 'Segment', segment2: 'Segment', tol: float = F_
     return t1, t2
 
 
-def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EPS) \
-        -> ty.Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+SegmentsToSegmentsResult = ty.NamedTuple('SegmentsToSegmentsResult', [
+    ('t1', np.ndarray),
+    ('t2', np.ndarray),
+    ('p1', np.ndarray),
+    ('p2', np.ndarray),
+])
+
+
+def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EPS) -> SegmentsToSegmentsResult:
     """Computes the shortest segments between all segment pairs from two segment sets
 
     Computes the shortest segments between all segment pairs and returns M1xM2 matrices for t1 and t2 parameters.
@@ -444,14 +451,12 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
 
     Returns
     -------
-    t1 : np.ndarray
-        M1xM2 matrix fot t1 parameter
-    t2 : np.ndarray
-        M1xM2 matrix fot t2 parameter
-    p1 : np.ndarray
-        NxM1xM2 array of beginning points of shortest segments on the first segments
-    p2 : np.ndarray
-        NxM1xM2 array of ending points of shortest segments on the second segments
+    result : SegmentsToSegmentsResult
+        The result in named tuple:
+            - ``t1`` : [np.ndarray] M1xM2 matrix fot t1 parameter
+            - ``t2`` : [np.ndarray] M1xM2 matrix fot t2 parameter
+            - ``p1`` : [np.ndarray] NxM1xM2 array of beginning points of shortest segments on the first segments
+            - ``p2`` : [np.ndarray] NxM1xM2 array of ending points of shortest segments on the second segments
 
     Notes
     -----
@@ -553,4 +558,4 @@ def segments_to_segments(data1: np.ndarray, data2: np.ndarray, tol: float = F_EP
     p1 = p11 + t1 * u
     p2 = p21 + t2 * v
 
-    return t1, t2, p1, p2
+    return SegmentsToSegmentsResult(t1, t2, p1, p2)

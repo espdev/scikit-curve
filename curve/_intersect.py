@@ -602,9 +602,9 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
         return NOT_INTERSECTED
 
     def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
-        t1, t2, p1, p2 = _geomalg.segments_to_segments(curve1.data, curve2.data)
+        s2s = _geomalg.segments_to_segments(curve1.data, curve2.data)
 
-        dist = np.sum((p1 - p2)**2, axis=0)
+        dist = np.sum((s2s.p1 - s2s.p2)**2, axis=0)
 
         intersect_matrix = dist < self._almost_tol
         self_intersect = curve1 is curve2
@@ -616,18 +616,18 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
         intersections = []
 
-        for segment1, segment2, t1_, t2_ in zip(curve1.segments[s1].tolist(),
-                                                curve2.segments[s2].tolist(),
-                                                t1[s1, s2].tolist(),
-                                                t2[s1, s2].tolist()):
+        for seg1, seg2, p1, p2 in zip(curve1.segments[s1].tolist(),
+                                      curve2.segments[s2].tolist(),
+                                      s2s.p1[:, s1, s2].T.tolist(),
+                                      s2s.p2[:, s1, s2].T.tolist()):
             shortest_segment = curve._base.Segment(
-                p1=segment1.point(t1_),
-                p2=segment2.point(t2_),
+                p1=curve._base.Point(p1),
+                p2=curve._base.Point(p2),
             )
 
             intersections.append(SegmentsIntersection(
-                segment1=segment1,
-                segment2=segment2,
+                segment1=seg1,
+                segment2=seg2,
                 intersect_info=IntersectionType.ALMOST(shortest_segment),
             ))
 
