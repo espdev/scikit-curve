@@ -28,6 +28,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
+        'networkx',
         'csaps >= 0.6.0',
         'cached_property',
         'typing-extensions',

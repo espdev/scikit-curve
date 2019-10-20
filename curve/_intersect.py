@@ -12,8 +12,11 @@ import typing_extensions as ty_ext
 import abc
 import warnings
 import enum
+import heapq
 
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
+import networkx as nx
 
 import curve._base
 from curve import _geomalg
@@ -590,13 +593,18 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
     """
 
-    def __init__(self, almost_tol: float = 1e-5) -> None:
-        self._almost_tol = almost_tol
+    def __init__(self,
+                 dist_tol: float = 1e-5,
+                 remove_duplicates: bool = False,
+                 duplicate_tol: float = 1e-3) -> None:
+        self._dist_tol = dist_tol
+        self._remove_duplicates = remove_duplicates
+        self._duplicate_tol = duplicate_tol
 
     def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
         shortest_segment = segment1.shortest_segment(segment2)
 
-        if shortest_segment.seglen < self._almost_tol:
+        if shortest_segment.seglen < self._dist_tol:
             return IntersectionType.ALMOST(shortest_segment)
 
         return NOT_INTERSECTED
@@ -606,7 +614,7 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
         dist = np.sum((s2s.p1 - s2s.p2)**2, axis=0)
 
-        intersect_matrix = dist < self._almost_tol
+        intersect_matrix = dist < self._dist_tol
         self_intersect = curve1 is curve2
 
         s1, s2 = self._curves_intersect_indices(intersect_matrix, self_intersect)
@@ -631,7 +639,38 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
                 intersect_info=IntersectionType.ALMOST(shortest_segment),
             ))
 
+        if self._remove_duplicates:
+            intersections = self._remove_duplicate_intersections(intersections)
+
         return intersections
+
+    def _remove_duplicate_intersections(self, intersections: ty.List[SegmentsIntersection]) \
+            -> ty.List[SegmentsIntersection]:
+        """Removes duplicate intersections
+        """
+
+        intersect_points = [i.intersect_point for i in intersections]
+
+        dists = pdist(np.asarray(intersect_points))
+        dists[dists < self._duplicate_tol] = np.nan
+
+        duplicates_matrix = np.isnan(squareform(dists))
+        ti, tj = np.tril_indices(duplicates_matrix.shape[0], k=0)
+        duplicates_matrix[ti, tj] = False
+        di, dj = np.nonzero(duplicates_matrix)
+
+        duplicates_graph = nx.Graph()
+        duplicates_graph.add_edges_from(zip(di, dj))
+
+        unique_intersections = []
+
+        for duplicate_components in nx.connected_components(duplicates_graph):
+            duplicate_intersections = [intersections[i] for i in duplicate_components]
+            unique_intersection = heapq.nsmallest(1, duplicate_intersections,
+                                                  key=lambda x: x.intersect_segment.seglen)[0]
+            unique_intersections.append(unique_intersection)
+
+        return unique_intersections
 
 
 def intersect(obj1: ty.Union['Segment', 'Curve'],
