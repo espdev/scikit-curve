@@ -594,11 +594,11 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
     def __init__(self,
                  dist_tol: float = 1e-5,
-                 remove_duplicates: bool = False,
-                 duplicate_tol: float = 1e-3) -> None:
+                 remove_extra: bool = False,
+                 extra_tol: float = 1e-3) -> None:
         self._dist_tol = dist_tol
-        self._remove_duplicates = remove_duplicates
-        self._duplicate_tol = duplicate_tol
+        self._remove_extra = remove_extra
+        self._extra_tol = extra_tol
 
     def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
         shortest_segment = segment1.shortest_segment(segment2)
@@ -638,40 +638,41 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
                 intersect_info=IntersectionType.ALMOST(shortest_segment),
             ))
 
-        if self._remove_duplicates:
-            intersections = self._remove_duplicate_intersections(intersections)
+        if self._remove_extra:
+            intersections = self._remove_extra_intersections(intersections)
 
         return intersections
 
-    def _remove_duplicate_intersections(self, intersections: ty.List[SegmentsIntersection]) \
+    def _remove_extra_intersections(self, intersections: ty.List[SegmentsIntersection]) \
             -> ty.List[SegmentsIntersection]:
-        """Removes duplicate intersections
+        """Removes extra intersections
         """
 
         intersect_points = [i.intersect_point for i in intersections]
 
         dists = pdist(np.asarray(intersect_points))
-        dists[dists < self._duplicate_tol] = np.nan
+        dists[dists < self._extra_tol] = np.nan
 
-        duplicates_matrix = np.isnan(squareform(dists))
-        ti, tj = np.tril_indices(duplicates_matrix.shape[0], k=0)
-        duplicates_matrix[ti, tj] = False
-        di, dj = np.nonzero(duplicates_matrix)
+        extra_matrix = np.isnan(squareform(dists))
+        ti, tj = np.tril_indices(extra_matrix.shape[0], k=0)
+        extra_matrix[ti, tj] = False
+        ei, ej = np.nonzero(extra_matrix)
 
-        duplicates_graph = nx.Graph()
-        duplicates_graph.add_edges_from(zip(di, dj))
+        extra_intersections_graph = nx.Graph()
+        extra_intersections_graph.add_edges_from(zip(ei, ej))
 
         extra_intersections = []
 
-        for duplicate_components in nx.connected_components(duplicates_graph):
-            duplicate_intersections = [intersections[i] for i in duplicate_components]
-            duplicate_intersections.sort(key=lambda x: x.intersect_segment.seglen)
-            extra_intersections.extend(duplicate_intersections[1:])
+        for extra_components in nx.connected_components(extra_intersections_graph):
+            extra_intersections.extend(
+                sorted([intersections[i] for i in extra_components],
+                       key=lambda x: x.intersect_segment.seglen)[1:]
+            )
 
         extra_intersections = set(extra_intersections)
-        unique_intersections = list(filter(lambda x: x not in extra_intersections, intersections))
+        filtered_intersections = list(filter(lambda x: x not in extra_intersections, intersections))
 
-        return unique_intersections
+        return filtered_intersections
 
 
 def intersect(obj1: ty.Union['Segment', 'Curve'],
