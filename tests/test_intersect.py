@@ -184,10 +184,10 @@ def test_intersect_curves_almost():
         assert intersection.intersect_point == expected_point
 
 
-def test_intersect_curves_almost_remove_extra():
-    curve1 = curves.helix(p_count=456)
-    curve2 = curves.helix(a=-1, b=-1, p_count=321)
-
-    intersections = curve1.intersect(curve2, method='almost', dist_tol=0.001, remove_extra=True, extra_tol=0.1)
-
-    assert len(intersections) == 6
+@pytest.mark.parametrize('curve1, curve2, dist_tol, extra_tol, num_ints', [
+    (curves.helix(p_count=456), curves.helix(a=-1, b=-1, p_count=321), 0.001, 0.1, 6),
+    (curves.helix(p_count=456), curves.irregular_helix(p_count=321), 0.01, 0.1, 1),
+])
+def test_intersect_curves_almost_remove_extra(curve1, curve2, dist_tol, extra_tol, num_ints):
+    intersections = curve1.intersect(curve2, method='almost', dist_tol=dist_tol, extra_tol=extra_tol, remove_extra=True)
+    assert len(intersections) == num_ints
