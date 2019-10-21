@@ -182,3 +182,12 @@ def test_intersect_curves_almost():
 
     for intersection, expected_point in zip(intersections, expected_intersect_points):
         assert intersection.intersect_point == expected_point
+
+
+def test_intersect_curves_almost_remove_extra():
+    curve1 = curves.helix(p_count=456)
+    curve2 = curves.helix(a=-1, b=-1, p_count=321)
+
+    intersections = curve1.intersect(curve2, method='almost', dist_tol=0.001, remove_extra=True, extra_tol=0.1)
+
+    assert len(intersections) == 6
