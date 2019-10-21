@@ -12,7 +12,6 @@ import typing_extensions as ty_ext
 import abc
 import warnings
 import enum
-import heapq
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
@@ -662,13 +661,15 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
         duplicates_graph = nx.Graph()
         duplicates_graph.add_edges_from(zip(di, dj))
 
-        unique_intersections = []
+        extra_intersections = []
 
         for duplicate_components in nx.connected_components(duplicates_graph):
             duplicate_intersections = [intersections[i] for i in duplicate_components]
-            unique_intersection = heapq.nsmallest(1, duplicate_intersections,
-                                                  key=lambda x: x.intersect_segment.seglen)[0]
-            unique_intersections.append(unique_intersection)
+            duplicate_intersections.sort(key=lambda x: x.intersect_segment.seglen)
+            extra_intersections.extend(duplicate_intersections[1:])
+
+        extra_intersections = set(extra_intersections)
+        unique_intersections = list(filter(lambda x: x not in extra_intersections, intersections))
 
         return unique_intersections
 
