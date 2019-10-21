@@ -14,6 +14,8 @@ import warnings
 import enum
 
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
+import networkx as nx
 
 import curve._base
 from curve import _geomalg
@@ -590,23 +592,28 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
     """
 
-    def __init__(self, almost_tol: float = 1e-5) -> None:
-        self._almost_tol = almost_tol
+    def __init__(self,
+                 dist_tol: float = 1e-5,
+                 remove_extra: bool = False,
+                 extra_tol: float = 1e-3) -> None:
+        self._dist_tol = dist_tol
+        self._remove_extra = remove_extra
+        self._extra_tol = extra_tol
 
     def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
         shortest_segment = segment1.shortest_segment(segment2)
 
-        if shortest_segment.seglen < self._almost_tol:
+        if shortest_segment.seglen < self._dist_tol:
             return IntersectionType.ALMOST(shortest_segment)
 
         return NOT_INTERSECTED
 
     def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
-        t1, t2, p1, p2 = _geomalg.segments_to_segments(curve1.data, curve2.data)
+        s2s = _geomalg.segments_to_segments(curve1.data, curve2.data)
 
-        dist = np.sum((p1 - p2)**2, axis=0)
+        dist = np.sum((s2s.p1 - s2s.p2)**2, axis=0)
 
-        intersect_matrix = dist < self._almost_tol
+        intersect_matrix = dist < self._dist_tol
         self_intersect = curve1 is curve2
 
         s1, s2 = self._curves_intersect_indices(intersect_matrix, self_intersect)
@@ -616,22 +623,65 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
         intersections = []
 
-        for segment1, segment2, t1_, t2_ in zip(curve1.segments[s1].tolist(),
-                                                curve2.segments[s2].tolist(),
-                                                t1[s1, s2].tolist(),
-                                                t2[s1, s2].tolist()):
+        for seg1, seg2, p1, p2 in zip(curve1.segments[s1].tolist(),
+                                      curve2.segments[s2].tolist(),
+                                      s2s.p1[:, s1, s2].T.tolist(),
+                                      s2s.p2[:, s1, s2].T.tolist()):
             shortest_segment = curve._base.Segment(
-                p1=segment1.point(t1_),
-                p2=segment2.point(t2_),
+                p1=curve._base.Point(p1),
+                p2=curve._base.Point(p2),
             )
 
             intersections.append(SegmentsIntersection(
-                segment1=segment1,
-                segment2=segment2,
+                segment1=seg1,
+                segment2=seg2,
                 intersect_info=IntersectionType.ALMOST(shortest_segment),
             ))
 
+        if self._remove_extra:
+            intersections = self._remove_extra_intersections(intersections)
+
         return intersections
+
+    def _remove_extra_intersections(self, intersections: ty.List[SegmentsIntersection]) \
+            -> ty.List[SegmentsIntersection]:
+        """Removes extra intersections
+
+        The algorithm:
+            1. Find all intersections with intersection points which the distance between them less than 'extra_tol'
+            2. Make the undirected graph from these intersection indices
+            3. Find connected components in the graph (intersection blobs)
+            4. Sort intersections in each blob by 'intersect_segment' length
+            5. Add [1:] intersections in each sorted blob to 'extra_intersections'
+               (keep the intersection with shortest 'intersect_segment')
+            6. Remove from the intersections list 'extra_intersections' subset
+        """
+
+        intersect_points = [i.intersect_point for i in intersections]
+
+        dists = pdist(np.asarray(intersect_points))
+        dists[dists < self._extra_tol] = np.nan
+
+        extra_intersections_matrix = np.isnan(squareform(dists))
+        ti, tj = np.tril_indices(extra_intersections_matrix.shape[0], k=0)
+        extra_intersections_matrix[ti, tj] = False
+        ei, ej = np.nonzero(extra_intersections_matrix)
+
+        extra_intersections_graph = nx.Graph()
+        extra_intersections_graph.add_edges_from(zip(ei, ej))
+
+        extra_intersections = []
+
+        for blob_intersection_indices in nx.connected_components(extra_intersections_graph):
+            extra_intersections.extend(
+                sorted([intersections[i] for i in blob_intersection_indices],
+                       key=lambda x: x.intersect_segment.seglen)[1:]
+            )
+
+        extra_intersections = set(extra_intersections)
+        filtered_intersections = list(filter(lambda x: x not in extra_intersections, intersections))
+
+        return filtered_intersections
 
 
 def intersect(obj1: ty.Union['Segment', 'Curve'],
