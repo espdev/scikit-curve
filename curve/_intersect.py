@@ -646,6 +646,15 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
     def _remove_extra_intersections(self, intersections: ty.List[SegmentsIntersection]) \
             -> ty.List[SegmentsIntersection]:
         """Removes extra intersections
+
+        The algorithm:
+            1. Find all intersections with intersection points which the distance between them less than 'extra_tol'
+            2. Make the undirected graph from these intersection indices
+            3. Find connected components in the graph
+            4. Sort intersections in each component by 'intersect_segment' length
+            5. Add all [1:] intersections in each component to 'extra_intersections'
+               (keep the intersection with shortest 'intersect_segment')
+            6. Remove from the intersections list 'extra_intersections' subset
         """
 
         intersect_points = [i.intersect_point for i in intersections]
