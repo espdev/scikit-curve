@@ -650,9 +650,9 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
         The algorithm:
             1. Find all intersections with intersection points which the distance between them less than 'extra_tol'
             2. Make the undirected graph from these intersection indices
-            3. Find connected components in the graph
-            4. Sort intersections in each component by 'intersect_segment' length
-            5. Add all [1:] intersections in each component to 'extra_intersections'
+            3. Find connected components in the graph (intersection blobs)
+            4. Sort intersections in each blob by 'intersect_segment' length
+            5. Add [1:] intersections in each sorted blob to 'extra_intersections'
                (keep the intersection with shortest 'intersect_segment')
             6. Remove from the intersections list 'extra_intersections' subset
         """
@@ -662,19 +662,19 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
         dists = pdist(np.asarray(intersect_points))
         dists[dists < self._extra_tol] = np.nan
 
-        extra_matrix = np.isnan(squareform(dists))
-        ti, tj = np.tril_indices(extra_matrix.shape[0], k=0)
-        extra_matrix[ti, tj] = False
-        ei, ej = np.nonzero(extra_matrix)
+        extra_intersections_matrix = np.isnan(squareform(dists))
+        ti, tj = np.tril_indices(extra_intersections_matrix.shape[0], k=0)
+        extra_intersections_matrix[ti, tj] = False
+        ei, ej = np.nonzero(extra_intersections_matrix)
 
         extra_intersections_graph = nx.Graph()
         extra_intersections_graph.add_edges_from(zip(ei, ej))
 
         extra_intersections = []
 
-        for extra_components in nx.connected_components(extra_intersections_graph):
+        for blob_intersection_indices in nx.connected_components(extra_intersections_graph):
             extra_intersections.extend(
-                sorted([intersections[i] for i in extra_components],
+                sorted([intersections[i] for i in blob_intersection_indices],
                        key=lambda x: x.intersect_segment.seglen)[1:]
             )
 
