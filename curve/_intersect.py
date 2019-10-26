@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 
 """
-The module provides routines for determining segments and curves intersections
+Segments and curves intersections in n-dimensional Euclidean space
+
+The module provides routines and methods for determining segments and curves intersections
 in n-dimensional Euclidean space.
+
+Currently, two methods are implemented out of the box:
+    - ``exact`` -- exact interesections by solving system of linear equations
+    - ``almost`` -- almost intersections by shortest connecting segments
+
+``almost`` method can be useful for 3 and higher dimensions.
 
 """
 
@@ -10,12 +18,12 @@ import typing as ty
 import typing_extensions as ty_ext
 
 import abc
-import warnings
 import enum
+import warnings
 
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
 import networkx as nx
+from scipy.spatial.distance import pdist, squareform
 
 import curve._base
 from curve import _geomalg
@@ -218,9 +226,11 @@ class IntersectionMethodBase(abc.ABC):
     """
 
     def __call__(self,
-                 obj1: ty.Union['Segment', 'Curve'],
-                 obj2: ty.Union['Segment', 'Curve']) -> ty.Union[SegmentsIntersection, ty.List[SegmentsIntersection]]:
+                 obj1: ty.Union['Segment', 'Curve'], obj2: ty.Union['Segment', 'Curve']) \
+            -> ty.Union[SegmentsIntersection, ty.List[SegmentsIntersection]]:
+
         valid_obj_types = (curve._base.Segment, curve._base.Curve)
+
         if not isinstance(obj1, valid_obj_types) or not isinstance(obj2, valid_obj_types):
             raise TypeError('"obj1" and "obj2" arguments must be \'Segment\' or \'Curve\'.')
 
@@ -590,6 +600,25 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
     We check the length of the shortest segment. If it is smaller a tolerance value we
     consider it as the intersection of the segments.
 
+    Notes
+    -----
+
+    This method can be useful for 3 and higher dimensions.
+
+    Parameters
+    ----------
+    dist_tol : float
+        Distance between skewnes segments tolerance. By default 1e-5.
+    remove_extra : bool
+        If it is true extra intersections will be removed
+    extra_tol : float
+        Distance between extra intersection points tolerance
+    correct_overlap : bool
+        If it is true overlapped intersections will be corrected
+    parallel_tol : float
+        Intersected segments parallel tolerance.
+        It is used to correct overlapped intersections.
+
     """
 
     def __init__(self,
@@ -608,17 +637,17 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
         shortest_segment = segment1.shortest_segment(segment2)
 
         if shortest_segment.seglen < self._dist_tol:
-            intersection_info = IntersectionType.ALMOST(shortest_segment)
+            intersect_info = IntersectionType.ALMOST(shortest_segment)
 
             if self._is_correct_overlap:
-                intersection_info = self._correct_overlap(
+                intersect_info = self._correct_overlap(
                     SegmentsIntersection(
                         segment1=segment1,
                         segment2=segment2,
-                        intersect_info=intersection_info)
+                        intersect_info=intersect_info)
                 ).intersect_info
 
-            return intersection_info
+            return intersect_info
 
         return NOT_INTERSECTED
 
