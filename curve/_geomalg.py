@@ -261,7 +261,7 @@ def coplanar_points(points: ty.Union[ty.List['Point'], np.ndarray],
 
 
 def overlap_segments(segment1: 'Segment', segment2: 'Segment',
-                     tol: ty.Optional[float] = None) -> ty.Optional['Segment']:
+                     check_collinear: bool = False) -> ty.Optional['Segment']:
     """Returns overlap segment between two segments if it exists
 
     Parameters
@@ -270,8 +270,8 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
         The first segment
     segment2 : Segment
         The second segment
-    tol : float, None
-        Threshold below which SVD values are considered zero
+    check_collinear : bool
+        If the flag is True segments collinearity will be check
 
     Returns
     -------
@@ -280,7 +280,7 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
 
     """
 
-    if not segment1.collinear(segment2, tol=tol):
+    if check_collinear and not segment1.collinear(segment2):
         return None
 
     p11_data = segment1.p1.data
@@ -301,8 +301,8 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
     if np.any(data_maxmin > data_minmax):
         return None
 
-    return curve._base.Segment(curve._base.Point(data_maxmin),
-                               curve._base.Point(data_minmax))
+    return curve._base.Segment(p1=curve._base.Point(data_maxmin),
+                               p2=curve._base.Point(data_minmax))
 
 
 def segment_to_point(segment: 'Segment', point: 'Point') -> float:

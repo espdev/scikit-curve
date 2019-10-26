@@ -1017,15 +1017,16 @@ class Segment:
 
         return _geomalg.coplanar_points(points, tol=tol)
 
-    def overlap(self, other: 'Segment', tol: ty.Optional[float] = None) -> ty.Optional['Segment']:
+    def overlap(self, other: 'Segment',
+                check_collinear: bool = False) -> ty.Optional['Segment']:
         """Returns overlap segment between the segment and other segment if it exists
 
         Parameters
         ----------
         other : Segment
             Other segment
-        tol : float, None
-            Threshold below which SVD values are considered zero
+        check_collinear : bool
+            If the flag is True segments collinearity will be check
 
         Returns
         -------
@@ -1034,7 +1035,7 @@ class Segment:
 
         """
 
-        return _geomalg.overlap_segments(self, other, tol=tol)
+        return _geomalg.overlap_segments(self, other, check_collinear)
 
     def intersect(self, other: 'Segment', method: ty.Optional[str] = None, **params) \
             -> _intersect.SegmentsIntersection:
