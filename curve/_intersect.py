@@ -738,15 +738,14 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
         if segment1.parallel(segment2, tol=self._parallel_tol):
             overlap_segment = segment1.overlap(segment2, check_collinear=False)
-            if not overlap_segment:
-                return intersection
-            return SegmentsIntersection(
-                segment1=segment1,
-                segment2=segment2,
-                intersect_info=IntersectionType.OVERLAP(overlap_segment),
-            )
-        else:
-            return intersection
+            if overlap_segment:
+                return SegmentsIntersection(
+                    segment1=segment1,
+                    segment2=segment2,
+                    intersect_info=IntersectionType.OVERLAP(overlap_segment),
+                )
+
+        return intersection
 
 
 def intersect(obj1: ty.Union['Segment', 'Curve'],
