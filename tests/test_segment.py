@@ -263,6 +263,6 @@ def test_to_curve():
     assert segment.to_curve() == Curve([(1, 2), (1, 2)])
 
 
-def test_swap():
+def test_reverse():
     segment = Segment(Point([1, 1]), Point([2, 2]))
-    assert segment.swap() == Segment(Point([2, 2]), Point([1, 1]))
+    assert segment.reverse() == Segment(Point([2, 2]), Point([1, 1]))

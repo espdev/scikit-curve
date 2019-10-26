@@ -976,7 +976,7 @@ class Segment:
                 return True
             points.append(other)
         elif isinstance(other, Segment):
-            if other == self or other.swap() == self:
+            if other == self or other.reverse() == self:
                 return True
             points.extend([other.p1, other.p2])
         else:
@@ -1125,13 +1125,13 @@ class Segment:
 
         return Curve(self.data)
 
-    def swap(self) -> 'Segment':
-        """Returns the new segment with swapped ending points
+    def reverse(self) -> 'Segment':
+        """Returns the reversed segment with swapped beginning and ending points
 
         Returns
         -------
         segment : Segment
-            Swapped segment
+            Reversed segment
         """
 
         return Segment(self.p2, self.p1)
