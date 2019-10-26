@@ -595,16 +595,30 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
     def __init__(self,
                  dist_tol: float = 1e-5,
                  remove_extra: bool = False,
-                 extra_tol: float = 1e-3) -> None:
+                 extra_tol: float = 1e-3,
+                 correct_overlap: bool = False,
+                 parallel_tol: float = F_EPS) -> None:
         self._dist_tol = dist_tol
         self._remove_extra = remove_extra
         self._extra_tol = extra_tol
+        self._is_correct_overlap = correct_overlap
+        self._parallel_tol = parallel_tol
 
     def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
         shortest_segment = segment1.shortest_segment(segment2)
 
         if shortest_segment.seglen < self._dist_tol:
-            return IntersectionType.ALMOST(shortest_segment)
+            intersection_info = IntersectionType.ALMOST(shortest_segment)
+
+            if self._is_correct_overlap:
+                intersection_info = self._correct_overlap(
+                    SegmentsIntersection(
+                        segment1=segment1,
+                        segment2=segment2,
+                        intersect_info=intersection_info)
+                ).intersect_info
+
+            return intersection_info
 
         return NOT_INTERSECTED
 
@@ -640,6 +654,9 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
         if self._remove_extra:
             intersections = self._remove_extra_intersections(intersections)
+
+        if self._is_correct_overlap:
+            intersections = [self._correct_overlap(i) for i in intersections]
 
         return intersections
 
@@ -682,6 +699,25 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
         filtered_intersections = list(filter(lambda x: x not in extra_intersections, intersections))
 
         return filtered_intersections
+
+    def _correct_overlap(self, intersection: SegmentsIntersection) -> SegmentsIntersection:
+        """Corrects overlap intersection
+        """
+
+        segment1 = intersection.segment1
+        segment2 = intersection.segment2
+
+        if segment1.parallel(segment2, tol=self._parallel_tol):
+            overlap_segment = segment1.overlap(segment2, check_collinear=False)
+            if not overlap_segment:
+                return intersection
+            return SegmentsIntersection(
+                segment1=segment1,
+                segment2=segment2,
+                intersect_info=IntersectionType.OVERLAP(overlap_segment),
+            )
+        else:
+            return intersection
 
 
 def intersect(obj1: ty.Union['Segment', 'Curve'],
