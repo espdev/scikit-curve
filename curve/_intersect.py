@@ -654,7 +654,7 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
     def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
         s2s = _geomalg.segments_to_segments(curve1.data, curve2.data)
 
-        dist = np.sum((s2s.p1 - s2s.p2)**2, axis=0)
+        dist = np.sqrt(np.sum((s2s.p1 - s2s.p2)**2, axis=0))
 
         intersect_matrix = dist < self._dist_tol
         self_intersect = curve1 is curve2
