@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from curve import Point, Segment, Curve, GeometryAlgorithmsWarning, IntersectionType
+from skcurve import Point, Segment, Curve, GeometryAlgorithmsWarning, IntersectionType
 
 
 @pytest.mark.parametrize('p1, p2, ndim', [

@@ -2,10 +2,10 @@
 
 from ._version import __version__  # noqa
 
-from curve._base import Axis, Point, Segment, CurvePoint, CurveSegment, Curve
-from curve._distance import known_metrics, get_metric
-from curve._diffgeom import DifferentialGeometryWarning
-from curve._interpolate import (
+from skcurve._base import Axis, Point, Segment, CurvePoint, CurveSegment, Curve
+from skcurve._distance import known_metrics, get_metric
+from skcurve._diffgeom import DifferentialGeometryWarning
+from skcurve._interpolate import (
     InterpolationError,
     InterpolationWarning,
     InterpolationGrid,
@@ -17,14 +17,14 @@ from curve._interpolate import (
     get_interpolator,
     register_interpolator,
 )
-from curve._smooth import (
+from skcurve._smooth import (
     SmoothingError,
     smooth_methods,
     get_smooth_method,
     register_smooth_method,
 )
-from curve._geomalg import GeometryAlgorithmsWarning
-from curve._intersect import (
+from skcurve._geomalg import GeometryAlgorithmsWarning
+from skcurve._intersect import (
     IntersectionInfo,
     IntersectionType,
     SegmentsIntersection,
@@ -35,7 +35,7 @@ from curve._intersect import (
     set_default_intersect_method,
     register_intersect_method,
 )
-from curve._numeric import isequal, allequal, dot1d
+from skcurve._numeric import isequal, allequal, dot1d
 
 __all__ = [
     # base

@@ -20,10 +20,10 @@ import warnings
 import typing as t
 import numpy as np
 
-from curve._numeric import dot1d
+from skcurve._numeric import dot1d
 
 if t.TYPE_CHECKING:
-    from curve._base import Curve  # noqa
+    from skcurve._base import Curve  # noqa
 
 
 DEFAULT_GRAD_EDGE_ORDER = 2

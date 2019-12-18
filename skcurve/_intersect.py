@@ -25,12 +25,12 @@ import numpy as np
 import networkx as nx
 from scipy.spatial.distance import pdist, squareform
 
-import curve._base
-from curve import _geomalg
-from curve._numeric import F_EPS
+import skcurve._base
+from skcurve import _geomalg
+from skcurve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
-    from curve._base import Point, Segment, Curve  # noqa
+    from skcurve._base import Point, Segment, Curve  # noqa
 
 
 _intersect_methods = {}  # type: ty.Dict[str, ty.Type['IntersectionMethodBase']]
@@ -60,11 +60,11 @@ class IntersectionType(enum.Enum):
         if self == IntersectionType.NONE and intersect_data is not IntersectionType:
             raise ValueError('"intersect_data" must be \'None\' for type {}'.format(self))
 
-        if self == IntersectionType.EXACT and not isinstance(intersect_data, curve._base.Point):
+        if self == IntersectionType.EXACT and not isinstance(intersect_data, skcurve._base.Point):
             raise ValueError('"intersect_data" must be \'Point\' for type {}'.format(self))
 
         if (self in (IntersectionType.OVERLAP, IntersectionType.ALMOST) and
-                not isinstance(intersect_data, curve._base.Segment)):
+                not isinstance(intersect_data, skcurve._base.Segment)):
             raise ValueError('"intersect_data" must be \'Segment\' for type {}'.format(self))
 
         return IntersectionInfo(intersect_data, self)
@@ -216,7 +216,7 @@ class SegmentsIntersection:
             return None
 
         if self.intersect_type == IntersectionType.EXACT:
-            return curve._base.Segment(self._intersect_info.data, self._intersect_info.data)
+            return skcurve._base.Segment(self._intersect_info.data, self._intersect_info.data)
         else:
             return self._intersect_info.data
 
@@ -229,7 +229,7 @@ class IntersectionMethodBase(abc.ABC):
                  obj1: ty.Union['Segment', 'Curve'], obj2: ty.Union['Segment', 'Curve']) \
             -> ty.Union[SegmentsIntersection, ty.List[SegmentsIntersection]]:
 
-        valid_obj_types = (curve._base.Segment, curve._base.Curve)
+        valid_obj_types = (skcurve._base.Segment, skcurve._base.Curve)
 
         if not isinstance(obj1, valid_obj_types) or not isinstance(obj2, valid_obj_types):
             raise TypeError('"obj1" and "obj2" arguments must be \'Segment\' or \'Curve\'.')
@@ -237,24 +237,24 @@ class IntersectionMethodBase(abc.ABC):
         if obj1.ndim != obj2.ndim:
             raise ValueError('The dimension of both objects must be equal.')
 
-        if isinstance(obj1, curve._base.Segment) and isinstance(obj2, curve._base.Segment):
+        if isinstance(obj1, skcurve._base.Segment) and isinstance(obj2, skcurve._base.Segment):
             intersect_info = self._intersect_segments(obj1, obj2)
             return SegmentsIntersection(
                 segment1=obj1,
                 segment2=obj2,
                 intersect_info=intersect_info,
             )
-        elif isinstance(obj1, curve._base.Curve) and isinstance(obj2, curve._base.Curve):
+        elif isinstance(obj1, skcurve._base.Curve) and isinstance(obj2, skcurve._base.Curve):
             if obj1.size == 0 or obj2.size == 0:
                 return []
             return self._intersect_curves(obj1, obj2)
         else:
             # Intersections between the curve and the segment
-            obj1_is_segment = isinstance(obj1, curve._base.Segment)
-            obj2_is_segment = isinstance(obj2, curve._base.Segment)
+            obj1_is_segment = isinstance(obj1, skcurve._base.Segment)
+            obj2_is_segment = isinstance(obj2, skcurve._base.Segment)
 
-            curve1 = ty.cast(curve._base.Segment, obj1).to_curve() if obj1_is_segment else obj1
-            curve2 = ty.cast(curve._base.Segment, obj2).to_curve() if obj2_is_segment else obj2
+            curve1 = ty.cast(skcurve._base.Segment, obj1).to_curve() if obj1_is_segment else obj1
+            curve2 = ty.cast(skcurve._base.Segment, obj2).to_curve() if obj2_is_segment else obj2
 
             if curve1.size == 0 or curve2.size == 0:
                 return []
@@ -263,8 +263,8 @@ class IntersectionMethodBase(abc.ABC):
 
             for i, intersection in enumerate(intersections):
                 intersections[i] = SegmentsIntersection(
-                    segment1=ty.cast(curve._base.Segment, obj1) if obj1_is_segment else intersection.segment1,
-                    segment2=ty.cast(curve._base.Segment, obj2) if obj2_is_segment else intersection.segment2,
+                    segment1=ty.cast(skcurve._base.Segment, obj1) if obj1_is_segment else intersection.segment1,
+                    segment2=ty.cast(skcurve._base.Segment, obj2) if obj2_is_segment else intersection.segment2,
                     intersect_info=intersection.intersect_info,
                 )
 
@@ -670,9 +670,9 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
                                       curve2.segments[s2].tolist(),
                                       s2s.p1[:, s1, s2].T.tolist(),
                                       s2s.p2[:, s1, s2].T.tolist()):
-            shortest_segment = curve._base.Segment(
-                p1=curve._base.Point(p1),
-                p2=curve._base.Point(p2),
+            shortest_segment = skcurve._base.Segment(
+                p1=skcurve._base.Point(p1),
+                p2=skcurve._base.Point(p2),
             )
 
             intersections.append(SegmentsIntersection(

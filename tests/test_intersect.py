@@ -5,7 +5,7 @@ import pytest
 
 import numpy as np
 
-from curve import Point, Segment, Curve, CurveSegment, curves
+from skcurve import Point, Segment, Curve, CurveSegment, curves
 
 
 skip = functools.partial(pytest.param, marks=pytest.mark.skip)

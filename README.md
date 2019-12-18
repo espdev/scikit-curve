@@ -16,9 +16,9 @@ A toolkit to manipulate n-dimensional geometric curves in Python.
 ```python
 import matplotlib.pyplot as plt
 
-from curve.curves import lissajous
-from curve.plot import curveplot
-from curve import PreservedSpeedInterpolationGrid
+from skcurve.curves import lissajous
+from skcurve.plot import curveplot
+from skcurve import PreservedSpeedInterpolationGrid
 
 curve = lissajous(p_count=51)
 
@@ -36,8 +36,8 @@ plt.show()
 import numpy as np
 import matplotlib.pyplot as plt
 
-from curve import Curve, Axis
-from curve.plot import curveplot
+from skcurve import Curve, Axis
+from skcurve.plot import curveplot
 
 t = np.linspace(0, 2*np.pi, 100)
 

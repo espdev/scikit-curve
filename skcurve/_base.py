@@ -25,14 +25,14 @@ import numpy as np
 
 from cached_property import cached_property
 
-import curve._distance as _distance
-import curve._diffgeom as _diffgeom
-import curve._geomalg as _geomalg
-import curve._intersect as _intersect
-import curve._interpolate as _interpolate
-import curve._smooth as _smooth
-from curve._numeric import allequal, F_EPS
-from curve._utils import as2d
+import skcurve._distance as _distance
+import skcurve._diffgeom as _diffgeom
+import skcurve._geomalg as _geomalg
+import skcurve._intersect as _intersect
+import skcurve._interpolate as _interpolate
+import skcurve._smooth as _smooth
+from skcurve._numeric import allequal, F_EPS
+from skcurve._utils import as2d
 
 
 Numeric = ty.Union[numbers.Number, np.number]

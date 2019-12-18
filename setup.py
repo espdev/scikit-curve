@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 
 ROOT_DIR = pathlib.Path(__file__).parent
-ROOT_PKG = 'curve'
+ROOT_PKG = 'skcurve'
 
 
 def get_version():
@@ -33,7 +33,7 @@ setup(
         'cached_property',
         'typing-extensions',
     ],
-    packages=find_packages(exclude=['tests', '*.tests', '*.tests.*', 'tests.*']),
+    packages=find_packages(exclude=['tests', 'examples']),
     url='https://github.com/espdev/scikit-curve',
     license='BSD 3-Clause',
     author='Eugene Prilepin',

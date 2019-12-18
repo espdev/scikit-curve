@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from curve import Curve
+from skcurve import Curve
 
 
 @pytest.fixture
