@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from curve import Curve, Point, Axis
+from skcurve import Curve, Point, Axis
 
 
 @pytest.mark.parametrize('data, size, ndim, dtype', [

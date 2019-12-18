@@ -4,7 +4,7 @@ import operator
 import pytest
 import numpy as np
 
-from curve import Point
+from skcurve import Point
 
 
 @pytest.mark.parametrize('data, ndim, dtype', [

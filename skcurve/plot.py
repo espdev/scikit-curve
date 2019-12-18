@@ -16,7 +16,7 @@ from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 import matplotlib.pyplot as plt
 
-from curve import Curve
+from skcurve import Curve
 
 
 class CurvePlot:

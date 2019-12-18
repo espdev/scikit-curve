@@ -3,8 +3,8 @@
 import pytest
 import numpy as np
 
-from curve import Curve
-from curve import UniformInterpolationGrid, UniformExtrapolationGrid, \
+from skcurve import Curve
+from skcurve import UniformInterpolationGrid, UniformExtrapolationGrid, \
     PreservedSpeedInterpolationGrid, interp_methods
 
 

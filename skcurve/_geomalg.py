@@ -11,11 +11,11 @@ import typing as ty
 
 import numpy as np
 
-import curve._base
-from curve._numeric import F_EPS
+import skcurve._base
+from skcurve._numeric import F_EPS
 
 if ty.TYPE_CHECKING:
-    from curve._base import Point, Segment  # noqa
+    from skcurve._base import Point, Segment  # noqa
 
 
 class GeometryAlgorithmsWarning(UserWarning):
@@ -56,7 +56,7 @@ def segment_point(segment: 'Segment',
         dt = segment.direction.data * t[np.newaxis].T
         points_data = segment.p1.data + dt
 
-        return [curve._base.Point(pdata) for pdata in points_data]
+        return [skcurve._base.Point(pdata) for pdata in points_data]
     else:
         return segment.p1 + segment.direction * t
 
@@ -82,7 +82,7 @@ def segment_t(segment: 'Segment', point: ty.Union['Point', ty.Sequence['Point']]
 
     """
 
-    if isinstance(point, curve._base.Point):
+    if isinstance(point, skcurve._base.Point):
         if not segment.collinear(point, tol=tol):
             warnings.warn(
                 "Given point '{}' is not collinear with the segment '{}'".format(point, segment),
@@ -301,8 +301,8 @@ def overlap_segments(segment1: 'Segment', segment2: 'Segment',
     if np.any(data_maxmin > data_minmax):
         return None
 
-    return curve._base.Segment(p1=curve._base.Point(data_maxmin),
-                               p2=curve._base.Point(data_minmax))
+    return skcurve._base.Segment(p1=skcurve._base.Point(data_maxmin),
+                                 p2=skcurve._base.Point(data_minmax))
 
 
 def segment_to_point(segment: 'Segment', point: 'Point') -> float:

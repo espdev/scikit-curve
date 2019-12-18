@@ -8,7 +8,7 @@ The module provides parametric equations for well-known curves
 import numpy as np
 from scipy.special import fresnel
 
-from curve import Curve
+from skcurve import Curve
 
 
 def arc(t_start: float = 0.0,

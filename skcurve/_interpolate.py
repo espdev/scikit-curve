@@ -23,10 +23,10 @@ import numpy as np
 import scipy.interpolate as interp
 import csaps
 
-from curve._numeric import linrescale
+from skcurve._numeric import linrescale
 
 if ty.TYPE_CHECKING:
-    from curve._base import Curve  # noqa
+    from skcurve._base import Curve  # noqa
 
 
 _interpolators = {}  # type: ty.Dict[str, ty.Type['InterpolatorBase']]

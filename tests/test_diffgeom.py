@@ -4,8 +4,8 @@ import pytest
 
 import numpy as np
 
-from curve import Curve, Axis, DifferentialGeometryWarning
-from curve import dot1d
+from skcurve import Curve, Axis, DifferentialGeometryWarning
+from skcurve import dot1d
 
 
 def test_nonsingular():
