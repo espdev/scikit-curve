@@ -750,7 +750,7 @@ class AlmostIntersectionMethod(IntersectionMethodBase):
 
 def intersect(obj1: ty.Union['Segment', 'Curve'],
               obj2: ty.Union['Segment', 'Curve'],
-              method: ty.Optional[str] = None, **params: ty.Any) -> \
+              method: ty.Optional[ty.Union[str, IntersectionMethodBase]] = None, **params: ty.Any) -> \
         ty.Union[SegmentsIntersection, ty.List[SegmentsIntersection]]:
     """Finds the intersection between n-dimensional segments and/or curves
 
@@ -763,13 +763,16 @@ def intersect(obj1: ty.Union['Segment', 'Curve'],
         The first segment or curve object
     obj2 : Segment, Curve
         The second segment or curve object
-    method : str, None
+    method : str, IntersectionMethodBase, None
         The method to determine intersection. By default the following methods are available:
             - ``exact`` -- (default) the exact intersection solving the system of equations
             - ``almost`` -- the almost intersection using the shortest connecting segment.
               This is usually actual for dimension >= 3.
 
             The default method is ``exact``.
+
+        if ``method`` is an instance of subclass of ``IntersectionMethodBase`` it will be used directly
+        and ``params`` will be ignored.
     params : mapping
         The intersection method parameters
 
@@ -791,7 +794,15 @@ def intersect(obj1: ty.Union['Segment', 'Curve'],
     if obj1.ndim != obj2.ndim:
         raise ValueError('The dimension of both objects must be equal.')
 
-    intersect_method = get_intersect_method(method, **params)
+    if isinstance(method, str):
+        intersect_method = get_intersect_method(method, **params)
+    elif isinstance(method, IntersectionMethodBase):
+        intersect_method = method
+        if params:
+            warnings.warn("{} as intersection method will be used, 'params' will be ignored.".format(
+                method), IntersectionWarning)
+    else:
+        raise ValueError("Invalid 'method' value: {}".format(method))
 
     try:
         return intersect_method(obj1, obj2)

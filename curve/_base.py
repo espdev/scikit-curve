@@ -1037,8 +1037,9 @@ class Segment:
 
         return _geomalg.overlap_segments(self, other, check_collinear)
 
-    def intersect(self, other: 'Segment', method: ty.Optional[str] = None, **params) \
-            -> _intersect.SegmentsIntersection:
+    def intersect(self, other: 'Segment',
+                  method: ty.Optional[ty.Union[str, _intersect.IntersectionMethodBase]] = None,
+                  **params) -> _intersect.SegmentsIntersection:
         """Finds the intersection of the segment and other segment
 
         Parameters
@@ -1052,6 +1053,10 @@ class Segment:
                   This is usually actual for dimension >= 3.
 
                 The default method is ``exact``.
+
+            if ``method`` is an instance of subclass of ``IntersectionMethodBase`` it will be used directly
+            and ``params`` will be ignored.
+
         params : mapping
             The intersection method parameters
 
@@ -2817,20 +2822,24 @@ class Curve(abc.Sequence):
         return _smooth.smooth(self, method, **params)
 
     def intersect(self, other: ty.Optional[ty.Union['Curve', Segment]] = None,
-                  method: ty.Optional[str] = None, **params) -> ty.List[_intersect.SegmentsIntersection]:
+                  method: ty.Optional[ty.Union[str, _intersect.IntersectionMethodBase]] = None,
+                  **params) -> ty.List[_intersect.SegmentsIntersection]:
         """Determines the curve intersections with other curve or segment or itself
 
         Parameters
         ----------
         other : Curve, Segment, None
             Other object to determine intersection or None for itself
-        method : str, None
+        method : str, IntersectionMethodBase, None
             The method to determine intersection. By default the following methods are available:
                 - ``exact`` -- (default) the exact intersection solving the system of equations
                 - ``almost`` -- the almost intersection using the shortest connecting segment.
                   This is usually actual for dimension >= 3.
 
                 The default method is ``exact``.
+
+            if ``method`` is an instance of subclass of ``IntersectionMethodBase`` it will be used directly
+            and ``params`` will be ignored.
         params : mapping
             The intersection method parameters
 
