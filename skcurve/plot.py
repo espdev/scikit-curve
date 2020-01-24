@@ -195,9 +195,6 @@ class CurvePlot:
         #     self._curve.size, self._curve.arclen)
         # self._axes.set_title(title)
 
-        if not isinstance(self._axes, Axes3D):
-            self._axes.axis('equal')
-
 
 curveplot = CurvePlot
 """'CurvePlot' class alias for using chained API"""
