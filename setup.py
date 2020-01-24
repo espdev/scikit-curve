@@ -24,17 +24,36 @@ def get_long_description():
 setup(
     name='scikit-curve',
     version=get_version(),
-    python_requires='>=3.5,<4',
+    python_requires='>=3.6, <4',
     install_requires=[
         'numpy',
         'scipy',
         'networkx',
-        'csaps >= 0.6.0',
+        'matplotlib',
+        'csaps >=0.7.0, <1',
         'cached_property',
         'typing-extensions',
     ],
+    extras_require={
+        'docs': [
+            'sphinx >=2.3',
+            'numpydoc',
+        ],
+        'examples': [
+            'jupyter',
+        ],
+        'tests': [
+            'pytest',
+            'coverage',
+        ],
+    },
     packages=find_packages(exclude=['tests', 'examples']),
     url='https://github.com/espdev/scikit-curve',
+    project_urls={
+        'Documentation': 'https://scikit-curve.readthedocs.io',
+        'Code': 'https://github.com/espdev/scikit-curve',
+        'Issue tracker': 'https://github.com/espdev/scikit-curve/issues',
+    },
     license='BSD 3-Clause',
     author='Eugene Prilepin',
     author_email='esp.home@gmail.com',
