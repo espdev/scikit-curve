@@ -128,7 +128,7 @@ class UniformInterpolationGrid(InterpolationGrid):
             raise ValueError('The curve size {} is too few'.format(curve.size))
 
         if self.kind == 'length':
-            pcount = round(curve.arclen / self.fill) + 1
+            pcount = int(round(curve.arclen / self.fill) + 1)
         else:
             pcount = int(self.fill)
 
@@ -185,8 +185,8 @@ class UniformExtrapolationGrid(InterpolationGrid):
             pcount_before = self.before
             pcount_after = self.after
         else:
-            pcount_before = round(self.before / interp_chordlen)
-            pcount_after = round(self.after / interp_chordlen)
+            pcount_before = int(round(self.before / interp_chordlen))
+            pcount_after = int(round(self.after / interp_chordlen))
 
         grid_before = np.linspace(
             -interp_chordlen * pcount_before + grid[0], -interp_chordlen + grid[0], pcount_before)
