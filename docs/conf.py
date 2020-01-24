@@ -10,20 +10,12 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-import os
 import pathlib
 import sys
 
-sys.path.insert(0, os.path.abspath(os.pardir))
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
-
-def get_version():
-    version_file = pathlib.Path(__file__).parent.parent / 'curve' / '_version.py'
-    version_info = {}
-
-    with version_file.open() as f:
-        exec(f.read(), version_info)
-    return version_info['__version__']
+from skcurve import __version__
 
 
 # -- Project information -----------------------------------------------------
@@ -33,7 +25,7 @@ copyright = '2019, Eugene Prilepin'
 author = 'Eugene Prilepin'
 
 # The full version, including alpha/beta/rc tags
-release = get_version()
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
