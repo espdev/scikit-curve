@@ -9,12 +9,17 @@ import typing as ty
 
 import numpy as np
 
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Line3DCollection
-from matplotlib.collections import LineCollection
-from matplotlib.colors import Normalize
-from matplotlib.cm import ScalarMappable
-import matplotlib.pyplot as plt
+try:
+    from mpl_toolkits.mplot3d import Axes3D
+    from mpl_toolkits.mplot3d.art3d import Line3DCollection
+    from matplotlib.collections import LineCollection
+    from matplotlib.colors import Normalize
+    from matplotlib.cm import ScalarMappable
+    import matplotlib.pyplot as plt
+except ImportError as err:
+    raise RuntimeError(
+        "'matplotlib' is not installed. Please install it or "
+        "reinstall 'scikit-curve' with extras: 'pip install scikit-curve[plot]'.") from err
 
 from skcurve import Curve
 

@@ -29,18 +29,22 @@ setup(
         'numpy',
         'scipy',
         'networkx',
-        'matplotlib',
         'csaps >=0.7.0, <1',
         'cached_property',
         'typing-extensions',
     ],
     extras_require={
+        'plot': [
+            'matplotlib',
+        ],
         'docs': [
             'sphinx >=2.3',
             'numpydoc',
+            'matplotlib',
         ],
         'examples': [
             'jupyter',
+            'matplotlib',
         ],
         'tests': [
             'pytest',
