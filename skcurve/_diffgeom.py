@@ -16,14 +16,18 @@ Here are some basic routines above the n-dimensional curves:
 """
 
 import warnings
+import functools
 
 import typing as ty
 import numpy as np
 
+from cached_property import cached_property
+
 from skcurve._numeric import dot1d
+import skcurve._base as _base
 
 if ty.TYPE_CHECKING:
-    from skcurve._base import Curve  # noqa
+    from skcurve._base import Curve, CurvePoint  # noqa
 
 
 DEFAULT_GRAD_EDGE_ORDER = 2
@@ -112,27 +116,7 @@ def arclen(curve: 'Curve') -> float:
     return float(np.sum(chordlen(curve)))
 
 
-def cumarclen(curve: 'Curve') -> np.ndarray:
-    """Computes cumulative arc length of a curve (natural parametrization)
-
-    Parametrization of a curve by the length of its arc.
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    cumarclen : np.ndarray
-        Cumulative arc length Mx1 array where M is the curve size (the number of points)
-
-    """
-
-    return np.hstack((0.0, np.cumsum(curve.chordlen)))
-
-
-def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.ndarray:
+def _gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.ndarray:
     """Computes gradient for MxN data array where N is the dimension
 
     Parameters
@@ -171,83 +155,6 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
     return np.gradient(data, axis=0, edge_order=edge_order)
 
 
-def normal(curve: 'Curve') -> np.array:
-    """Computes the normal vector at every point of a curve
-
-    Notes
-    -----
-    The normal vector, sometimes called the curvature vector, indicates the deviance of the curve from
-    being a straight line.
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    normal : np.ndarray
-        The array MxN with normal vector at every point of a curve
-
-    """
-
-    if not curve:
-        return np.array([], ndmin=curve.ndim, dtype=np.float64)
-
-    sder = curve.secondderiv
-    e1 = curve.frenet1
-
-    return sder - dot1d(sder, e1)[:, np.newaxis] * e1
-
-
-def binormal(curve: 'Curve') -> np.ndarray:
-    """Computes binormal vector at every point of a curve
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    binormal : np.ndarray
-        The array MxN with binormal vector at every point of a curve
-
-    """
-
-    if not curve:
-        return np.array([], ndmin=curve.ndim, dtype=np.float64)
-
-    tder = curve.thirdderiv
-    e1 = curve.frenet1
-    e2 = curve.frenet2
-
-    return tder - dot1d(tder, e1)[:, np.newaxis] * e1 - dot1d(tder, e2)[:, np.newaxis] * e2
-
-
-def speed(curve: 'Curve') -> np.ndarray:
-    """Computes the speed at the time (at every curve point)
-
-    Notes
-    -----
-    The speed is the tangent (velocity) vector's magnitude (norm).
-    In general speed may be zero in some point if the curve has zero-length segments.
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    speed : np.ndarray
-        The array with speed at every curve point
-
-    """
-
-    return np.linalg.norm(curve.tangent, axis=1)
-
-
 def _frenet_vector_norm(v: np.ndarray, warn_msg: str) -> np.ndarray:
     norm = np.linalg.norm(v, axis=1)
     not_well_defined = np.isclose(norm, 0.0)
@@ -258,155 +165,6 @@ def _frenet_vector_norm(v: np.ndarray, warn_msg: str) -> np.ndarray:
         norm[not_well_defined] = 1.0
 
     return norm[:, np.newaxis]
-
-
-def frenet1(curve: 'Curve') -> np.ndarray:
-    """Computes the first Frenet vector (tangent unit vector) at every point of a curve
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    e1 : np.ndarray
-        The MxN array of tangent unit vector ar every curve point
-
-    """
-
-    if not curve:
-        return np.array([], ndmin=curve.ndim, dtype=np.float64)
-
-    not_well_defined_warn_msg = (
-        'Cannot calculate the first Frenet vectors (unit tangent vectors). '
-        'The curve has singularity and zero-length segments. '
-        'Use "Curve.nonsingular" method to remove singularity from the curve data.'
-    )
-
-    norm = _frenet_vector_norm(curve.tangent, not_well_defined_warn_msg)
-    return curve.tangent / norm
-
-
-def frenet2(curve: 'Curve') -> np.ndarray:
-    """Computes the second Frenet vector (normal unit vector) at every point of a curve
-
-    Parameters
-    ----------
-        Curve object
-
-    Returns
-    -------
-    e2 : np.ndarray
-        The MxN array of normal unit vector at every curve point
-
-    """
-
-    if not curve:
-        return np.array([], ndmin=curve.ndim, dtype=np.float64)
-
-    not_well_defined_warn_msg = (
-        'Cannot calculate the second Frenet vectors (unit normal vectors). '
-        'The curve is straight line and normal vectors are not well defined. '
-    )
-
-    norm = _frenet_vector_norm(curve.normal, not_well_defined_warn_msg)
-    e2 = curve.normal / norm
-
-    # FIXME: what to do with not well defined the normal vectors?
-
-    return e2
-
-
-def frenet3(curve: 'Curve') -> np.ndarray:
-    """Computes the third Frenet vector (binormal unit vector) at every point of a curve
-
-    Parameters
-    ----------
-        Curve object
-
-    Returns
-    -------
-    e3 : np.ndarray
-        The MxN array of binormal unit vector at every curve point
-
-    """
-
-    if not curve:
-        return np.array([], ndmin=curve.ndim, dtype=np.float64)
-
-    not_well_defined_warn_msg = (
-        'Cannot calculate the third Frenet vectors (unit binormal vectors). '
-        'May be the curve is straight line or a plane and binormal vectors are not well defined. '
-    )
-
-    norm = _frenet_vector_norm(curve.binormal, not_well_defined_warn_msg)
-    e3 = curve.binormal / norm
-
-    # FIXME: what to do with not well defined the binormal vectors?
-
-    return e3
-
-
-def curvature(curve: 'Curve') -> np.ndarray:
-    """Computes the curvature at every point of a curve
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    k : np.ndarray
-        The array 1xM with curvature value at every point of a curve
-
-    """
-
-    if not curve:
-        return np.array([], ndmin=curve.ndim, dtype=np.float64)
-
-    if curve.is2d:
-        # Compute signed curvature value for a plane curve
-        fd_x = curve.firstderiv[:, 0]
-        fd_y = curve.firstderiv[:, 1]
-        sd_x = curve.secondderiv[:, 0]
-        sd_y = curve.secondderiv[:, 1]
-
-        k = (sd_y * fd_x - sd_x * fd_y) / (fd_x * fd_x + fd_y * fd_y) ** 1.5
-    else:
-        # Compute curvature for 3 or higher dimensional curve
-        e1_grad = gradient(curve.frenet1)
-        e1_grad_norm = np.linalg.norm(e1_grad, axis=1)
-        tangent_norm = np.linalg.norm(curve.tangent, axis=1)
-
-        k = e1_grad_norm / tangent_norm
-
-    return k
-
-
-def torsion(curve: 'Curve') -> np.ndarray:
-    """Computes the torsion at every point of a curve
-
-    Parameters
-    ----------
-    curve : Curve
-        Curve object
-
-    Returns
-    -------
-    torsion : np.ndarray
-        The array 1xM with torsion value at every point of a curve
-
-    """
-
-    if not curve:
-        return np.array([], ndmin=curve.ndim, dtype=np.float64)
-
-    e2_grad = gradient(curve.frenet2)
-    tangent_norm = np.linalg.norm(curve.tangent, axis=1)
-
-    return dot1d(e2_grad, curve.frenet3) / tangent_norm
 
 
 def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
@@ -446,3 +204,436 @@ def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
         [pb[axis1], pe[axis1]],
         [pb[axis2], pe[axis2]],
     ]) > 0
+
+
+def _maybe_curve_point(func):
+    @functools.wraps(func)
+    def wrapper(obj):
+        if isinstance(obj, _base.CurvePoint):
+            return getattr(obj.curve, func.__name__)[obj.idx]
+        return func(obj)
+    return wrapper
+
+
+class CurvePointFunctionMixin:
+    """Provides some curve point functions (diff geom computations) for Curve or CurvePoint
+
+    Notes
+    -----
+    The class can be used only as mixin class for :class:`Curve` and :class:`CurvePoint`.
+
+    """
+
+    @cached_property
+    @_maybe_curve_point
+    def cumarclen(self: ty.Union['Curve', 'CurvePoint']) -> ty.Union[np.ndarray, float]:
+        """Returns value of cumulative arc length for the curve or at the curve point
+
+        Parametrization of the curve by the length of its arc.
+
+        Returns
+        -------
+        val : Union[np.ndarray, float]
+            The value of cumulative arc length for this curve or point
+
+        """
+
+        return np.hstack((0.0, np.cumsum(self.chordlen)))
+
+    @cached_property
+    @_maybe_curve_point
+    def firstderiv(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        """Returns first-order derivative at the curve points
+
+        Returns
+        -------
+        fder : np.ndarray
+             The 1xN array of first-order derivative at the curve point(s)
+
+        See Also
+        --------
+        tangent
+        secondderiv
+        thirdderiv
+
+        """
+
+        return _gradient(self.data)
+
+    @cached_property
+    @_maybe_curve_point
+    def secondderiv(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        """Returns second-order derivative at the curve points
+
+        Returns
+        -------
+        sder : np.ndarray
+             The 1xN array of second-order derivative at the curve point(s)
+
+        See Also
+        --------
+        firstderiv
+        thirdderiv
+
+        """
+
+        return _gradient(self.firstderiv)
+
+    @cached_property
+    @_maybe_curve_point
+    def thirdderiv(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        """Returns third-order derivative at the curve points
+
+        Returns
+        -------
+        tder : np.ndarray
+             The 1xN array of third-order derivative at the curve point(s)
+
+        See Also
+        --------
+        firstderiv
+        secondderiv
+
+        """
+
+        return _gradient(self.secondderiv)
+
+    @cached_property
+    def tangent(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        """Returns tangent vector for the curve points
+
+        Notes
+        -----
+        This is alias for :func:`firstderiv` property.
+
+        Returns
+        -------
+        tangent : np.ndarray
+            The 1xN array of tangent vector for the curve point(s)
+
+        See Also
+        --------
+        firstderiv
+        frenet1
+
+        """
+
+        return self.firstderiv
+
+    @cached_property
+    @_maybe_curve_point
+    def normal(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        r"""Returns normal vector at the curve points
+
+        .. math::
+            \overline{e_2}(t) = \gamma''(t) - \langle \gamma''(t), e_1(t) \rangle \, e_1(t)
+
+        Notes
+        -----
+        The normal vector, sometimes called the curvature vector,
+        indicates the deviance of the curve from being a straight line.
+
+        Returns
+        -------
+        normal : np.ndarray
+            The 1xN array of normal vector at the curve point(s)
+
+        See Also
+        --------
+        tangent
+        frenet2
+        curvature
+
+        """
+
+        curve = self
+
+        if not curve:
+            return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+        sder = curve.secondderiv
+        e1 = curve.frenet1
+
+        return sder - dot1d(sder, e1)[:, np.newaxis] * e1
+
+    @cached_property
+    @_maybe_curve_point
+    def binormal(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        r"""Returns binormal vector at the curve points
+
+        .. math::
+            \overline{e_3}(t) = \gamma'''(t) - \langle \gamma'''(t), e_1(t) \rangle \, e_1(t)
+            - \langle \gamma'''(t), e_2(t) \rangle \, e_2(t)
+
+        Notes
+        -----
+        The binormal vector is always orthogonal to the tangent and normal vectors at every point of the curve.
+
+        Returns
+        -------
+        binormal : np.ndarray
+            The 1xN array of binormal vector at the curve point(s)
+
+        See Also
+        --------
+        tangent
+        normal
+        frenet3
+        torsion
+
+        """
+
+        curve = self
+
+        if not curve:
+            return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+        tder = curve.thirdderiv
+        e1 = curve.frenet1
+        e2 = curve.frenet2
+
+        return tder - dot1d(tder, e1)[:, np.newaxis] * e1 - dot1d(tder, e2)[:, np.newaxis] * e2
+
+    @cached_property
+    @_maybe_curve_point
+    def speed(self: ty.Union['Curve', 'CurvePoint']) -> ty.Union[np.ndarray, float]:
+        """Returns the speed at the curve point
+
+        Notes
+        -----
+        The speed is the tangent (velocity) vector's magnitude (norm).
+        In general, speed may be zero at some point if the curve has zero-length segments.
+
+        Returns
+        -------
+        speed : float
+            The speed value at the point(s)
+
+        See Also
+        --------
+        tangent
+
+        """
+
+        return np.linalg.norm(self.tangent, axis=1)
+
+    @cached_property
+    @_maybe_curve_point
+    def frenet1(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        r"""Returns the first Frenet vector (unit tangent vector) at the curve point
+
+        .. math::
+
+            e_1(t) = \frac{\gamma'(t)}{||\gamma'(t)||}
+
+        Returns
+        -------
+        e1 : np.ndarray
+            The first Frenet vector (unit tangent) ath the curve point(s)
+
+        See Also
+        --------
+        frenet2
+        frenet3
+
+        """
+
+        curve = self
+
+        if not curve:
+            return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+        not_well_defined_warn_msg = (
+            'Cannot calculate the first Frenet vectors (unit tangent vectors). '
+            'The curve has singularity and zero-length segments. '
+            'Use "Curve.nonsingular" method to remove singularity from the curve data.'
+        )
+
+        norm = _frenet_vector_norm(curve.tangent, not_well_defined_warn_msg)
+        return curve.tangent / norm
+
+    @cached_property
+    @_maybe_curve_point
+    def frenet2(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        r"""Returns the second Frenet vector (unit normal vector) at the curve point
+
+        .. math::
+
+            e_2(t) = \frac{e_1'(t)}{||e_1'(t)||}
+
+        Returns
+        -------
+        e2 : np.ndarray
+            The second Frenet vector (unit normal vector) at the curve point(s)
+
+        Raises
+        ------
+        ValueError : Cannot compute unit vector if speed is equal to zero (division by zero)
+
+        See Also
+        --------
+        normal
+        frenet1
+        frenet3
+
+        """
+
+        curve = self
+
+        if not curve:
+            return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+        not_well_defined_warn_msg = (
+            'Cannot calculate the second Frenet vectors (unit normal vectors). '
+            'The curve is straight line and normal vectors are not well defined. '
+        )
+
+        norm = _frenet_vector_norm(curve.normal, not_well_defined_warn_msg)
+        e2 = curve.normal / norm
+
+        # FIXME: what to do with not well defined the normal vectors?
+
+        return e2
+
+    @cached_property
+    @_maybe_curve_point
+    def frenet3(self: ty.Union['Curve', 'CurvePoint']) -> np.ndarray:
+        r"""Returns the third Frenet vector (unit binormal vector) at the curve point
+
+        .. math::
+
+            e_3(t) = \frac{\overline{e_3}(t)}{||\overline{e_3}(t)||}
+
+        Returns
+        -------
+        e3 : np.ndarray
+            The third Frenet vector (unit binormal vector) at the curve point(s)
+
+        Raises
+        ------
+        ValueError : Cannot compute unit vector if speed is equal to zero (division by zero)
+
+        See Also
+        --------
+        frenet1
+        frenet2
+
+        """
+
+        curve = self
+
+        if not curve:
+            return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+        not_well_defined_warn_msg = (
+            'Cannot calculate the third Frenet vectors (unit binormal vectors). '
+            'May be the curve is straight line or a plane and binormal vectors are not well defined. '
+        )
+
+        norm = _frenet_vector_norm(curve.binormal, not_well_defined_warn_msg)
+        e3 = curve.binormal / norm
+
+        # FIXME: what to do with not well defined the binormal vectors?
+
+        return e3
+
+    @cached_property
+    @_maybe_curve_point
+    def curvature(self: ty.Union['Curve', 'CurvePoint']) -> ty.Union[np.ndarray, float]:
+        r"""Returns the curvature value at the curve point
+
+        The curvature of a plane curve or a space curve in three dimensions (and higher) is the magnitude of the
+        acceleration of a particle moving with unit speed along a curve.
+
+        Curvature formula for 2-dimensional (a plane) curve :math:`\gamma(t) = (x(t), y(t))`:
+
+        .. math::
+
+            k = \frac{y''x' - x''y'}{(x'^2 + y'^2)^\frac{3}{2}}
+
+        and for 3-dimensional curve :math:`\gamma(t) = (x(t), y(t), z(t))`:
+
+        .. math::
+
+            k = \frac{||\gamma' \times \gamma''||}{||\gamma'||^3}
+
+        and for n-dimensional curve in general:
+
+        .. math::
+
+            k = \frac{\sqrt{||\gamma'||^2||\gamma''||^2 - (\gamma' \cdot \gamma'')^2}}{||\gamma'||^3}
+
+        Notes
+        -----
+        Curvature values at the ends of the curve can be calculated less accurately.
+
+        Returns
+        -------
+        k : float
+            The curvature value at this point
+
+        See Also
+        --------
+        normal
+        torsion
+
+        """
+
+        curve = self
+
+        if not curve:
+            return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+        if curve.is2d:
+            # Compute signed curvature value for a plane curve
+            fd_x = curve.firstderiv[:, 0]
+            fd_y = curve.firstderiv[:, 1]
+            sd_x = curve.secondderiv[:, 0]
+            sd_y = curve.secondderiv[:, 1]
+
+            k = (sd_y * fd_x - sd_x * fd_y) / (fd_x * fd_x + fd_y * fd_y) ** 1.5
+        else:
+            # Compute curvature for 3 or higher dimensional curve
+            e1_grad = _gradient(curve.frenet1)
+            e1_grad_norm = np.linalg.norm(e1_grad, axis=1)
+            tangent_norm = np.linalg.norm(curve.tangent, axis=1)
+
+            k = e1_grad_norm / tangent_norm
+
+        return k
+
+    @cached_property
+    @_maybe_curve_point
+    def torsion(self: ty.Union['Curve', 'CurvePoint']) -> ty.Union[np.ndarray, float]:
+        r"""Returns the torsion value at the curve point
+
+        The second generalized curvature is called torsion and measures the deviance of the curve
+        from being a plane curve. In other words, if the torsion is zero, the curve lies completely
+        in the same osculating plane (there is only one osculating plane for every point t).
+
+        It is defined as:
+
+        .. math::
+
+            \tau(t) = \chi_2(t) = \frac{\langle e_2'(t), e_3(t) \rangle}{\| \gamma'(t) \|}
+
+        Returns
+        -------
+        tau : ndarray, float
+            The torsion value at the curve point(s)
+
+        See Also
+        --------
+        curvature
+
+        """
+
+        curve = self
+
+        if not curve:
+            return np.array([], ndmin=curve.ndim, dtype=np.float64)
+
+        e2_grad = _gradient(curve.frenet2)
+        tangent_norm = np.linalg.norm(curve.tangent, axis=1)
+
+        return dot1d(e2_grad, curve.frenet3) / tangent_norm
