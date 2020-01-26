@@ -29,7 +29,7 @@ setup(
         'numpy',
         'scipy',
         'networkx',
-        'csaps >=0.7.0, <1',
+        'csaps >=0.9.0, <1',
         'cached_property',
         'typing-extensions',
     ],

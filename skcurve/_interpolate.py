@@ -631,7 +631,7 @@ class CsapsInterpolator(InterpolatorBase):
                  smooth: ty.Optional[float] = 1.0,
                  weights: ty.Optional[np.ndarray] = None):
         super().__init__(curve)
-        self.csaps = csaps.UnivariateCubicSmoothingSpline(
+        self.csaps = csaps.CubicSmoothingSpline(
             curve.t, curve.data, weights=weights, smooth=smooth, axis=0)
 
     def _interpolate(self, grid: np.ndarray) -> np.ndarray:
