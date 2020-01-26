@@ -24,7 +24,7 @@ import numpy as np
 from cached_property import cached_property
 
 from skcurve._numeric import dot1d
-import skcurve._base as _base
+import skcurve._base
 
 if ty.TYPE_CHECKING:
     from skcurve._base import Curve, CurvePoint  # noqa
@@ -208,7 +208,7 @@ def coorientplane(curve: 'Curve', axis1: int = 0, axis2: int = 1) -> bool:
 def _maybe_curve_point(func):
     @functools.wraps(func)
     def wrapper(obj):
-        if isinstance(obj, _base.CurvePoint):
+        if isinstance(obj, skcurve._base.CurvePoint):
             return getattr(obj.curve, func.__name__)[obj.idx]
         return func(obj)
     return wrapper
