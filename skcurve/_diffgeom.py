@@ -36,7 +36,6 @@ DEFAULT_GRAD_EDGE_ORDER = 2
 class DifferentialGeometryWarning(UserWarning):
     """Raises when diffgeom computation problems occurred
     """
-    pass
 
 
 def nonsingular(curve: 'Curve'):

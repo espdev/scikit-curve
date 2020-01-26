@@ -308,11 +308,13 @@ class IntersectionMethodBase(abc.ABC):
 
     @abc.abstractmethod
     def _intersect_segments(self, segment1: 'Segment', segment2: 'Segment') -> IntersectionInfo:
-        pass
+        """Should implement segments intersection algorithm
+        """
 
     @abc.abstractmethod
     def _intersect_curves(self, curve1: 'Curve', curve2: 'Curve') -> ty.List[SegmentsIntersection]:
-        pass
+        """Should implement curves intersection algorithm
+        """
 
 
 def intersect_methods() -> ty.List[str]:
