@@ -56,8 +56,7 @@ class CurvePlot:
                  axes: ty.Optional[plt.Axes] = None,
                  **kwargs: ty.Any) -> None:
         if curve.ndim > 3:
-            raise ValueError(
-                'Cannot plot the {}-dimensional curve.'.format(curve.ndim))
+            raise ValueError(f'Cannot plot the {curve.ndim}-dimensional curve.')
 
         self._curve = curve
         self._param = param

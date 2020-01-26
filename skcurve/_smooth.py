@@ -68,8 +68,8 @@ def register_smooth_method(method: str):
 
     def decorator(method_callable: SmoothingMethod):
         if method in _smooth_methods:
-            raise ValueError('"{}" smoothing method already registered for {}'.format(
-                method, _smooth_methods[method]))
+            raise ValueError(
+                f"'{method}' smoothing method already registered for {_smooth_methods[method]}")
         _smooth_methods[method] = method_callable
 
     return decorator
@@ -116,7 +116,7 @@ def get_smooth_method(method: str) -> SmoothingMethod:
     """
 
     if method not in _smooth_methods:
-        raise NameError('Cannot find the smoothing method "{}"'.format(method))
+        raise NameError(f"Cannot find the smoothing method '{method}'")
 
     return _smooth_methods[method]
 
@@ -163,7 +163,7 @@ def window_filter(curve: 'Curve',
             window = window_type(window_size)
         except Exception as err:
             raise ValueError(
-                'Cannot create the window using {}: {}'.format(window_type, err)) from err
+                f'Cannot create the window using {window_type}: {err}') from err
     else:
         window = windows.get_window(window_type, window_size, fftbins=False)
 
@@ -214,6 +214,6 @@ def smooth(curve: 'Curve', method: str, **params) -> 'Curve':
     except (ValueError, TypeError):
         raise
     except Exception as err:
-        raise SmoothingError('Smoothing has failed: {}'.format(err)) from err
+        raise SmoothingError(f'Smoothing has failed: {err}') from err
 
     return type(curve)(smoothed_data)

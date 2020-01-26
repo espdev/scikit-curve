@@ -145,17 +145,15 @@ class Point(abc.Sequence):
 
         if data.ndim > 1:
             raise ValueError(
-                'Invalid point data: {}\nThe point data must be 1-D array or sequence.'.format(point_data))
+                f'Invalid point data: {point_data}\nThe point data must be 1-D array or sequence.')
 
         self._data = data
         self._data.flags.writeable = False
 
     def __repr__(self) -> str:
         with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
-            data_str = '{}'.format(self._data)
-
-        return '{}({}, ndim={}, dtype={})'.format(
-            type(self).__name__, data_str, self.ndim, self._data.dtype)
+            data_str = f'{self._data}'
+        return f'{type(self).__name__}({data_str}, ndim={self.ndim}, dtype={self._data.dtype})'
 
     def __len__(self) -> int:
         """Returns the point dimension
@@ -372,8 +370,9 @@ class Point(abc.Sequence):
             if right:
                 return NotImplemented
             else:
-                raise TypeError("unsupported operand type(s) for '{}': '{}' and '{}'".format(
-                    op.__name__, type(self).__name__, type(other).__name__))
+                raise TypeError(
+                    f"unsupported operand type(s) for '{op.__name__}': "
+                    f"'{type(self).__name__}' and '{type(other).__name__}'")
 
         if right:
             right_data, left_data = left_data, right_data
@@ -412,10 +411,8 @@ class CurvePoint(Point):
 
     def __repr__(self):
         with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
-            data_str = '{}'.format(self._data)
-
-        return '{}({}, index={})'.format(
-            type(self).__name__, data_str, self.idx)
+            data_str = f'{self._data}'
+        return f'{type(self).__name__}({data_str}, index={self.idx})'
 
     def __copy__(self) -> 'CurvePoint':
         return self.__deepcopy__()
@@ -752,10 +749,9 @@ class Segment:
 
     def __repr__(self) -> str:
         with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
-            p1_data = '{}'.format(self._p1.data)
-            p2_data = '{}'.format(self._p2.data)
-
-        return '{}(p1={}, p2={})'.format(type(self).__name__, p1_data, p2_data)
+            p1_data = f'{self._p1.data}'
+            p2_data = f'{self._p2.data}'
+        return f'{type(self).__name__}(p1={p1_data}, p2={p2_data})'
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Segment):
@@ -1173,11 +1169,9 @@ class CurveSegment(Segment):
 
     def __repr__(self) -> str:
         with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION):
-            p1_data = '{}'.format(self._p1.data)
-            p2_data = '{}'.format(self._p2.data)
-
-        return '{}(p1={}, p2={}, index={})'.format(
-            type(self).__name__, p1_data, p2_data, self._idx)
+            p1_data = f'{self._p1.data}'
+            p2_data = f'{self._p2.data}'
+        return f'{type(self).__name__}(p1={p1_data}, p2={p2_data}, index={self._idx})'
 
     @property
     def curve(self) -> 'Curve':
@@ -1370,7 +1364,7 @@ class Curve(abc.Sequence):
         dtype = np.dtype(dtype)
 
         if not np.issubdtype(dtype, np.number):
-            ValueError('"dtype" must be a numeric type not {}.'.format(dtype))
+            ValueError(f"'dtype' must be a numeric type not {dtype}.")
 
         data = as2d(curve_data, axis=axis).astype(dtype)
 
@@ -1391,9 +1385,9 @@ class Curve(abc.Sequence):
             tdata.flags.writeable = False
 
             if tdata.ndim != 1:
-                raise ValueError('"tdata" must be 1-D array')
+                raise ValueError("'tdata' must be 1-D array")
             if tdata.size != data.shape[0]:
-                raise ValueError('"tdata" size must be equal to the number of curve points.')
+                raise ValueError("'tdata' size must be equal to the number of curve points.")
 
         self._data = data  # type: np.ndarray
         self._data.flags.writeable = False
@@ -1405,11 +1399,9 @@ class Curve(abc.Sequence):
 
         with np.printoptions(suppress=True, precision=DATA_FORMAT_PRECISION,
                              edgeitems=4, threshold=10*self.ndim):
-            arr_repr = '{}'.format(self._data)
+            arr_repr = f'{self._data}'
             arr_repr = textwrap.indent(arr_repr, ' ' * (len(name) + 1)).strip()
-
-        return '{}({}, size={}, ndim={}, dtype={})'.format(
-            name, arr_repr, self.size, self.ndim, self.dtype)
+        return f'{name}({arr_repr}, size={self.size}, ndim={self.ndim}, dtype={self.dtype})'
 
     def __len__(self) -> int:
         """Returns the number of data points in the curve
@@ -1482,7 +1474,7 @@ class Curve(abc.Sequence):
                 raise IndexError('Indexing array must be numeric or boolean')
             return get_subcurve(indexer)
         else:
-            raise TypeError('Invalid index type {}'.format(type(indexer)))
+            raise TypeError(f'Invalid index type {type(indexer)}')
 
     def __contains__(self, other: object):
         """Returns True if the curve contains given point or sub-curve with the same dimension
@@ -1622,7 +1614,7 @@ class Curve(abc.Sequence):
         is_close = allequal(point.data, data, axis=1)
 
         if not np.any(is_close):
-            raise ValueError('{} is not in curve and given interval'.format(point))
+            raise ValueError(f'{point} is not in curve and given interval')
 
         indices = np.flatnonzero(is_close)
 
@@ -2324,8 +2316,7 @@ class Curve(abc.Sequence):
             )
         except IndexError as err:
             raise IndexError(
-                'Index {} is out of bounds for curve size {}'.format(
-                    index, self.size)) from err
+                f'Index {index} is out of bounds for curve size {self.size}') from err
 
     def append(self, other: PointCurveUnion):
         """Appends point or curve data to the end of the curve and returns new curve
@@ -2417,8 +2408,7 @@ class Curve(abc.Sequence):
 
         except IndexError as err:
             raise IndexError(
-                'Index {} is out of bounds for curve size {}'.format(
-                    index, self.size)) from err
+                f'Index {index} is out of bounds for curve size {self.size}') from err
 
     def values(self, axis: ty.Union[int, Axis, None] = None) -> ty.Union[np.ndarray, ty.Iterator[np.ndarray]]:
         """Returns the vector with all values for given axis or the iterator along all axes
@@ -2451,8 +2441,7 @@ class Curve(abc.Sequence):
             raise ValueError('Axis must be an integer')
 
         if axis is not None and axis >= self.ndim:
-            raise ValueError(
-                'The axis {} is out of the curve dimensions {}'.format(axis, self.ndim))
+            raise ValueError(f'The axis {axis} is out of the curve dimensions {self.ndim}')
 
         if axis is not None:
             return self._data[:, axis]
@@ -2507,7 +2496,7 @@ class Curve(abc.Sequence):
             )
         except IndexError as err:
             raise IndexError(
-                'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
+                f'Axis {axis} is out of bounds for curve dimensions {self.ndim}') from err
 
     def appenddim(self, values: ty.Union[np.ndarray, NumericSequence, None] = None) -> 'Curve':
         """Appends new dimension to the end of curve and returns new curve
@@ -2594,7 +2583,7 @@ class Curve(abc.Sequence):
             )
         except IndexError as err:
             raise IndexError(
-                'Axis {} is out of bounds for curve dimensions {}'.format(axis, self.ndim)) from err
+                f'Axis {axis} is out of bounds for curve dimensions {self.ndim}') from err
 
     def unique(self) -> 'Curve':
         """Returns curve with unique points

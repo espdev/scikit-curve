@@ -85,7 +85,7 @@ def segment_t(segment: 'Segment', point: ty.Union['Point', ty.Sequence['Point']]
     if isinstance(point, skcurve._base.Point):
         if not segment.collinear(point, tol=tol):
             warnings.warn(
-                "Given point '{}' is not collinear with the segment '{}'".format(point, segment),
+                f"Given point '{point}' is not collinear with the segment '{segment}'",
                 GeometryAlgorithmsWarning)
             return np.nan
         b = point.data - segment.p1.data
@@ -100,7 +100,7 @@ def segment_t(segment: 'Segment', point: ty.Union['Point', ty.Sequence['Point']]
 
     if residuals.size > 0 and residuals[0] > F_EPS:
         warnings.warn(
-            'The "lstsq" residuals are {}. "t" value(s) might be wrong.'.format(residuals),
+            f"The 'lstsq' residuals are {residuals}. 't' value(s) might be wrong.",
             GeometryAlgorithmsWarning)
 
     t = t.squeeze()

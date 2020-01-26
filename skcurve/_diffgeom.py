@@ -158,10 +158,10 @@ def gradient(data: np.ndarray, edge_order: int = DEFAULT_GRAD_EDGE_ORDER) -> np.
 
     for edge_order in range(edge_order, 0, -1):
         if m_rows < (edge_order + 1):
-            warnings.warn((
-                'The number of data points {} too small to calculate a numerical gradient, '
-                'at least {} (edge_order + 1) elements are required.'
-            ).format(m_rows, edge_order + 1), DifferentialGeometryWarning)
+            warnings.warn(
+                f'The number of data points {m_rows} too small to calculate a numerical '
+                f'gradient, at least {edge_order + 1} (edge_order + 1) elements are required.',
+                DifferentialGeometryWarning)
         else:
             break
     else:

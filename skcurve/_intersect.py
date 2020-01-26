@@ -58,14 +58,14 @@ class IntersectionType(enum.Enum):
 
     def __call__(self, intersect_data: ty.Optional[ty.Union['Point', 'Segment']] = None) -> 'IntersectionInfo':
         if self == IntersectionType.NONE and intersect_data is not IntersectionType:
-            raise ValueError('"intersect_data" must be \'None\' for type {}'.format(self))
+            raise ValueError(f"'intersect_data' must be 'None' for type {self}")
 
         if self == IntersectionType.EXACT and not isinstance(intersect_data, skcurve._base.Point):
-            raise ValueError('"intersect_data" must be \'Point\' for type {}'.format(self))
+            raise ValueError(f"'intersect_data' must be 'Point' for type {self}")
 
         if (self in (IntersectionType.OVERLAP, IntersectionType.ALMOST) and
                 not isinstance(intersect_data, skcurve._base.Segment)):
-            raise ValueError('"intersect_data" must be \'Segment\' for type {}'.format(self))
+            raise ValueError(f"'intersect_data' must be 'Segment' for type {self}")
 
         return IntersectionInfo(intersect_data, self)
 
@@ -361,8 +361,7 @@ def get_intersect_method(method: str, **params) -> 'IntersectionMethodBase':
 
     if method not in _intersect_methods:
         raise NameError(
-            'Unknown method "{}". The following methods are available: {}'.format(
-                method, intersect_methods()))
+            f"Unknown method '{method}'. The following methods are available: {intersect_methods()}")
 
     return _intersect_methods[method](**params)
 
@@ -397,8 +396,7 @@ def set_default_intersect_method(method: str) -> None:
 
     if method not in _intersect_methods:
         raise NameError(
-            'Unknown method "{}". The following methods are available: {}'.format(
-                method, intersect_methods()))
+            f"Unknown method '{method}'. The following methods are available: {intersect_methods()}")
 
     _default_intersect_method = method
 
@@ -427,10 +425,9 @@ def register_intersect_method(method: str, default: bool = False):
 
     def decorator(cls: ty.Type[IntersectionMethodBase]):
         if method in _intersect_methods:
-            raise ValueError('"{}" intersect method already registered for {}'.format(
-                method, _intersect_methods[method]))
+            raise ValueError(f"'{method}' intersect method already registered for {_intersect_methods[method]}")
         if not issubclass(cls, IntersectionMethodBase):
-            raise TypeError("{} is not a subclass of 'IntersectionMethodBase'".format(cls))
+            raise TypeError(f"{cls} is not a subclass of 'IntersectionMethodBase'")
         _intersect_methods[method] = cls
 
         if default:
@@ -495,16 +492,15 @@ class ExactIntersectionMethod(IntersectionMethodBase):
             try:
                 t = np.linalg.solve(a, b)
             except np.linalg.LinAlgError as err:
-                warnings.warn(
-                    'Cannot solve system of equations: {}'.format(err), IntersectionWarning)
+                warnings.warn(f'Cannot solve system of equations: {err}', IntersectionWarning)
                 return NOT_INTERSECTED
         else:
             t, residuals, *_ = np.linalg.lstsq(a, b, rcond=None)
 
             if residuals.size > 0 and residuals[0] > self._feps:
                 warnings.warn(
-                    'The "lstsq" residuals are {} > {}. Computation result might be wrong.'.format(
-                        residuals, self._feps), IntersectionWarning)
+                    f"The 'lstsq' residuals are {residuals} > {self._feps}. Computation result might be wrong.",
+                    IntersectionWarning)
 
         if np.all(((t > 0) | np.isclose(t, 0)) &
                   ((t < 1) | np.isclose(t, 1))):
@@ -516,8 +512,8 @@ class ExactIntersectionMethod(IntersectionMethodBase):
 
                 if distance > self._feps:
                     warnings.warn(
-                        'Incorrect solution. The points for "t1" and "t2" are different (distance: {}).'.format(
-                            distance), IntersectionWarning)
+                        f"Incorrect solution. The points for 't1' and 't2' are different (distance: {distance}).",
+                        IntersectionWarning)
                     return NOT_INTERSECTED
 
             return IntersectionType.EXACT(intersect_point1)
@@ -799,13 +795,13 @@ def intersect(obj1: ty.Union['Segment', 'Curve'],
     elif isinstance(method, IntersectionMethodBase):
         intersect_method = method
         if params:
-            warnings.warn("{} as intersection method will be used, 'params' will be ignored.".format(
-                method), IntersectionWarning)
+            warnings.warn(
+                f"'{method}' as intersection method will be used, 'params' will be ignored.",
+                IntersectionWarning)
     else:
-        raise ValueError("Invalid 'method' value: {}".format(method))
+        raise ValueError(f"Invalid 'method' value: {method}")
 
     try:
         return intersect_method(obj1, obj2)
     except Exception as err:
-        raise IntersectionError("'{}': finding intersection has failed: {}".format(
-            method, err)) from err
+        raise IntersectionError(f"'{method}': finding intersection has failed: {err}") from err

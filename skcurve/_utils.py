@@ -36,7 +36,7 @@ def as2d(arr: np.ndarray, axis: int) -> np.ndarray:
     axis = arr.ndim + axis if axis < 0 else axis
 
     if axis >= arr.ndim:
-        raise ValueError('axis {} is out of array shape {}.'.format(orig_axis, arr.shape))
+        raise ValueError(f'axis {orig_axis} is out of array shape {arr.shape}.')
 
     tr_axes = list(range(arr.ndim))
     tr_axes.insert(0, tr_axes.pop(axis))

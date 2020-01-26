@@ -70,7 +70,7 @@ def get_metric(name: str, **kwargs) -> abc.Callable:
     """
 
     if name not in _METRICS:
-        raise NameError('Cannot find metric with name "{}"'.format(name))
+        raise NameError(f"Cannot find metric with name '{name}'")
 
     metric = _METRICS[name]
 

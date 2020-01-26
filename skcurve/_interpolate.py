@@ -110,22 +110,22 @@ class UniformInterpolationGrid(InterpolationGrid):
 
     def __init__(self, fill: ty.Union[int, float], kind: str = 'point'):
         if kind not in ('point', 'length'):
-            raise ValueError('Unknown "kind": {}'.format(kind))
+            raise ValueError(f"Unknown 'kind': {kind}")
         if kind == 'point':
             if not isinstance(fill, int):
-                raise TypeError('"fill" must be an integer for "kind" == "point".')
+                raise TypeError("'fill' must be an integer for 'kind' == 'point'.")
             if fill < 2:
                 raise ValueError('There must be at least two interpolation points.')
         elif kind == 'length':
             if not isinstance(fill, (int, float)):
-                raise TypeError('"fill" must be an integer or float for "kind" == "length".')
+                raise TypeError("'fill' must be an integer or float for 'kind' == 'length'.")
 
         self.fill = fill
         self.kind = kind
 
     def __call__(self, curve: 'Curve') -> np.ndarray:
         if curve.size < 2:
-            raise ValueError('The curve size {} is too few'.format(curve.size))
+            raise ValueError(f'The curve size {curve.size} is too few')
 
         if self.kind == 'length':
             pcount = int(round(curve.arclen / self.fill) + 1)
@@ -164,13 +164,13 @@ class UniformExtrapolationGrid(InterpolationGrid):
                  after: ty.Union[int, float] = 0,
                  kind: str = 'point'):
         if kind not in ('point', 'length'):
-            raise ValueError('Unknown "kind": {}'.format(kind))
+            raise ValueError(f"Unknown 'kind': {kind}")
         if kind == 'point':
             if not isinstance(before, int) or not isinstance(after, int):
-                raise TypeError('"before" and "after" arguments must be an integer for "kind" == "point".')
+                raise TypeError("'before' and 'after' arguments must be an integer for 'kind' == 'point'.")
         elif kind == 'length':
             if not isinstance(before, (int, float)) or not isinstance(after, (int, float)):
-                raise TypeError('"before" and "after" arguments must be an integer or float for "kind" == "length".')
+                raise TypeError("'before' and 'after' arguments must be an integer or float for 'kind' == 'length'.")
 
         self.interp_grid = interp_grid
         self.before = before
@@ -294,7 +294,7 @@ class InterpolatorBase:
         try:
             inter_data = self._interpolate(grid)
         except Exception as err:
-            raise InterpolationError('Interpolation has failed: {}'.format(err)) from err
+            raise InterpolationError(f'Interpolation has failed: {err}') from err
 
         if self.curve.isparametric:
             tdata = grid
@@ -347,13 +347,13 @@ class InterpolatorBase:
         elif isinstance(grid_spec, (np.ndarray, abc.Sequence)):
             grid = np.array(grid_spec, dtype=np.float64)
         else:
-            raise ValueError('Invalid type {} of interpolation grid'.format(type(grid_spec)))
+            raise ValueError(f'Invalid type {type(grid_spec)} of interpolation grid')
 
         if grid.ndim != 1:
             raise ValueError(
                 'The interpolation grid should be 1xM array where M is number of points in interpolated curve')
         if not np.issubdtype(grid.dtype, np.number):
-            raise ValueError('Invalid dtype {} of interpolation grid'.format(grid.dtype))
+            raise ValueError(f'Invalid dtype {grid.dtype} of interpolation grid')
 
         dt = np.diff(grid)
 
@@ -364,10 +364,10 @@ class InterpolatorBase:
         t_start, t_end = self.curve.t[0], self.curve.t[-1]
 
         if np.min(grid) > t_start or np.max(grid) < t_end:
-            warnings.warn((
-                'The interpolation grid in range [{}, {}]. '
-                'It does not cover the whole curve parametrization range [{}, {}].').format(
-                np.min(grid), np.max(grid), t_start, t_end), InterpolationWarning)
+            warnings.warn(
+                f'The interpolation grid in range [{np.min(grid)}, {np.max(grid)}]. '
+                f'It does not cover the whole curve parametrization range [{t_start}, {t_end}].',
+                InterpolationWarning)
 
         return grid
 
@@ -390,10 +390,9 @@ def register_interpolator(method: str):
 
     def decorator(cls: ty.Type[InterpolatorBase]):
         if method in _interpolators:
-            raise ValueError('"{}" interpolation method already registered for {}'.format(
-                method, _interpolators[method]))
+            raise ValueError(f"'{method}' interpolation method already registered for {_interpolators[method]}")
         if not issubclass(cls, InterpolatorBase):
-            raise TypeError("{} is not a subclass of 'InterpolatorBase'".format(cls))
+            raise TypeError(f"{cls} is not a subclass of 'InterpolatorBase'")
         _interpolators[method] = cls
     return decorator
 
@@ -683,7 +682,7 @@ def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
     """
 
     if method not in _interpolators:
-        raise NameError('Cannot find the interpolator for given method "{}"'.format(method))
+        raise NameError(f"Cannot find the interpolator for given method '{method}'")
 
     interpolator_cls = _interpolators[method]
 
@@ -691,7 +690,7 @@ def get_interpolator(method: str, curve: 'Curve', **params) -> InterpolatorBase:
         return interpolator_cls(curve, **params)
     except Exception as err:
         raise InterpolationError(
-            'Cannot create interpolator "{}": {}'.format(interpolator_cls, err)) from err
+            f"Cannot create interpolator '{interpolator_cls}': {err}") from err
 
 
 def interpolate(curve: 'Curve', grid_spec: InterpGridSpecType, method: str, **params) -> 'Curve':
