@@ -17,12 +17,12 @@ Here are some basic routines above the n-dimensional curves:
 
 import warnings
 
-import typing as t
+import typing as ty
 import numpy as np
 
 from skcurve._numeric import dot1d
 
-if t.TYPE_CHECKING:
+if ty.TYPE_CHECKING:
     from skcurve._base import Curve  # noqa
 
 
